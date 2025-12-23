@@ -33,9 +33,10 @@ export default function Chat() {
 		scrollToBottom();
 	}, [scrollToBottom]);
 
-	// Extract qrToken from URL query parameters
-	const qrToken =
-		new URLSearchParams(window.location.search).get("qrToken") || "";
+	// Extract qrToken and debug flag from URL query parameters
+	const searchParams = new URLSearchParams(window.location.search);
+	const qrToken = searchParams.get("qrToken") || "";
+	const isDebugMode = searchParams.get("debug") === "true";
 
 	const agent = useAgent({
 		agent: "chat",
@@ -119,15 +120,17 @@ export default function Chat() {
 							</div>
 						</div>
 
-						<Button
-							variant="ghost"
-							size="md"
-							shape="square"
-							className="rounded-full h-9 w-9 text-white hover:bg-white/20"
-							onClick={clearHistory}
-						>
-							<TrashIcon size={20} />
-						</Button>
+						{isDebugMode && (
+							<Button
+								variant="ghost"
+								size="md"
+								shape="square"
+								className="rounded-full h-9 w-9 text-white hover:bg-white/20"
+								onClick={clearHistory}
+							>
+								<TrashIcon size={20} />
+							</Button>
+						)}
 					</div>
 
 					{/* Messages */}
@@ -236,7 +239,8 @@ export default function Chat() {
 
 													if (
 														isStaticToolUIPart(part) &&
-														m.role === "assistant"
+														m.role === "assistant" &&
+														isDebugMode
 													) {
 														const toolCallId = part.toolCallId;
 														const toolName = part.type.replace("tool-", "");
