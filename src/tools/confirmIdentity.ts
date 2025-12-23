@@ -48,11 +48,12 @@ export const confirmIdentityTool = tool<
 			return {
 				error: `Guest with ID ${guestId} not found in database`,
 				success: false,
+				type: "confirm-identity",
 			};
 		}
 
-		// Agent will handle setState via onFinish callback
-		// We return data that Agent will use to update state
+		// Return state update that will be applied by agent's onFinish handler
+		// See: src/agents/wedding-assistent/index.ts onFinish wrapper
 
 		return {
 			guest: {
@@ -79,6 +80,7 @@ export const confirmIdentityTool = tool<
 				identificationAttempts: 0, // Reset on success
 			},
 			success: true,
+			type: "confirm-identity",
 		};
 	},
 

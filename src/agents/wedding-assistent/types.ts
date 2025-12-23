@@ -1,16 +1,20 @@
+import { z } from "zod";
 import type { Guest } from "@/db";
+
+export const ConversationStateSchema = z.enum([
+	"initializing",
+	"group_welcome",
+	"identifying_individual",
+	"identified",
+	"collecting_rsvp",
+	"completed",
+	"identification_failed",
+] as const);
 
 /**
  * Conversation states for the wedding RSVP wedding-agent-ws
  */
-export type ConversationState =
-	| "initializing" // Agent is starting up
-	| "group_welcome" // QR flow: greeting group, asking who's chatting
-	| "identifying_individual" // No-QR flow: trying to identify guest
-	| "identified" // Guest identified, ready for RSVP
-	| "collecting_rsvp" // Collecting RSVP responses
-	| "completed" // RSVP complete, general chat
-	| "identification_failed"; // Failed to identify after 3 attempts
+export type ConversationState = z.infer<typeof ConversationStateSchema>;
 
 /**
  * Task types for model selection

@@ -57,6 +57,7 @@ export const getIdentificationContextTool = tool<
 			isIdentified: !!state.guestId,
 			maxAttempts,
 			maxAttemptsReached,
+			type: "identification-context",
 		};
 	},
 

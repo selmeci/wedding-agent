@@ -26,6 +26,7 @@ import {
 	getIdentificationContextTool,
 	getWeddingInfoTool,
 } from "@/tools";
+import type { Outputs } from "@/tools/types";
 import { cleanupMessages, processToolCalls } from "@/utils";
 
 /**
@@ -142,11 +143,33 @@ export class Chat extends AIChatAgent<Env, WeddingAgentState> {
 				const result = streamText({
 					messages: await convertToModelMessages(processedMessages),
 					model,
-					// Type boundary: streamText expects specific tool types, but base class uses ToolSet
-					// This is safe because our tools satisfy ToolSet interface (verified by 'satisfies' in tools.ts)
-					onFinish: onFinish as unknown as StreamTextOnFinishCallback<
-						typeof tools
-					>,
+					// Wrap onFinish to process tool results and update agent state
+					onFinish: async (finishResult) => {
+						// Process tool results for state updates
+						// Currently handles: confirmIdentity
+						for (const step of finishResult.steps) {
+							for (const toolResult of step.toolResults) {
+								match<Outputs>(toolResult.output as Outputs)
+									.with({ type: "confirm-identity" }, (output) => {
+										if (output.success) {
+											const stateUpdate = output.stateUpdate;
+											if (stateUpdate) {
+												this.setState({
+													...this.state,
+													...stateUpdate,
+												});
+											}
+										}
+									})
+									.otherwise(() => {});
+							}
+						}
+
+						// Call base callback
+						await (
+							onFinish as unknown as StreamTextOnFinishCallback<typeof tools>
+						)(finishResult);
+					},
 					stopWhen: stepCountIs(10),
 					system,
 					tools,

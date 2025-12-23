@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ConversationStateSchema } from "@/agents/wedding-assistent/types";
 
 export const ConfirmIdentityInputSchema = z.object({
 	confidence: z.string(),
@@ -25,17 +26,19 @@ export const ConfirmIdentityOutputSuccessSchema = z.object({
 	}),
 	message: z.string(),
 	stateUpdate: z.object({
-		conversationState: z.string(),
+		conversationState: ConversationStateSchema,
 		groupId: z.uuid(),
 		guestId: z.uuid(),
 		identificationAttempts: z.number().int(),
 	}),
 	success: z.literal(true),
+	type: z.literal("confirm-identity"),
 });
 
 export const ConfirmIdentityOutputFailureSchema = z.object({
 	error: z.string(),
 	success: z.literal(false),
+	type: z.literal("confirm-identity"),
 });
 
 export const ConfirmIdentityOutputSchema = z.discriminatedUnion("success", [
@@ -78,6 +81,7 @@ export const GetWeddingInfoOutputSchema = z.object({
 		photos: z.string(),
 		reception: z.string(),
 	}),
+	type: z.literal("get-wedding-info"),
 });
 
 export const IdentificationContextInputSchema = z.object({});
@@ -87,7 +91,14 @@ export const IdentificationContextOutputSchema = z.object({
 	identificationAttempts: z.number(),
 	maxAttempts: z.number(),
 	maxAttemptsReached: z.boolean(),
+	type: z.literal("identification-context"),
 });
+
+export const OutputsSchema = z.discriminatedUnion("type", [
+	ConfirmIdentityOutputSchema,
+	GetWeddingInfoOutputSchema,
+	IdentificationContextOutputSchema,
+] as const);
 
 export type ConfirmIdentityInput = z.infer<typeof ConfirmIdentityInputSchema>;
 export type ConfirmIdentityOutput = z.infer<typeof ConfirmIdentityOutputSchema>;
@@ -101,3 +112,5 @@ export type IdentificationContextInput = z.infer<
 export type IdentificationContextOutput = z.infer<
 	typeof IdentificationContextOutputSchema
 >;
+
+export type Outputs = z.infer<typeof OutputsSchema>;

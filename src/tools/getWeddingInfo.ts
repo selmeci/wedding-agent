@@ -73,6 +73,8 @@ export const getWeddingInfoTool = tool<
 				photos: "16:00 - 17:00",
 				reception: "17:00 - polnoc",
 			},
+
+			type: "get-wedding-info",
 		};
 	},
 
