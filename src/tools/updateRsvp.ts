@@ -115,9 +115,7 @@ export const updateRsvpTool = tool<UpdateRsvpInput, UpdateRsvpOutput>({
 		const finalConversationState = willAttend ? "completed" : "declined";
 
 		return {
-			message: existingResponse
-				? "RSVP updated successfully"
-				: "RSVP saved successfully",
+			message: "", // Empty - AI will provide friendly message in same response
 			stateUpdate: {
 				conversationState: finalConversationState,
 				rsvpComplete: true,

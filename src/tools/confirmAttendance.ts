@@ -1,8 +1,7 @@
 import { getCurrentAgent } from "agents";
 import { tool } from "ai";
-import { eq } from "drizzle-orm";
 import type { Chat } from "@/agents";
-import { guestGroupResponses } from "@/db";
+import { guestGroupResponses, type NewGuestGroupResponse } from "@/db";
 import {
 	type ConfirmAttendanceInput,
 	ConfirmAttendanceInputSchema,
@@ -60,12 +59,7 @@ export const confirmAttendanceTool = tool<
 			};
 		}
 
-		// Check if RSVP already exists (shouldn't happen, but handle it)
-		const existingResponse = await db.query.guestGroupResponses.findFirst({
-			where: (t, { eq }) => eq(t.groupId, groupId),
-		});
-
-		const responseData = {
+		const responseData: NewGuestGroupResponse = {
 			attendCeremony: willAttend ? true : null,
 			dietaryRestrictions: null,
 			groupId,
@@ -78,31 +72,25 @@ export const confirmAttendanceTool = tool<
 			willAttend,
 		};
 
-		if (existingResponse) {
-			// Update existing (shouldn't happen in normal flow)
-			await db
-				.update(guestGroupResponses)
-				.set(responseData)
-				.where(eq(guestGroupResponses.groupId, groupId));
-
-			console.log("Attendance updated for group:", groupId);
-		} else {
-			// Create new partial RSVP
-			await db.insert(guestGroupResponses).values({
+		const groupResp = await db
+			.insert(guestGroupResponses)
+			.values({
 				...responseData,
 				createdAt: new Date(),
-			});
+			})
+			.onConflictDoNothing();
 
-			console.log("Attendance confirmed for group:", groupId);
-		}
+		console.log("Attendance confirmed successfully for group:", {
+			groupResp,
+		});
 
 		// Determine next state
 		const nextState = willAttend ? "collecting_rsvp" : "declined";
 
 		return {
 			message: willAttend
-				? "Attendance confirmed. Continue collecting RSVP details (dietary, transport, accommodation)."
-				: "Attendance declined. RSVP is complete.",
+				? "✓ Účasť potvrdená. Povedz useru potvrdenie a UKONČI odpoveď. V ďalšej konverzácii začneš zbierať RSVP údaje."
+				: "✓ Účasť odmietnutá. RSVP je kompletné.",
 			stateUpdate: {
 				conversationState: nextState,
 			},

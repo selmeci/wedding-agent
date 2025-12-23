@@ -72,7 +72,7 @@ export const confirmIdentityTool = tool<
 				reasoning,
 				timestamp: Date.now(),
 			},
-			message: `✅ Identity confirmed: ${guest.firstName} ${guest.lastName} from ${guest.group.name}.`,
+			message: "", // Empty - AI will provide friendly message in same response
 			stateUpdate: {
 				conversationState: "confirming_attendance",
 				groupId: guest.group.id,

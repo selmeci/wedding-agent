@@ -1,5 +1,6 @@
-import { routeAgentRequest } from "agents";
+import { getAgentByName } from "agents";
 import { Hono } from "hono";
+import type { Chat } from "@/agents";
 import { accommodationSeedData } from "@/data/accommodations";
 import { guestGroupSeedData } from "@/data/guest-groups";
 import {
@@ -129,11 +130,49 @@ app.post("/api/seed", async (c) => {
 });
 
 // Agent route
-app.all("/agents/*", async (c) => {
-	const response = await routeAgentRequest(c.req.raw, c.env, {
-		jurisdiction: "eu",
+app.all("/agents/chat/:qrToken", async (c) => {
+	const qrToken = c.req.param("qrToken");
+	console.log("Received request for agent with QR token:", qrToken);
+	if (!qrToken) {
+		return c.status(401);
+	}
+	const db = createDb(c.env.DB);
+	const group = await db.query.guestGroups.findFirst({
+		where: (t, { eq }) => eq(t.qrToken, qrToken),
 	});
+	if (!group) {
+		return c.status(403);
+	}
+	const agent = await getAgentByName<Env, Chat>(
+		c.env.Chat as unknown as DurableObjectNamespace<Chat>,
+		qrToken,
+	);
+	await agent.setGroupId(group.id);
+
+	const response = await agent.fetch(c.req.raw);
 	return response || c.notFound();
+});
+
+app.get("/agents/chat/:qrToken/reset", async (c) => {
+	const qrToken = c.req.param("qrToken");
+	console.log("Received request for agent with QR token:", qrToken);
+	if (!qrToken) {
+		return c.status(401);
+	}
+	const db = createDb(c.env.DB);
+	const group = await db.query.guestGroups.findFirst({
+		where: (t, { eq }) => eq(t.qrToken, qrToken),
+	});
+	if (!group) {
+		return c.status(403);
+	}
+	const agent = await getAgentByName<Env, Chat>(
+		c.env.Chat as unknown as DurableObjectNamespace<Chat>,
+		qrToken,
+	);
+	await agent.resetState();
+
+	return c.json({ message: "Agent state reset successfully" }, 200);
 });
 
 /**

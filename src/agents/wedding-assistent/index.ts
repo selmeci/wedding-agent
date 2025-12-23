@@ -52,22 +52,28 @@ export class Chat extends AIChatAgent<Env, WeddingAgentState> {
 		return this.db;
 	}
 
+	setGroupId(groupId: string) {
+		this.setState({
+			...this.state,
+			groupId,
+		});
+	}
+
+	resetState() {
+		this.setState({
+			...this.initialState,
+		});
+	}
+
 	/**
-	 * Generate initial greeting message based on QR flow vs no-QR flow
+	 * Generate initial greeting message for QR flow
 	 *
-	 * QR flow (groupId exists): Greet entire group by names
-	 * No-QR flow (no groupId): Request identification
+	 * QR flow (groupId exists): Greet entire group by names and ask who's chatting
 	 */
-	private getInitialGreeting(groupContext: GroupInfo | null): string {
-		if (this.state.groupId && groupContext) {
-			// QR flow - group greeting (UC-01, UC-02)
-			// Greet all members by name and ask who's chatting
-			return `Ahoj ${groupContext.guestNames.join(", ")}! Vitajte na našej svadobnej stránke! 💕 Kto z vás práve píše?`;
-		} else {
-			// No-QR flow - identification request (UC-03)
-			// Greet visitor and ask for name
-			return `Ahoj! Vitaj na svadobnej stránke Ivonky a Romana! 💕 Môžem sa opýtať ako sa voláš? Tvoje meno a priezvisko mi pomôžu nájsť ťa v zozname pozvaných hostí.`;
-		}
+	private getInitialGreeting(groupContext: GroupInfo): string {
+		// QR flow - group greeting (UC-01, UC-02)
+		// Greet all members by name and ask who's chatting
+		return `Ahoj ${groupContext.guestNames.join(", ")}! Vitajte na našej svadobnej stránke! 💕 Kto z vás práve píše?`;
 	}
 
 	/**
@@ -83,9 +89,12 @@ export class Chat extends AIChatAgent<Env, WeddingAgentState> {
 
 		console.log("State", { state: this.state });
 
-		// Load group context early (needed for greeting and system prompt)
-		// - If groupId exists → load that specific group
-		// - If no groupId (no-QR flow) → load ALL guests for identification
+		// Load group context (QR flow only)
+		// groupId must be set via setGroupId() before chat starts
+		if (!this.state.groupId) {
+			throw new Error("No groupId set. Access only allowed via QR code.");
+		}
+
 		const groupContext = await this.getGroupContext(this.state.groupId);
 
 		// Determine task type based on current state
@@ -116,19 +125,6 @@ export class Chat extends AIChatAgent<Env, WeddingAgentState> {
 			}))
 			.exhaustive();
 
-		// Increment identification attempts if in identification phase
-		// Note: group_welcome with guestId set is NOT identification (guest is already identified)
-		const shouldIncrementAttempts = match(this.state.conversationState)
-			.with("identifying_individual", () => true)
-			.otherwise(() => false);
-
-		if (shouldIncrementAttempts) {
-			this.setState({
-				...this.state,
-				identificationAttempts: this.state.identificationAttempts + 1,
-			});
-		}
-
 		const stream = createUIMessageStream({
 			execute: async ({ writer }) => {
 				// Clean up incomplete tool calls to prevent API errors
@@ -144,6 +140,7 @@ export class Chat extends AIChatAgent<Env, WeddingAgentState> {
 				});
 
 				const result = streamText({
+					maxOutputTokens: 1000,
 					messages: await convertToModelMessages(processedMessages),
 					model,
 					// Wrap onFinish to process tool results and update agent state
@@ -210,7 +207,7 @@ export class Chat extends AIChatAgent<Env, WeddingAgentState> {
 							onFinish as unknown as StreamTextOnFinishCallback<typeof tools>
 						)(finishResult);
 					},
-					stopWhen: stepCountIs(10),
+					stopWhen: stepCountIs(100),
 					system,
 					tools,
 				});
@@ -224,11 +221,17 @@ export class Chat extends AIChatAgent<Env, WeddingAgentState> {
 
 	async onConnect(connection: Connection) {
 		console.log(`User ${connection.id} has connected to the chat agent...`);
+
+		// Validate groupId is set (QR code access only)
+		if (!this.state.groupId) {
+			throw new Error("No groupId set. Access only allowed via QR code.");
+		}
+
 		const groupContext = await this.getGroupContext(this.state.groupId);
 
 		// 🎯 INITIAL GREETING: If this is the first interaction (no messages yet),
 		// inject a proactive greeting message from the assistant
-		// This implements UC-01, UC-02, UC-03 requirements
+		// This implements UC-01, UC-02 requirements
 		if (this.messages.length === 0) {
 			const greeting = this.getInitialGreeting(groupContext);
 			console.log("Initial greeting:\n", greeting);
@@ -248,70 +251,41 @@ export class Chat extends AIChatAgent<Env, WeddingAgentState> {
 			// Persist the greeting message
 			await this.saveMessages(this.messages);
 
-			// Update conversation state based on flow type
-			if (this.state.groupId) {
-				// QR flow: Move to group_welcome state
-				this.setState({
-					...this.state,
-					conversationState: "group_welcome",
-				});
-			} else {
-				// No-QR flow: Move to identifying_individual state
-				this.setState({
-					...this.state,
-					conversationState: "identifying_individual",
-				});
-			}
+			// QR flow: Move to group_welcome state
+			this.setState({
+				...this.state,
+				conversationState: "group_welcome",
+			});
 		}
 	}
 
 	/**
 	 * Load group context from D1 database
 	 *
-	 * @param groupId - UUID of guest group, or null for no-QR flow
-	 * @returns GroupInfo with guests from the group (or all guests if groupId is null)
+	 * @param groupId - UUID of guest group (required for QR-only access)
+	 * @returns GroupInfo with guests from the group
 	 */
-	private async getGroupContext(groupId: string | null): Promise<GroupInfo> {
+	private async getGroupContext(groupId: string): Promise<GroupInfo> {
 		const db = this.getDatabase();
 
-		if (groupId) {
-			// QR flow: Load specific group with its guests
-			const groupWithGuests = await db.query.guestGroups.findFirst({
-				where: (t, { eq }) => eq(t.id, groupId),
-				with: {
-					guests: true,
-				},
-			});
+		// QR flow: Load specific group with its guests
+		const groupWithGuests = await db.query.guestGroups.findFirst({
+			where: (t, { eq }) => eq(t.id, groupId),
+			with: {
+				guests: true,
+			},
+		});
 
-			if (!groupWithGuests) {
-				throw new Error(`Group ${groupId} not found`);
-			}
-
-			return {
-				groupId,
-				groupName: groupWithGuests.name,
-				guestNames: groupWithGuests.guests.map(
-					(g) => `${g.firstName} ${g.lastName}`,
-				),
-				guests: groupWithGuests.guests,
-				isFromModra: groupWithGuests.isFromModra ?? false,
-			};
-		} else {
-			// No-QR flow: Load ALL guests (max 30) for identification
-			const allGuests = await db.query.guests.findMany({
-				limit: 30, // Safety limit
-				with: {
-					group: true,
-				},
-			});
-
-			return {
-				groupId: null,
-				groupName: "Všetci pozvaní hostia",
-				guestNames: allGuests.map((g) => `${g.firstName} ${g.lastName}`),
-				guests: allGuests,
-				isFromModra: false, // Will be determined after identification
-			};
+		if (!groupWithGuests) {
+			throw new Error(`Group ${groupId} not found`);
 		}
+
+		return {
+			groupId,
+			groupName: groupWithGuests.name,
+			guestNames: groupWithGuests.guests.map((g) => `${g.firstName}`),
+			guests: groupWithGuests.guests,
+			isFromModra: groupWithGuests.isFromModra ?? false,
+		};
 	}
 }

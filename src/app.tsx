@@ -14,7 +14,7 @@ import {
 import { useAgentChat } from "agents/ai-react";
 import { useAgent } from "agents/react";
 import { isStaticToolUIPart } from "ai";
-import { use, useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Avatar } from "@/components/avatar/Avatar";
 // Component imports
 import { Button } from "@/components/button/Button";
@@ -27,9 +27,7 @@ import type { tools } from "./tools";
 
 // List of tools that require human confirmation
 // NOTE: this should match the tools that don't have execute functions in tools.ts
-const toolsRequiringConfirmation: (keyof typeof tools)[] = [
-	"getWeatherInformation",
-];
+const toolsRequiringConfirmation: (keyof typeof tools)[] = [];
 
 export default function Chat() {
 	const [theme, setTheme] = useState<"dark" | "light">(() => {
@@ -69,8 +67,12 @@ export default function Chat() {
 		setTheme(newTheme);
 	};
 
+	// Extract qrToken from URL query parameters
+	const qrToken = new URLSearchParams(window.location.search).get("qrToken") || "";
+
 	const agent = useAgent({
 		agent: "chat",
+		name: qrToken,
 	});
 
 	const [agentInput, setAgentInput] = useState("");

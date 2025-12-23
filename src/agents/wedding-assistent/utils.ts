@@ -29,7 +29,7 @@ export function determineTaskFromState(
 ): TaskType {
 	return match(conversationState)
 		.with("identifying_individual", () => "identification" as const)
-		.with("group_welcome", () => "rsvp_collection" as const) // Changed - needs to ask about attendance
+		.with("group_welcome", () => "identification" as const) // Identifying group member
 		.with("confirming_attendance", () => "rsvp_collection" as const)
 		.with("collecting_rsvp", () => "rsvp_collection" as const)
 		.with("completed", "declined", () => "chat_general" as const)
