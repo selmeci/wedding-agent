@@ -130,7 +130,9 @@ app.post("/api/seed", async (c) => {
 
 // Agent route
 app.all("/agents/*", async (c) => {
-	const response = await routeAgentRequest(c.req.raw, c.env);
+	const response = await routeAgentRequest(c.req.raw, c.env, {
+		jurisdiction: "eu",
+	});
 	return response || c.notFound();
 });
 

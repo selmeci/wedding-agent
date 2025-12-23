@@ -22,7 +22,8 @@ export const guestGroupResponses = sqliteTable("guest_group_responses", {
 	attendCeremony: integer("attend_ceremony", { mode: "boolean" }),
 	dietaryRestrictions: text("dietary_restrictions"),
 	needsAccommodation: integer("needs_accommodation", { mode: "boolean" }),
-	needsDirections: integer("needs_directions", { mode: "boolean" }),
+	needsTransportAfter: integer("needs_transport_after", { mode: "boolean" }),
+	needsDirections: integer("needs_directions", { mode: "boolean" }), // DEPRECATED - use getWeddingInfo for directions
 	isComplete: integer("is_complete", { mode: "boolean" })
 		.notNull()
 		.default(false),

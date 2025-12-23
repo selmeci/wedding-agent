@@ -6,8 +6,10 @@ export const ConversationStateSchema = z.enum([
 	"group_welcome",
 	"identifying_individual",
 	"identified",
+	"confirming_attendance", // After identification, waiting for yes/no to attendance question
 	"collecting_rsvp",
 	"completed",
+	"declined", // Guest declined attendance
 	"identification_failed",
 ] as const);
 

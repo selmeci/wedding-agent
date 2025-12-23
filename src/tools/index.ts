@@ -1,10 +1,8 @@
-// Phase 2: Identification tools
+export { confirmAttendanceTool } from "./confirmAttendance";
 export { confirmIdentityTool } from "./confirmIdentity";
 export { getIdentificationContextTool } from "./getIdentificationContext";
-
-// Phase 3: RSVP tools (to be implemented)
-// export { updateRsvpTool } from './updateRsvp';
-// export { getRsvpStatusTool } from './getRsvpStatus';
+export { updateRsvpTool } from "./updateRsvp";
+// export { getRsvpStatusTool } from './getRsvpStatus'; // To be implemented
 
 // General information tools
 export { getWeddingInfoTool } from "./getWeddingInfo";

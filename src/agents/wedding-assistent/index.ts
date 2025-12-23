@@ -21,10 +21,11 @@ import {
 } from "@/agents/wedding-assistent/utils";
 import { createDb, type Database } from "@/db";
 import {
+	confirmAttendanceTool,
 	confirmIdentityTool,
 	executions,
-	getIdentificationContextTool,
 	getWeddingInfoTool,
+	updateRsvpTool,
 } from "@/tools";
 import type { Outputs } from "@/tools/types";
 import { cleanupMessages, processToolCalls } from "@/utils";
@@ -104,10 +105,11 @@ export class Chat extends AIChatAgent<Env, WeddingAgentState> {
 		const tools = match(taskType)
 			.with("identification", () => ({
 				confirmIdentity: confirmIdentityTool,
-				getIdentificationContext: getIdentificationContextTool,
 			}))
 			.with("rsvp_collection", () => ({
+				confirmAttendance: confirmAttendanceTool,
 				getWeddingInfo: getWeddingInfoTool,
+				updateRsvp: updateRsvpTool,
 			}))
 			.with("information_provision", "chat_general", () => ({
 				getWeddingInfo: getWeddingInfoTool,
@@ -115,8 +117,9 @@ export class Chat extends AIChatAgent<Env, WeddingAgentState> {
 			.exhaustive();
 
 		// Increment identification attempts if in identification phase
+		// Note: group_welcome with guestId set is NOT identification (guest is already identified)
 		const shouldIncrementAttempts = match(this.state.conversationState)
-			.with("group_welcome", "identifying_individual", () => true)
+			.with("identifying_individual", () => true)
 			.otherwise(() => false);
 
 		if (shouldIncrementAttempts) {
@@ -146,11 +149,12 @@ export class Chat extends AIChatAgent<Env, WeddingAgentState> {
 					// Wrap onFinish to process tool results and update agent state
 					onFinish: async (finishResult) => {
 						// Process tool results for state updates
-						// Currently handles: confirmIdentity
+						// Currently handles: confirmIdentity, confirmAttendance, updateRsvp
 						for (const step of finishResult.steps) {
 							for (const toolResult of step.toolResults) {
-								match<Outputs>(toolResult.output as Outputs)
-									.with({ type: "confirm-identity" }, (output) => {
+								console.log("Tool result:", { output: toolResult.output });
+								await match<Outputs>(toolResult.output as Outputs)
+									.with({ type: "confirm-identity" }, async (output) => {
 										if (output.success) {
 											const stateUpdate = output.stateUpdate;
 											if (stateUpdate) {
@@ -158,10 +162,46 @@ export class Chat extends AIChatAgent<Env, WeddingAgentState> {
 													...this.state,
 													...stateUpdate,
 												});
+
+												console.log(
+													"Identity confirmed. State updated to:",
+													stateUpdate.conversationState,
+													"Guest:",
+													output.guest.firstName,
+													output.guest.lastName,
+												);
 											}
 										}
 									})
-									.otherwise(() => {});
+									.with({ type: "confirm-attendance" }, async (output) => {
+										if (output.success) {
+											this.setState({
+												...this.state,
+												...output.stateUpdate,
+											});
+
+											console.log(
+												"Attendance confirmed. State:",
+												output.stateUpdate.conversationState,
+											);
+										}
+									})
+									.with({ type: "update-rsvp" }, async (output) => {
+										if (output.success) {
+											const finalState = output.stateUpdate;
+
+											this.setState({
+												...this.state,
+												...finalState,
+											});
+
+											console.log(
+												"RSVP saved successfully. State:",
+												finalState.conversationState,
+											);
+										}
+									})
+									.otherwise(async () => {});
 							}
 						}
 

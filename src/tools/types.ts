@@ -94,14 +94,76 @@ export const IdentificationContextOutputSchema = z.object({
 	type: z.literal("identification-context"),
 });
 
+export const ConfirmAttendanceInputSchema = z.object({
+	willAttend: z.boolean(),
+});
+
+export const ConfirmAttendanceOutputSuccessSchema = z.object({
+	message: z.string(),
+	stateUpdate: z.object({
+		conversationState: ConversationStateSchema,
+	}),
+	success: z.literal(true),
+	type: z.literal("confirm-attendance"),
+});
+
+export const ConfirmAttendanceOutputFailureSchema = z.object({
+	error: z.string(),
+	success: z.literal(false),
+	type: z.literal("confirm-attendance"),
+});
+
+export const ConfirmAttendanceOutputSchema = z.discriminatedUnion("success", [
+	ConfirmAttendanceOutputSuccessSchema,
+	ConfirmAttendanceOutputFailureSchema,
+]);
+
+export const UpdateRsvpInputSchema = z.object({
+	attendCeremony: z.boolean().nullable(),
+	dietaryRestrictions: z.string().nullable(),
+	needsAccommodation: z.boolean().nullable(),
+	needsTransportAfter: z.boolean().nullable(),
+	willAttend: z.boolean(),
+});
+
+export const UpdateRsvpOutputSuccessSchema = z.object({
+	message: z.string(),
+	stateUpdate: z.object({
+		conversationState: ConversationStateSchema,
+		rsvpComplete: z.boolean(),
+	}),
+	success: z.literal(true),
+	type: z.literal("update-rsvp"),
+});
+
+export const UpdateRsvpOutputFailureSchema = z.object({
+	error: z.string(),
+	success: z.literal(false),
+	type: z.literal("update-rsvp"),
+});
+
+export const UpdateRsvpOutputSchema = z.discriminatedUnion("success", [
+	UpdateRsvpOutputSuccessSchema,
+	UpdateRsvpOutputFailureSchema,
+]);
+
 export const OutputsSchema = z.discriminatedUnion("type", [
 	ConfirmIdentityOutputSchema,
+	ConfirmAttendanceOutputSchema,
 	GetWeddingInfoOutputSchema,
 	IdentificationContextOutputSchema,
+	UpdateRsvpOutputSchema,
 ] as const);
 
 export type ConfirmIdentityInput = z.infer<typeof ConfirmIdentityInputSchema>;
 export type ConfirmIdentityOutput = z.infer<typeof ConfirmIdentityOutputSchema>;
+
+export type ConfirmAttendanceInput = z.infer<
+	typeof ConfirmAttendanceInputSchema
+>;
+export type ConfirmAttendanceOutput = z.infer<
+	typeof ConfirmAttendanceOutputSchema
+>;
 
 export type GetWeddingInfoInput = z.infer<typeof GetWeddingInfoInputSchema>;
 export type GetWeddingInfoOutput = z.infer<typeof GetWeddingInfoOutputSchema>;
@@ -112,5 +174,8 @@ export type IdentificationContextInput = z.infer<
 export type IdentificationContextOutput = z.infer<
 	typeof IdentificationContextOutputSchema
 >;
+
+export type UpdateRsvpInput = z.infer<typeof UpdateRsvpInputSchema>;
+export type UpdateRsvpOutput = z.infer<typeof UpdateRsvpOutputSchema>;
 
 export type Outputs = z.infer<typeof OutputsSchema>;

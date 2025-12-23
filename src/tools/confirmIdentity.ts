@@ -72,9 +72,9 @@ export const confirmIdentityTool = tool<
 				reasoning,
 				timestamp: Date.now(),
 			},
-			message: `Identity confirmed: ${guest.firstName} ${guest.lastName} from ${guest.group.name}`,
+			message: `✅ Identity confirmed: ${guest.firstName} ${guest.lastName} from ${guest.group.name}.`,
 			stateUpdate: {
-				conversationState: "identified",
+				conversationState: "confirming_attendance",
 				groupId: guest.group.id,
 				guestId: guest.id,
 				identificationAttempts: 0, // Reset on success
