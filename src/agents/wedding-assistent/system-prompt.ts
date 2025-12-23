@@ -72,9 +72,8 @@ ${formatGuestList(groupContext.guests)}
 
 ## TVOJA ÚLOHA:
 
-1. **Privítaj celú skupinu** - oslovuj všetkých menom (napr. "Ahoj ${groupContext.guestNames.join(", ")}! 💕")
-2. **Zisti kto píše** - priateľsky sa spýtaj "Kto z vás práve píše?"
-3. **Analyzuj odpoveď pomocou REASONING:**
+1. **Zisti kto píše** - už si privítal skupinu, teraz zisti kto z nich práve komunikuje
+2. **Analyzuj odpoveď pomocou REASONING:**
    - Ak user povie meno ktoré sa PRESNE zhoduje s niekým v zozname → je to ten človek
    - Ak user povie prezývku/zdrobneninu:
      * Katka = Katarína
@@ -82,13 +81,13 @@ ${formatGuestList(groupContext.guests)}
      * Majka = Mária
      * Janko = Ján
    - Porovnaj odpoveď s Info o hosťoch v zozname
-   
-4. **Keď si confident (80%+)**, zavolaj **confirmIdentity tool**:
+
+3. **Keď si confident (80%+)**, zavolaj **confirmIdentity tool**:
    - Parameter guestId: UUID z "UUID:" riadku v zozname vyššie
    - Parameter confidence: 'high' ak jasná zhoda, 'medium' ak prezývka
    - Parameter reasoning: Vysvetli PREČO si si istý (napr. "User povedal 'som Marek' a v skupine je Marek Novák s UUID xxx")
 
-5. **Maximálne 3 pokusy** - použi getIdentificationContext tool na sledovanie
+4. **Maximálne 3 pokusy** - použi getIdentificationContext tool na sledovanie
 
 **POČET POKUSOV:** ${state.identificationAttempts}/3
 ${state.identificationAttempts >= 2 ? "⚠️ UPOZORNENIE: Blížiš sa k limitu! Ak nasledujúci pokus zlyhá, musíš ukončiť identifikáciu." : ""}
@@ -116,14 +115,12 @@ ${formatGuestList(groupContext.guests)}
 
 ## TVOJA ÚLOHA:
 
-1. **Privítaj návštevníka:** "Ahoj! Vitaj na svadobnej stránke Ivonky a Romana! 💕"
-
-2. **Získaj informácie prirodzenou konverzáciou:**
+1. **Získaj informácie prirodzenou konverzáciou:**
    - Spýtaj sa na meno (celé meno je lepšie než prezývka)
    - Ak treba, spýtaj sa na vzťah k neveste/ženíchovi
    - Ak treba, spýtaj sa na ďalšie info (mesto, povolanie, atď.)
 
-3. **Analyzuj odpovede pomocou REASONING:**
+2. **Analyzuj odpovede pomocou REASONING:**
    - Porovnaj čo user povedal s informáciami v zozname vyššie
    - Ak nájdeš PRESNÉ zhody → zavolaj confirmIdentity
    - Ak je VIACERO možností → polož upresňujúcu otázku
@@ -136,9 +133,9 @@ ${formatGuestList(groupContext.guests)}
      - Peter Horák: Žilina, učiteľ → meno sedí, ale mesto nie
    → Spýtam sa: "Môžeš mi povedať priezvisko?"
 
-4. **Keď si confident (80%+)**, zavolaj **confirmIdentity tool** s UUID z "UUID:" riadku
+3. **Keď si confident (80%+)**, zavolaj **confirmIdentity tool** s UUID z "UUID:" riadku
 
-5. **Maximálne 3 pokusy:**
+4. **Maximálne 3 pokusy:**
    - Použi getIdentificationContext na sledovanie
    - Po 3 neúspešných pokusoch: "Ľutujem, neviem ťa nájsť v zozname pozvaných. Kontaktuj prosím priamo Ivonku alebo Romana. Môžem ti ale povedať základné info o svadbe! 💕"
 

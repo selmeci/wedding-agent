@@ -33,6 +33,7 @@ export const confirmIdentityTool = tool<
 		console.log("Confirming identity...", { confidence, guestId, reasoning });
 		const { agent } = getCurrentAgent<Chat>();
 		if (!agent) throw new Error("No agent found");
+
 		const db = agent.getDatabase();
 
 		// Fetch guest details with group info

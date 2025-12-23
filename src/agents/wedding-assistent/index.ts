@@ -1,3 +1,4 @@
+import type { Connection } from "agents";
 import { AIChatAgent } from "agents/ai-chat-agent";
 import {
 	convertToModelMessages,
@@ -50,12 +51,41 @@ export class Chat extends AIChatAgent<Env, WeddingAgentState> {
 	}
 
 	/**
+	 * Generate initial greeting message based on QR flow vs no-QR flow
+	 *
+	 * QR flow (groupId exists): Greet entire group by names
+	 * No-QR flow (no groupId): Request identification
+	 */
+	private getInitialGreeting(groupContext: GroupInfo | null): string {
+		if (this.state.groupId && groupContext) {
+			// QR flow - group greeting (UC-01, UC-02)
+			// Greet all members by name and ask who's chatting
+			return `Ahoj ${groupContext.guestNames.join(", ")}! Vitajte na našej svadobnej stránke! 💕 Kto z vás práve píše?`;
+		} else {
+			// No-QR flow - identification request (UC-03)
+			// Greet visitor and ask for name
+			return `Ahoj! Vitaj na svadobnej stránke Ivonky a Romana! 💕 Môžem sa opýtať ako sa voláš? Tvoje meno a priezvisko mi pomôžu nájsť ťa v zozname pozvaných hostí.`;
+		}
+	}
+
+	/**
 	 * Handles incoming chat messages and manages the response stream
 	 */
 	async onChatMessage(
 		onFinish: StreamTextOnFinishCallback<ToolSet>,
 		_options?: { abortSignal?: AbortSignal },
 	) {
+		if (this.messages.length === 1) {
+			return;
+		}
+
+		console.log("State", { state: this.state });
+
+		// Load group context early (needed for greeting and system prompt)
+		// - If groupId exists → load that specific group
+		// - If no groupId (no-QR flow) → load ALL guests for identification
+		const groupContext = await this.getGroupContext(this.state.groupId);
+
 		// Determine task type based on current state
 		const taskType = determineTaskFromState(
 			this.state.conversationState,
@@ -64,11 +94,6 @@ export class Chat extends AIChatAgent<Env, WeddingAgentState> {
 
 		// Select appropriate model for task
 		const model = getModelForTask(taskType, this.env);
-
-		// Load group context:
-		// - If groupId exists → load that specific group
-		// - If no groupId (no-QR flow) → load ALL guests for identification
-		const groupContext = await this.getGroupContext(this.state.groupId);
 
 		// Build context-aware system prompt
 		const system = buildSystemPrompt(this.state, groupContext);
@@ -132,6 +157,49 @@ export class Chat extends AIChatAgent<Env, WeddingAgentState> {
 		});
 
 		return createUIMessageStreamResponse({ stream });
+	}
+
+	async onConnect(connection: Connection) {
+		console.log(`User ${connection.id} has connected to the chat agent...`);
+		const groupContext = await this.getGroupContext(this.state.groupId);
+
+		// 🎯 INITIAL GREETING: If this is the first interaction (no messages yet),
+		// inject a proactive greeting message from the assistant
+		// This implements UC-01, UC-02, UC-03 requirements
+		if (this.messages.length === 0) {
+			const greeting = this.getInitialGreeting(groupContext);
+			console.log("Initial greeting:\n", greeting);
+
+			// Add assistant greeting as first message
+			this.messages.push({
+				id: crypto.randomUUID(),
+				parts: [
+					{
+						text: greeting,
+						type: "text",
+					},
+				],
+				role: "assistant",
+			});
+
+			// Persist the greeting message
+			await this.saveMessages(this.messages);
+
+			// Update conversation state based on flow type
+			if (this.state.groupId) {
+				// QR flow: Move to group_welcome state
+				this.setState({
+					...this.state,
+					conversationState: "group_welcome",
+				});
+			} else {
+				// No-QR flow: Move to identifying_individual state
+				this.setState({
+					...this.state,
+					conversationState: "identifying_individual",
+				});
+			}
+		}
 	}
 
 	/**
