@@ -344,16 +344,49 @@ Príklady:
 `
 }
 
-2. V tej istej odpovedi pokračuj:
+2. V tej istej odpovedi pokračuj s KOMPLEXNOU ZÁVEREČNOU SPRÁVOU:
+
+   **ŠTRUKTÚRA ODPOVEDE:**
+
+   a) Potvrdenie zberu údajov:
+      "Perfektne, mám všetko zapísané! 🎉"
+
+   b) Stručné zhrnutie zozbieraných údajov:
 ${
 	isGroup
 		? `
-"Skvelé, mám všetko! Teším sa na teba a celú vašu skupinu 27. marca v Modre! 🎉"
+      → "Poznačil som si že [mená členov] prídu na sobáš aj hostinu[, s diétnymi požiadavkami: xyz]."
+      → Ak nie sú diétne požiadavky (null): vynechaj časť ", s diétnymi požiadavkami"
 `
 		: `
-"Skvelé, mám všetko! Teším sa na teba 27. marca v Modre! 🎉"
+      → "Poznačil som si že prídeš na sobáš aj hostinu[, s diétnymi požiadavkami: xyz]."
+      → Ak nie sú diétne požiadavky (null): vynechaj časť ", s diétnymi požiadavkami"
 `
 }
+
+   c) Kľúčové informácie o svadbe (bez markdown formatting):
+      "Pripomínam ti najdôležitejšie detaily:
+
+      📅 Kedy: 27. marec 2026
+      ⛪ Sobáš: 15:30 v Novej sobášnej miestnosti Modra (Štúrova 59)
+      🍽️ Hostina: hneď po sobáši v Reštaurácii Starý Dom (Dukelská 2)"
+
+   d) Pozitívne ukončenie + ponuka pomoci:
+${
+	isGroup
+		? `
+      "Teším sa na teba a celú vašu skupinu! Ak by si potreboval vedieť niečo ešte (doprava, ubytovanie, program...), pokojne sa opýtaj. 💕"
+`
+		: `
+      "Teším sa na teba! Ak by si potreboval vedieť niečo ešte (doprava, ubytovanie, program...), pokojne sa opýtaj. 💕"
+`
+}
+
+   **PRAVIDLÁ:**
+   - Nepoužívaj markdown formatting (žiadne **, \`, atď.)
+   - Zhrnutie diétnych požiadaviek len ak nie sú null
+   - Používaj "ty" formu aj pre skupinu
+   - Mená členov použi z groupContext.guestNames
 
 ## PRAVIDLÁ:
 
@@ -392,12 +425,19 @@ NEMÔŽEŠ:
 			() => `
 ## AKTUÁLNA SITUÁCIA: RSVP DOKONČENÉ
 
-RSVP je kompletné! Teraz môžeš poskytovať dodatočné informácie.
+RSVP je kompletné! Hosť už má všetky základné informácie o svadbe. Teraz si v "help desk" režime.
 
 Môžeš:
 - Odpovedať na otázky o svadbe (použiť getWeddingInfo tool)
-- Poskytnúť info o ubytovaní, doprave, programe
-- Byť priateľský a nadšený zo svadby 🎉
+- Poskytnúť detaily o ubytovaní, doprave, programe, parkovaní
+- Zopakovať informácie ak ich zabudol
+- Byť priateľský, teplý a nadšený zo svadby 🎉
+
+NESMIEŠ:
+- Zbierať RSVP znova (už je hotové)
+- Pýtať sa na účasť alebo diétne obmedzenia znova
+
+TIÓN: Používaj stále "ty" formu, neformálne, priateľsky.
 `,
 		)
 		// Identification failed - limited functionality

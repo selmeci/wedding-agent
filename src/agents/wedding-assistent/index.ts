@@ -140,7 +140,7 @@ export class Chat extends AIChatAgent<Env, WeddingAgentState> {
 				});
 
 				const result = streamText({
-					maxOutputTokens: 1000,
+					maxOutputTokens: 2048,
 					messages: await convertToModelMessages(processedMessages),
 					model,
 					// Wrap onFinish to process tool results and update agent state
