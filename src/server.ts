@@ -1,132 +1,142 @@
-import { routeAgentRequest, type Schedule } from "agents";
-
-import { getSchedulePrompt } from "agents/schedule";
-
-import { AIChatAgent } from "agents/ai-chat-agent";
+import { routeAgentRequest } from "agents";
+import { Hono } from "hono";
+import { accommodationSeedData } from "@/data/accommodations";
+import { guestGroupSeedData } from "@/data/guest-groups";
 import {
-  generateId,
-  streamText,
-  type StreamTextOnFinishCallback,
-  stepCountIs,
-  createUIMessageStream,
-  convertToModelMessages,
-  createUIMessageStreamResponse,
-  type ToolSet
-} from "ai";
-import { openai } from "@ai-sdk/openai";
-import { processToolCalls, cleanupMessages } from "./utils";
-import { tools, executions } from "./tools";
-// import { env } from "cloudflare:workers";
+	accommodations,
+	chatMessages,
+	chatSessions,
+	createDb,
+	guestGroupResponses,
+	guestGroups,
+	guestResponses,
+	guests,
+	photoUploads,
+} from "@/db";
 
-const model = openai("gpt-4o-2024-11-20");
-// Cloudflare AI Gateway
-// const openai = createOpenAI({
-//   apiKey: env.OPENAI_API_KEY,
-//   baseURL: env.GATEWAY_BASE_URL,
-// });
+export * from "@/agents";
 
-/**
- * Chat Agent implementation that handles real-time AI chat interactions
- */
-export class Chat extends AIChatAgent<Env> {
-  /**
-   * Handles incoming chat messages and manages the response stream
-   */
-  async onChatMessage(
-    onFinish: StreamTextOnFinishCallback<ToolSet>,
-    _options?: { abortSignal?: AbortSignal }
-  ) {
-    // const mcpConnection = await this.mcp.connect(
-    //   "https://path-to-mcp-server/sse"
-    // );
+const app = new Hono<{ Bindings: Env }>();
 
-    // Collect all tools, including MCP tools
-    const allTools = {
-      ...tools,
-      ...this.mcp.getAITools()
-    };
+// Seed import route
+app.post("/api/seed", async (c) => {
+	try {
+		// Verify API key
+		const apiKey = c.req.header("x-api-key");
+		const expectedKey = c.env.SECRET;
 
-    const stream = createUIMessageStream({
-      execute: async ({ writer }) => {
-        // Clean up incomplete tool calls to prevent API errors
-        const cleanedMessages = cleanupMessages(this.messages);
+		if (!apiKey || apiKey !== expectedKey) {
+			return c.status(401);
+		}
 
-        // Process any pending tool calls from previous messages
-        // This handles human-in-the-loop confirmations for tools
-        const processedMessages = await processToolCalls({
-          messages: cleanedMessages,
-          dataStream: writer,
-          tools: allTools,
-          executions
-        });
+		const db = createDb(c.env.DB);
 
-        const result = streamText({
-          system: `You are a helpful assistant that can do various tasks... 
+		console.log("🧹 Starting database cleanup...");
 
-${getSchedulePrompt({ date: new Date() })}
+		// Step 1: Clear all D1 tables (in correct order due to foreign keys)
+		console.log("🗑️  Clearing D1 tables...");
 
-If the user asks to schedule a task, use the schedule tool to schedule the task.
-`,
+		// Delete in order: child tables first, then parent tables
+		await db.delete(photoUploads); // references guests
+		console.log("  - photo_uploads cleared");
 
-          messages: await convertToModelMessages(processedMessages),
-          model,
-          tools: allTools,
-          // Type boundary: streamText expects specific tool types, but base class uses ToolSet
-          // This is safe because our tools satisfy ToolSet interface (verified by 'satisfies' in tools.ts)
-          onFinish: onFinish as unknown as StreamTextOnFinishCallback<
-            typeof allTools
-          >,
-          stopWhen: stepCountIs(10)
-        });
+		await db.delete(chatMessages); // references chat_sessions
+		console.log("  - chat_messages cleared");
 
-        writer.merge(result.toUIMessageStream());
-      }
-    });
+		await db.delete(chatSessions); // references guests + guest_groups
+		console.log("  - chat_sessions cleared");
 
-    return createUIMessageStreamResponse({ stream });
-  }
-  async executeTask(description: string, _task: Schedule<string>) {
-    await this.saveMessages([
-      ...this.messages,
-      {
-        id: generateId(),
-        role: "user",
-        parts: [
-          {
-            type: "text",
-            text: `Running scheduled task: ${description}`
-          }
-        ],
-        metadata: {
-          createdAt: new Date()
-        }
-      }
-    ]);
-  }
-}
+		await db.delete(guestGroupResponses); // references guest_groups
+		console.log("  - guest_group_responses cleared");
+
+		await db.delete(guestResponses); // references guests
+		console.log("  - guest_responses cleared");
+
+		await db.delete(accommodations); // no dependencies
+		console.log("  - accommodations cleared");
+
+		await db.delete(guests); // references guest_groups
+		console.log("  - guests cleared");
+
+		await db.delete(guestGroups); // parent table
+		console.log("  - guest_groups cleared");
+
+		console.log("✅ All D1 tables cleared");
+
+		// Step 2: Insert guest groups and their members
+		console.log("📝 Seeding guest groups into D1...");
+		let totalGroupGuests = 0;
+
+		for (const groupSeed of guestGroupSeedData) {
+			// Insert the group
+			const [insertedGroup] = await db
+				.insert(guestGroups)
+				.values(groupSeed.group)
+				.returning();
+
+			console.log(`  - Inserted group: ${groupSeed.group.name}`);
+
+			// Insert all guests in this group
+			const groupGuestsWithGroupId = groupSeed.guests.map((guest) => ({
+				...guest,
+				groupId: insertedGroup.id,
+			}));
+
+			await db.insert(guests).values(groupGuestsWithGroupId);
+			totalGroupGuests += groupGuestsWithGroupId.length;
+
+			console.log(
+				`    → ${groupGuestsWithGroupId.length} guests added to group`,
+			);
+		}
+
+		console.log(
+			`✅ Inserted ${guestGroupSeedData.length} groups with ${totalGroupGuests} total guests`,
+		);
+
+		// Step 3: Insert accommodations into D1
+		console.log("📝 Seeding accommodations into D1...");
+		const insertedAccommodations = await db
+			.insert(accommodations)
+			.values(accommodationSeedData)
+			.returning();
+
+		console.log(
+			`✅ Inserted ${insertedAccommodations.length} accommodations into D1`,
+		);
+
+		// Success response
+		return c.json({
+			message: "Database seeded successfully",
+			stats: {
+				accommodations: insertedAccommodations.length,
+				guestGroups: guestGroupSeedData.length,
+				totalGuests: totalGroupGuests,
+			},
+			success: true,
+		});
+	} catch (error) {
+		console.error("❌ Seed error:", error);
+
+		return c.json(
+			{
+				details: error instanceof Error ? error.message : String(error),
+				error: "Failed to seed database",
+			},
+			500,
+		);
+	}
+});
+
+// Agent route
+app.all("/agents/*", async (c) => {
+	const response = await routeAgentRequest(c.req.raw, c.env);
+	return response || c.notFound();
+});
 
 /**
  * Worker entry point that routes incoming requests to the appropriate handler
  */
 export default {
-  async fetch(request: Request, env: Env, _ctx: ExecutionContext) {
-    const url = new URL(request.url);
-
-    if (url.pathname === "/check-open-ai-key") {
-      const hasOpenAIKey = !!process.env.OPENAI_API_KEY;
-      return Response.json({
-        success: hasOpenAIKey
-      });
-    }
-    if (!process.env.OPENAI_API_KEY) {
-      console.error(
-        "OPENAI_API_KEY is not set, don't forget to set it locally in .dev.vars, and use `wrangler secret bulk .dev.vars` to upload it to production"
-      );
-    }
-    return (
-      // Route the request to our agent or return 404 if not found
-      (await routeAgentRequest(request, env)) ||
-      new Response("Not found", { status: 404 })
-    );
-  }
+	fetch: app.fetch,
 } satisfies ExportedHandler<Env>;
