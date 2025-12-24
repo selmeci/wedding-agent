@@ -7,6 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is an AI-powered wedding RSVP assistant built on Cloudflare Workers. It's a conversational chatbot that collects guest confirmations and provides wedding information in Slovak language. The system uses Cloudflare's Agent SDK (Durable Objects-based agents) with AI streaming, state management, and D1 database persistence.
 
 **Tech Stack:**
+
 - **Runtime:** Cloudflare Workers
 - **Agent Framework:** Cloudflare Agents SDK (`agents` package)
 - **AI:** Workers AI binding (remote mode) + OpenAI SDK
@@ -56,6 +57,7 @@ npm run cf:typegen          # Generate Cloudflare types
 ### Agent-Based Architecture
 
 The core is a **Durable Object Agent** (`Chat` class) that:
+
 - Extends `AIChatAgent` from Cloudflare Agents SDK
 - Maintains per-session state using SQLite (Durable Objects storage)
 - Handles WebSocket connections for real-time chat
@@ -63,11 +65,13 @@ The core is a **Durable Object Agent** (`Chat` class) that:
 - Manages conversation flow through state machine
 
 **State Machine:**
+
 ```
 initializing → group_welcome/identifying_individual → identified → collecting_rsvp → completed
 ```
 
 **Key State Fields:**
+
 - `conversationState`: Current flow stage
 - `groupId`: UUID of guest group (set via QR token)
 - `guestId`: UUID of individual guest (once identified)
@@ -77,6 +81,7 @@ initializing → group_welcome/identifying_individual → identified → collect
 ### Database Schema (D1 + Drizzle)
 
 **Tables:**
+
 - `guest_groups` - Groups of invited guests (family/couple/individual)
 - `guests` - Individual guest records (foreign key to guest_groups)
 - `guest_group_responses` - RSVP responses per group
@@ -87,6 +92,7 @@ initializing → group_welcome/identifying_individual → identified → collect
 - `photo_uploads` - Guest photo uploads (optional feature)
 
 **Critical Relationships:**
+
 - Each guest belongs to exactly one `guest_group`
 - Each group has one QR token for authentication
 - RSVP is collected per group (not per individual)
@@ -97,12 +103,14 @@ initializing → group_welcome/identifying_individual → identified → collect
 The AI agent uses **tool calling** to execute specific actions:
 
 **Tools defined in `src/tools/`:**
+
 1. `confirmIdentityTool` - Identifies guest by name (fuzzy matching)
 2. `confirmAttendanceTool` - Records attendance confirmation
 3. `updateRsvpTool` - Updates RSVP data (dietary restrictions, accommodation needs)
 4. `getWeddingInfoTool` - Retrieves wedding details from knowledge base
 
 **Tool Execution:**
+
 - All tools have `execute` functions (auto-execute, no human confirmation needed)
 - Tool results update agent state via `onFinish` callback
 - State updates trigger conversation flow transitions
@@ -110,6 +118,7 @@ The AI agent uses **tool calling** to execute specific actions:
 ### AI Model Selection
 
 See `src/agents/wedding-assistent/utils.ts`:
+
 - **Identification tasks:** `@cf/deepseek-ai/deepseek-r1-distill-qwen-32b` (reasoning model)
 - **RSVP collection:** `gpt-4o-mini` (fast, cost-effective)
 - **General chat:** `gpt-4o-mini`
@@ -120,6 +129,7 @@ Reasoning model is used for complex identification to handle fuzzy name matching
 ### System Prompt Strategy
 
 System prompts are **dynamically generated** based on:
+
 - Current conversation state
 - Group vs. individual flow
 - Available guest context
@@ -130,6 +140,7 @@ See `src/agents/wedding-assistent/system-prompt.ts` for prompt templates.
 ### Frontend Architecture
 
 **React app (`src/app.tsx`):**
+
 - Uses `useAgent` hook to connect to Chat agent via WebSocket
 - Uses `useAgentChat` hook for message streaming
 - Renders messages with Markdown support (`MemoizedMarkdown`)
@@ -137,6 +148,7 @@ See `src/agents/wedding-assistent/system-prompt.ts` for prompt templates.
 - Theme switcher (dark/light mode with localStorage persistence)
 
 **Component structure:**
+
 - `src/components/` - Reusable UI components (Button, Card, Input, etc.)
 - Path alias: `@/` maps to `src/`
 
@@ -147,6 +159,7 @@ See `src/agents/wedding-assistent/system-prompt.ts` for prompt templates.
 **IMPORTANT:** As of v1.2, QR code is the ONLY access method. No manual identification is supported.
 
 When a guest scans a QR code:
+
 1. QR token is part of URL: `/agents/chat/:qrToken`
 2. Server validates token against `guest_groups.qrToken`
 3. Agent is created/retrieved by name (qrToken is the agent name)
@@ -157,6 +170,7 @@ When a guest scans a QR code:
 8. State transitions: `initializing` → `group_welcome` → `confirming_attendance` → `collecting_rsvp` → `completed`
 
 **Access Control:**
+
 - `onConnect` validates that `groupId` is set (line 219-221 in index.ts)
 - If no groupId → throws error (QR-only access enforcement)
 
@@ -183,6 +197,7 @@ The AI collects RSVP information one question at a time, analyzing message histo
    - Sets `isComplete=true` and state to `completed`
 
 **RSVP fields:**
+
 - `willAttend`: boolean (main confirmation)
 - `attendCeremony`: boolean (always true if willAttend=true)
 - `dietaryRestrictions`: string (free text)
@@ -190,27 +205,32 @@ The AI collects RSVP information one question at a time, analyzing message histo
 - `needsDirections`: boolean (conditional on isFromModra)
 
 **Conditional logic:**
+
 - If group `isFromModra === true` → Skip accommodation/directions questions
 - If `willAttend === false` → Skip all other questions, go straight to completion
 
 ### State Persistence
 
 **Agent state:**
+
 - Stored in Durable Object SQLite (automatic via Agents SDK)
 - Survives worker restart/eviction
 - Accessed via `this.state` and `this.setState()`
 
 **Messages:**
+
 - Stored in Durable Object SQLite via `saveMessages()`
 - Automatically rehydrated on agent reconnect
 
 **RSVP data:**
+
 - Stored in D1 database (`guest_group_responses` table)
 - Persisted via tool executions (`confirmAttendanceTool`, `updateRsvpTool`)
 
 ### Database Seeding
 
 The `/api/seed` endpoint (POST) allows importing guest data:
+
 - Requires `x-api-key` header matching `SECRET` env var
 - Clears all tables (respects foreign key order)
 - Inserts guest groups from `src/data/guest-groups.ts`
@@ -219,24 +239,28 @@ The `/api/seed` endpoint (POST) allows importing guest data:
 ## Key Files Reference
 
 ### Core Logic
+
 - `src/server.ts:133-153` - Agent routing handler
 - `src/agents/wedding-assistent/index.ts:36-324` - Chat agent implementation
 - `src/agents/wedding-assistent/system-prompt.ts` - Dynamic prompt generation
 - `src/agents/wedding-assistent/utils.ts:35-68` - Model selection logic
 
 ### Database
+
 - `src/db/index.ts` - Schema exports and DB factory
 - `src/db/guest-groups.ts` - Guest group table definition
 - `src/db/guests.ts` - Individual guests table
 - `src/db/guest-group-responses.ts` - RSVP responses table
 
 ### Tools
+
 - `src/tools/confirmIdentity.ts` - Guest identification
 - `src/tools/confirmAttendance.ts` - Attendance confirmation
 - `src/tools/updateRsvp.ts` - RSVP data updates
 - `src/tools/getWeddingInfo.ts` - Wedding information retrieval
 
 ### Frontend
+
 - `src/app.tsx` - Main chat interface
 - `src/client.tsx` - React app mount point
 - `src/components/` - Reusable UI components
@@ -246,6 +270,7 @@ The `/api/seed` endpoint (POST) allows importing guest data:
 **Full requirements:** See `docs/AI-Agent-RSVP-System-Business-Requirements.md` (version 1.2)
 
 **Key use cases (v1.2 - QR-only access):**
+
 - UC-01: QR code access (individual invitation)
 - UC-02: QR code access (group invitation)
 - UC-03: RSVP collection (individual)
@@ -254,10 +279,12 @@ The `/api/seed` endpoint (POST) allows importing guest data:
 - UC-06: RSVP editing
 
 **Removed in v1.2:**
+
 - Manual identification (no-QR flow) - No longer supported
 - Failed identification handling - Not applicable with QR-only access
 
 **Success metrics:**
+
 - ≥85% RSVP completion rate
 - ≤3 minutes average completion time
 - ≥95% first-attempt identification success
@@ -266,6 +293,7 @@ The `/api/seed` endpoint (POST) allows importing guest data:
 ## Cursor Rules (.cursor/rules/cloudflare.mdc)
 
 The project follows Cloudflare-specific coding standards:
+
 - Use ES modules (not Service Worker format)
 - TypeScript by default
 - Minimize external dependencies
@@ -312,6 +340,7 @@ The project follows Cloudflare-specific coding standards:
 ## Environment Variables
 
 Required in `.dev.vars` (local) and Workers secrets (production):
+
 - `SECRET` - API key for seed endpoint
 - `OPENAI_API_KEY` - OpenAI API key for GPT models (optional if using only Workers AI)
 

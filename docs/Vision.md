@@ -5,6 +5,7 @@ A modern, minimalist wedding website for Ivonka and Roman's wedding on **March 2
 ## 🎯 Project Overview
 
 This wedding website serves as the primary communication hub for wedding guests. Instead of traditional RSVP forms, guests interact with an AI chatbot that:
+
 - Personalizes the experience using QR codes from physical invitations
 - Collects essential information (attendance, dietary restrictions, questions)
 - Provides wedding details, directions, and accommodation recommendations
@@ -13,6 +14,7 @@ This wedding website serves as the primary communication hub for wedding guests.
 ## ✨ Key Features
 
 ### 🤖 AI Chat Assistant
+
 - **Personalized greetings** - Recognizes guests via QR code unique IDs
 - **Guest identification** - Uses Cloudflare Vectorize for semantic matching when guests arrive without QR codes
 - **Information collection** - Gathers attendance, dietary requirements, ceremony attendance
@@ -21,24 +23,28 @@ This wedding website serves as the primary communication hub for wedding guests.
 - **Slovak language** - Full support for Slovak conversations
 
 ### 🎨 Visual Design
+
 - **Minimalist aesthetic** - Clean, modern design with pink gradients and white
 - **16-bit pixel art** - Custom pixel art illustrations for bride, groom, love symbols
 - **Animated countdown** - Bride and groom pixel characters move closer as wedding day approaches, unite with heart on wedding day
 - **Animated love story timeline** - Pixel art characters move along timeline, meet, show milestones, wedding, and journey to old age
 
 ### 📸 Photo Upload (Wedding Day Feature)
+
 - **QR-code protected** - Only verified guests can upload photos
 - **Cloudflare R2 storage** - Photos stored in R2 bucket
 - **Upload tracking** - Records who uploaded which photo and when
 - **Appears on wedding day** - Upload button appears automatically on 27.3.2026
 
 ### 📱 Responsive Design
+
 - **Mobile-first** - Optimized for mobile devices (QR code scanning)
 - **Desktop support** - Beautiful experience on all screen sizes
 
 ## 🛠️ Tech Stack
 
 ### Framework & Runtime
+
 - **TanStack Start** - Full-stack React framework
 - **TanStack Router** - File-based routing
 - **TanStack Query** - Server state management and chat functionality
@@ -46,21 +52,25 @@ This wedding website serves as the primary communication hub for wedding guests.
 - **Cloudflare Workers** - Edge runtime with Node.js compatibility
 
 ### Database & Storage
+
 - **Cloudflare D1** - SQL database for all persistent data
 - **DrizzleORM** - Type-safe database ORM
 - **Cloudflare Vectorize** - Vector database for AI semantic search
 - **Cloudflare R2** - Object storage for wedding photos
 
 ### AI & Intelligence
+
 - **Cloudflare Workers AI** - Edge AI models (model TBD based on testing)
 - **Embeddings** - Text embeddings for guest identification
 
 ### Styling & UI
+
 - **Tailwind CSS v4** - Utility-first CSS with custom pink/white theme
 - **Lucide React** - Icon library
 - **Custom pixel art** - 16-bit style graphics
 
 ### Development Tools
+
 - **TypeScript** - Strict type checking
 - **Zod v4** - Schema validation and type inference
 - **Vite** - Build tool
@@ -70,19 +80,21 @@ This wedding website serves as the primary communication hub for wedding guests.
 ## 📊 Database Schema
 
 ### Guest Groups Table
+
 QR kódy patria skupinám hostí (`guest_groups`). Aj “pozvánka pre jednotlivca” je skupina s 1 členom.
 
 ```typescript
 // guest_groups
 {
-  id: string (UUID)
-  name: string
-  qrToken: string (unique) // Token from QR code (group-level)
-  createdAt: timestamp
+  id: string(UUID);
+  name: string;
+  qrToken: string(unique); // Token from QR code (group-level)
+  createdAt: timestamp;
 }
 ```
 
 ### Guests Table
+
 ```typescript
 // guests
 {
@@ -98,6 +110,7 @@ QR kódy patria skupinám hostí (`guest_groups`). Aj “pozvánka pre jednotliv
 ```
 
 ### Guest Responses Table
+
 ```typescript
 // guest_responses
 {
@@ -112,6 +125,7 @@ QR kódy patria skupinám hostí (`guest_groups`). Aj “pozvánka pre jednotliv
 ```
 
 ### Chat Sessions Table
+
 ```typescript
 // chat_sessions
 {
@@ -124,6 +138,7 @@ QR kódy patria skupinám hostí (`guest_groups`). Aj “pozvánka pre jednotliv
 ```
 
 ### Chat Messages Table
+
 ```typescript
 // chat_messages
 {
@@ -136,23 +151,25 @@ QR kódy patria skupinám hostí (`guest_groups`). Aj “pozvánka pre jednotliv
 ```
 
 ### Accommodations Table
+
 ```typescript
 // accommodations
 {
-  id: string (UUID)
-  name: string
-  description: text
-  address: string
-  phone: string
-  email: string | null
-  website: string | null
-  priceRange: string // e.g., "€€", "€€€"
-  distanceKm: number // Distance from venue
-  createdAt: timestamp
+  id: string(UUID);
+  name: string;
+  description: text;
+  address: string;
+  phone: string;
+  email: string | null;
+  website: string | null;
+  priceRange: string; // e.g., "€€", "€€€"
+  distanceKm: number; // Distance from venue
+  createdAt: timestamp;
 }
 ```
 
 ### Photo Uploads Table
+
 ```typescript
 // photo_uploads
 {
@@ -225,31 +242,28 @@ src/
 ## 🎨 Design System
 
 ### Color Palette
+
 ```css
 /* Primary Colors */
---pink-50: #FFF5F7
---pink-100: #FFE3E8
---pink-200: #FFC9D4
---pink-300: #FF9BB0
---pink-400: #FF6B8E
---pink-500: #FF3D6F
---pink-600: #E6215C
-
-/* Gradients */
---gradient-pink: linear-gradient(135deg, #FFE3E8 0%, #FF9BB0 50%, #FF6B8E 100%)
-
-/* Neutrals */
---white: #FFFFFF
---gray-50: #F9FAFB
---gray-900: #111827
+--pink-50: #fff5f7 --pink-100: #ffe3e8 --pink-200: #ffc9d4 --pink-300: #ff9bb0
+  --pink-400: #ff6b8e --pink-500: #ff3d6f --pink-600: #e6215c /* Gradients */
+  --gradient-pink: linear-gradient(
+    135deg,
+    #ffe3e8 0%,
+    #ff9bb0 50%,
+    #ff6b8e 100%
+  )
+  /* Neutrals */ --white: #ffffff --gray-50: #f9fafb --gray-900: #111827;
 ```
 
 ### Typography
+
 - **Headings**: Modern serif font (e.g., Playfair Display, Crimson Pro)
 - **Body**: Clean sans-serif (e.g., Inter, DM Sans)
 - **Pixel text**: Monospace for pixel art elements
 
 ### Pixel Art Style
+
 - **16-bit aesthetic** - More detailed than 8-bit, allows for gradients
 - **Color depth**: 4-8 colors per sprite with pink gradients
 - **Animation**: Simple frame-based animations (walking, heart beating)
@@ -296,6 +310,7 @@ src/
 Chat je postavený na **TanStack Start server functions** (`createServerFn`) a **TanStack Query** na klientovi. FE volá server functions priamo (bez REST `/api/chat/*` endpointov) a Query rieši cache + optimistické správy.
 
 **Why TanStack Query?**
+
 - ✅ **Native integration** with TanStack Start ecosystem
 - ✅ **Optimistic updates** - Messages appear instantly
 - ✅ **Automatic caching** - Session history preserved in QueryClient
@@ -312,6 +327,7 @@ const { messages, sendMessage, isLoading, error } = useChat({ qrToken });
 ```
 
 **Features:**
+
 - Handles optimistic UI updates
 - Calls TanStack Start server functions in `src/server/chat.ts`
 - Cookie-only session model (`wedding_session` set on server)
@@ -320,6 +336,7 @@ const { messages, sendMessage, isLoading, error } = useChat({ qrToken });
 ### Modular Components
 
 Chat UI is composed of clean, reusable components:
+
 - **`ChatInterface`** - Main container orchestrating the chat experience
 - **`ChatContainer`** - Layout wrapper with styling
 - **`ChatMessageList`** - Renders message history with scroll management
@@ -339,19 +356,22 @@ Chat je implementovaný cez **server functions** (nie cez REST endpointy):
 ### Validation
 
 All chat validation uses **Zod v4** schemas (`src/lib/utils/validators.ts`):
+
 - `chatMessageSchema` - Request validation
 - `chatApiResponseSchema` - Response validation
 - `aiChatRequestSchema` - AI message format
 - `sessionTokenSchema` - Session validation
 
 Types are automatically inferred:
+
 ```typescript
-import type { ChatApiResponse } from '@/lib/utils/validators';
+import type { ChatApiResponse } from "@/lib/utils/validators";
 ```
 
 ## 🤖 AI Chatbot Flow
 
 ### Guest with QR Code
+
 ```
 1. Guest scans a QR code from the invitation and opens the website.
 2. The chatbot greets the guest(s) based on the invitation:
@@ -362,6 +382,7 @@ import type { ChatApiResponse } from '@/lib/utils/validators';
 ```
 
 ### Guest without QR Code
+
 ```
 1. Guest visits the website directly (no QR code).
 2. The chatbot shows a generic welcome and asks for identifying info (name + follow-up questions if needed).
@@ -371,6 +392,7 @@ import type { ChatApiResponse } from '@/lib/utils/validators';
 ```
 
 ### Information Provided by Bot
+
 - Wedding date, time, location
 - Directions to venues
 - Accommodation recommendations (from DB)
@@ -378,12 +400,14 @@ import type { ChatApiResponse } from '@/lib/utils/validators';
 - Ceremony vs reception attendance options
 
 ### Implementation Notes (for developers)
+
 - Chat logic is implemented via TanStack Start server functions in `src/server/chat.ts` and consumed by the client hook `src/lib/hooks/useChat.ts`.
 - Session is cookie-only via `wedding_session`; history is stored in D1 (`chat_sessions`, `chat_messages`).
 
 ## 📸 Photo Upload Feature
 
 ### Implementation
+
 ```typescript
 // Only visible on wedding day (27.3.2026)
 // Only for verified guests (QR token exists)
@@ -404,6 +428,7 @@ Body: FormData with photo file
 ```
 
 ### R2 Bucket Structure
+
 ```
 wedding-photos/
   ├── {guestId}/
@@ -414,12 +439,14 @@ wedding-photos/
 ## 🚀 Development Setup
 
 ### Prerequisites
+
 - Node.js 18+
 - pnpm
 - Cloudflare account
 - Wrangler CLI
 
 ### Installation
+
 ```bash
 # Install dependencies
 pnpm install
@@ -444,6 +471,7 @@ pnpm dev
 ```
 
 ### Database Commands
+
 ```bash
 # Generate Drizzle migration
 pnpm drizzle-kit generate
@@ -453,18 +481,21 @@ pnpm drizzle-kit generate
 ## 🌐 Deployment
 
 ### Production Deployment
+
 ```bash
 # Build and deploy to Cloudflare
 pnpm deploy
 ```
 
 ### Domain Setup
+
 1. Purchase custom domain (TBD)
 2. Add domain to Cloudflare
 3. Configure DNS records
 4. Update `wrangler.jsonc` with custom routes
 
 ### Environment Variables
+
 ```bash
 # No sensitive env vars needed
 # All configuration via wrangler.jsonc bindings
@@ -473,11 +504,13 @@ pnpm deploy
 ## 📋 TODO / Development Phases
 
 ### Phase 1: Foundation ✅
+
 - [x] Project setup
 - [x] README documentation
 - [x] Database schema design
 
 ### Phase 2: Database & Seed ✅
+
 - [x] Implement Drizzle schema
 - [x] Create migration scripts
 - [x] Prepare guest seed data in TypeScript
@@ -486,12 +519,14 @@ pnpm deploy
 - [x] Create database documentation (DATABASE_SETUP.md)
 
 ### Phase 3: Design System
+
 - [x] Configure Tailwind with pink/white theme
 - [x] Generate 16-bit pixel art assets (bride, groom, heart)
 - [x] Choose typography fonts
 - [x] Create reusable UI components
 
 ### Phase 4: AI Chatbot ✅
+
 - [x] Test Cloudflare Workers AI models for Slovak
 - [x] Implement chat API route with TanStack Query
 - [x] Create custom `useChat` hook
@@ -502,6 +537,7 @@ pnpm deploy
 - [ ] Finalize conversation flow logic
 
 ### Phase 5: Main Features
+
 - [ ] Build countdown animation with pixel art
 - [ ] Create wedding info section
 - [ ] Implement love story timeline with animations
@@ -509,12 +545,14 @@ pnpm deploy
 - [ ] Create guest info summary panel
 
 ### Phase 6: Photo Upload
+
 - [ ] Implement R2 upload API
 - [ ] Create upload UI component
 - [ ] Add date-based feature toggle (show only on wedding day)
 - [ ] QR token verification for uploads
 
 ### Phase 7: Testing & Polish
+
 - [ ] Mobile responsive testing
 - [ ] QR code flow testing
 - [ ] AI conversation testing
@@ -522,6 +560,7 @@ pnpm deploy
 - [ ] Accessibility review
 
 ### Phase 8: Content
+
 - [ ] Finalize wedding program/schedule
 - [ ] Write love story text
 - [ ] Prepare accommodation recommendations
@@ -529,6 +568,7 @@ pnpm deploy
 - [ ] Create placeholder texts
 
 ### Phase 9: Deployment
+
 - [ ] Purchase and configure custom domain
 - [ ] Production deployment
 - [ ] SSL certificate setup
@@ -537,21 +577,26 @@ pnpm deploy
 ## 📝 Content Placeholders
 
 ### Love Story (To Be Written)
+
 Current: Generic placeholder about bride and groom
 Replace with: Personal love story from Ivonka & Roman
 
 ### Wedding Program (To Be Determined)
+
 Current: Basic ceremony and reception times
 Add: Detailed schedule (first dance, cake cutting, etc.)
 
 ### Accommodation List (To Be Added)
+
 Prepare: List of recommended hotels/accommodations in Modra area with:
+
 - Name, address, contact
 - Price range
 - Distance from venue
 - Brief description
 
 ### Gift Preferences (To Be Specified)
+
 Current: "nevesta nechce veľké kytice"
 Add: Complete gift guidance
 
@@ -565,8 +610,9 @@ This project uses **Zod v4** for all validation and type inference:
 - **Location** - Validation schemas are centralized in `src/lib/utils/validators.ts`
 
 Example usage:
+
 ```typescript
-import { emailSchema, guestSeedSchema } from '@/lib/utils/validators';
+import { emailSchema, guestSeedSchema } from "@/lib/utils/validators";
 
 // Parse and validate
 const email = emailSchema.parse("test@example.com");
@@ -582,6 +628,7 @@ type GuestSeed = z.infer<typeof guestSeedSchema>;
 ```
 
 Available schemas:
+
 - `emailSchema` - Email validation
 - `phoneSkSchema` - Slovak phone number validation
 - `qrTokenSchema` - QR token format validation
@@ -619,4 +666,4 @@ Available schemas:
 **Bride**: Ivonka
 **Groom**: Roman
 
-*Made with 💕 and modern web technologies*
+_Made with 💕 and modern web technologies_

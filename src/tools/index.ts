@@ -18,9 +18,9 @@ export { updateRsvpTool } from "./updateRsvp";
 export const executions = {};
 
 export const tools = {
-	confirmAttendanceTool,
-	confirmIdentityTool,
-	getIdentificationContextTool,
-	getWeddingInfoTool,
-	updateRsvpTool,
+  confirmAttendanceTool,
+  confirmIdentityTool,
+  getIdentificationContextTool,
+  getWeddingInfoTool,
+  updateRsvpTool
 };

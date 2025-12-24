@@ -3,10 +3,10 @@ import { tool } from "ai";
 import type { Chat } from "@/agents";
 import { guestGroupResponses, type NewGuestGroupResponse } from "@/db";
 import {
-	type ConfirmAttendanceInput,
-	ConfirmAttendanceInputSchema,
-	type ConfirmAttendanceOutput,
-	ConfirmAttendanceOutputSchema,
+  type ConfirmAttendanceInput,
+  ConfirmAttendanceInputSchema,
+  type ConfirmAttendanceOutput,
+  ConfirmAttendanceOutputSchema
 } from "@/tools/types";
 
 /**
@@ -24,10 +24,10 @@ import {
  *   - Changes state to "declined"
  */
 export const confirmAttendanceTool = tool<
-	ConfirmAttendanceInput,
-	ConfirmAttendanceOutput
+  ConfirmAttendanceInput,
+  ConfirmAttendanceOutput
 >({
-	description: `Confirm whether guest will attend or decline the wedding.
+  description: `Confirm whether guest will attend or decline the wedding.
 
   Call this IMMEDIATELY after user answers the attendance question with yes or no.
 
@@ -41,64 +41,64 @@ export const confirmAttendanceTool = tool<
 
   Do NOT ask additional questions before calling this tool!`,
 
-	execute: async ({ willAttend }) => {
-		console.log("Confirming attendance...", { willAttend });
+  execute: async ({ willAttend }) => {
+    console.log("Confirming attendance...", { willAttend });
 
-		const { agent } = getCurrentAgent<Chat>();
-		if (!agent) throw new Error("No agent found");
+    const { agent } = getCurrentAgent<Chat>();
+    if (!agent) throw new Error("No agent found");
 
-		const db = agent.getDatabase();
-		const { groupId, guestId } = agent.state;
+    const db = agent.getDatabase();
+    const { groupId, guestId } = agent.state;
 
-		if (!groupId || !guestId) {
-			console.log("Guest must be identified before confirming attendance");
-			return {
-				error: "Guest must be identified before confirming attendance",
-				success: false,
-				type: "confirm-attendance",
-			};
-		}
+    if (!groupId || !guestId) {
+      console.log("Guest must be identified before confirming attendance");
+      return {
+        error: "Guest must be identified before confirming attendance",
+        success: false,
+        type: "confirm-attendance"
+      };
+    }
 
-		const responseData: NewGuestGroupResponse = {
-			attendCeremony: willAttend ? true : null,
-			dietaryRestrictions: null,
-			groupId,
-			isComplete: !willAttend, // Complete if declined, incomplete if attending (need more info)
-			needsAccommodation: null,
-			needsDirections: null,
-			needsTransportAfter: null,
-			respondedBy: guestId,
-			updatedAt: new Date(),
-			willAttend,
-		};
+    const responseData: NewGuestGroupResponse = {
+      attendCeremony: willAttend ? true : null,
+      dietaryRestrictions: null,
+      groupId,
+      isComplete: !willAttend, // Complete if declined, incomplete if attending (need more info)
+      needsAccommodation: null,
+      needsDirections: null,
+      needsTransportAfter: null,
+      respondedBy: guestId,
+      updatedAt: new Date(),
+      willAttend
+    };
 
-		const groupResp = await db
-			.insert(guestGroupResponses)
-			.values({
-				...responseData,
-				createdAt: new Date(),
-			})
-			.onConflictDoNothing();
+    const groupResp = await db
+      .insert(guestGroupResponses)
+      .values({
+        ...responseData,
+        createdAt: new Date()
+      })
+      .onConflictDoNothing();
 
-		console.log("Attendance confirmed successfully for group:", {
-			groupResp,
-		});
+    console.log("Attendance confirmed successfully for group:", {
+      groupResp
+    });
 
-		// Determine next state
-		const nextState = willAttend ? "collecting_rsvp" : "declined";
+    // Determine next state
+    const nextState = willAttend ? "collecting_rsvp" : "declined";
 
-		return {
-			message: willAttend
-				? "✓ Účasť potvrdená. Povedz useru potvrdenie a UKONČI odpoveď. V ďalšej konverzácii začneš zbierať RSVP údaje."
-				: "✓ Účasť odmietnutá. RSVP je kompletné.",
-			stateUpdate: {
-				conversationState: nextState,
-			},
-			success: true,
-			type: "confirm-attendance",
-		};
-	},
+    return {
+      message: willAttend
+        ? "✓ Účasť potvrdená. Povedz useru potvrdenie a UKONČI odpoveď. V ďalšej konverzácii začneš zbierať RSVP údaje."
+        : "✓ Účasť odmietnutá. RSVP je kompletné.",
+      stateUpdate: {
+        conversationState: nextState
+      },
+      success: true,
+      type: "confirm-attendance"
+    };
+  },
 
-	inputSchema: ConfirmAttendanceInputSchema,
-	outputSchema: ConfirmAttendanceOutputSchema,
+  inputSchema: ConfirmAttendanceInputSchema,
+  outputSchema: ConfirmAttendanceOutputSchema
 });

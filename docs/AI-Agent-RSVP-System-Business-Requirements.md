@@ -54,17 +54,20 @@ Tento dokument definuje biznis požiadavky pre AI-poháňaný konverzačný syst
 ### 3.1 Pozvaní hostia (Primary Actors)
 
 **Charakteristika:**
+
 - Osoby, ktoré dostali oficiálnu pozvánku na svadbu
 - Môžu byť individuálne pozvané alebo v rámci skupiny (rodina, pár)
 - Majú prístup k systému **výhradne** cez personalizovaný QR kód
 - Rôzne technické zručnosti a vekové kategórie
 
 **Motivácia:**
+
 - Potvrdiť alebo odmietnuť účasť
 - Získať informácie o svadbe
 - Komunikovať špeciálne potreby (diétne, ubytovanie)
 
 **Potreby:**
+
 - Jednoduchý a intuitívny spôsob odoslania RSVP
 - Rýchle odpovede na otázky
 - Možnosť upraviť svoje odpovede
@@ -72,15 +75,18 @@ Tento dokument definuje biznis požiadavky pre AI-poháňaný konverzačný syst
 ### 3.2 Nevesta a ženích (System Owners)
 
 **Charakteristika:**
+
 - Administrátori systému
 - Konečný používatelia zhromaždených dát
 
 **Motivácia:**
+
 - Získať prehľad o účasti hostí
 - Plánovať svadbu na základe počtu hostí
 - Vedieť o špeciálnych požiadavkách (diéta, ubytovanie)
 
 **Potreby:**
+
 - Kompletné a presné RSVP dáta
 - Real-time prehľad o stave odpovedí
 - Export dát pre cateringové firmy a organizátorov
@@ -94,21 +100,25 @@ Tento dokument definuje biznis požiadavky pre AI-poháňaný konverzačný syst
 **Aktor:** Pozvaný hosť (jednotlivec)
 
 **Vstupné podmienky:**
+
 - Hosť dostal fyzickú alebo digitálnu pozvánku s QR kódom
 - QR kód je unikátny pre tohto hosťa
 - Hosť má zariadenie s prístupom na internet a kamerou
 
 **Hlavný tok:**
+
 1. Hosť naskenuje QR kód z pozvánky
 2. Systém otvorí chat rozhranie
-3. AI agent privíta hosťa po mene: *"Ahoj [Meno]! Vitaj na našej svadobnej stránke!"*
+3. AI agent privíta hosťa po mene: _"Ahoj [Meno]! Vitaj na našej svadobnej stránke!"_
 4. Agent okamžite začne zber RSVP (viď UC-05)
 
 **Výstupné podmienky:**
+
 - Hosť je jednoznačne identifikovaný
 - RSVP konverzácia je inicializovaná
 
 **Alternatívne toky:**
+
 - A1: QR kód je neplatný → zobrazí sa chybová hláška a redirect na hlavnú stránku
 
 ---
@@ -118,22 +128,26 @@ Tento dokument definuje biznis požiadavky pre AI-poháňaný konverzačný syst
 **Aktor:** Pozvaný hosť (člen skupiny/rodiny)
 
 **Vstupné podmienky:**
+
 - QR kód patrí skupine hostí (napr. rodina s 3 členmi)
 - Skupina má spoločnú RSVP odpoveď
 
 **Hlavný tok:**
+
 1. Člen skupiny naskenuje QR kód
-2. Systém otvorí chat a privíta celú skupinu: *"Ahoj Marek, Katka a Marko! Vitajte na našej svadobnej stránke!"*
-3. Agent sa opýta, kto zo skupiny práve komunikuje: *"Teší ma, že ste tu. Kto z vás práve píše?"*
-4. Hosť sa identifikuje: *"Som Marek"*
-5. Agent potvrdí identitu: *"Super Marek! Teším sa, že si tu."*
+2. Systém otvorí chat a privíta celú skupinu: _"Ahoj Marek, Katka a Marko! Vitajte na našej svadobnej stránke!"_
+3. Agent sa opýta, kto zo skupiny práve komunikuje: _"Teší ma, že ste tu. Kto z vás práve píše?"_
+4. Hosť sa identifikuje: _"Som Marek"_
+5. Agent potvrdí identitu: _"Super Marek! Teším sa, že si tu."_
 6. Agent začne zber RSVP za celú skupinu (viď UC-06)
 
 **Výstupné podmienky:**
+
 - Konkrétny člen skupiny je identifikovaný
 - RSVP konverzácia prebieha v mene celej skupiny
 
 **Alternatívne toky:**
+
 - A1: Hosť sa predstaví nejednoznačne → Agent položí spresňujúcu otázku
 - A2: Odpoveď zodpovedá viacerým členom → Agent požiada o dodatočnú identifikáciu
 
@@ -144,39 +158,33 @@ Tento dokument definuje biznis požiadavky pre AI-poháňaný konverzačný syst
 **Aktor:** Identifikovaný individuálny hosť
 
 **Vstupné podmienky:**
+
 - Hosť je úspešne identifikovaný
 - Hosť ešte neodovzdal RSVP alebo chce upraviť odpoveď
 
 **Hlavný tok:**
 
 **Krok 1 - Potvrdenie účasti:**
-1. Agent: *"Prídeš na našu svadbu 27. marca? To znamená na sobáš o 15:30 aj hostinu."*
-2. Hosť: *"Áno, prídem"* alebo *"Nie, nemôžem"*
+
+1. Agent: _"Prídeš na našu svadbu 27. marca? To znamená na sobáš o 15:30 aj hostinu."_
+2. Hosť: _"Áno, prídem"_ alebo _"Nie, nemôžem"_
 3. Systém zaznamená odpoveď (willAttend = true/false, attendCeremony = true ak willAttend = true)
 
-**Krok 2 - Diétne obmedzenia (iba ak áno):**
-4. Agent: *"Máš nejaké diétne obmedzenia alebo alergie?"*
-5. Hosť: *"Som vegetarián"* alebo *"Nie, žiadne"*
-6. Systém zaznamená odpoveď
+**Krok 2 - Diétne obmedzenia (iba ak áno):** 4. Agent: _"Máš nejaké diétne obmedzenia alebo alergie?"_ 5. Hosť: _"Som vegetarián"_ alebo _"Nie, žiadne"_ 6. Systém zaznamená odpoveď
 
-**Krok 3 - Ubytovanie a doprava (conditional):**
-7. Ak hosť NIE JE z Modry:
-    - Agent: *"Potrebuješ informácie o ubytovaní alebo doprave do Modry?"*
-    - Hosť: *"Áno, ubytovanie"* alebo *"Nie, ďakujem"*
-8. Ak hosť JE z Modry:
-    - Otázka sa preskočí
+**Krok 3 - Ubytovanie a doprava (conditional):** 7. Ak hosť NIE JE z Modry: - Agent: _"Potrebuješ informácie o ubytovaní alebo doprave do Modry?"_ - Hosť: _"Áno, ubytovanie"_ alebo _"Nie, ďakujem"_ 8. Ak hosť JE z Modry: - Otázka sa preskočí
 
-**Krok 4 - Potvrdenie a poďakovanie:**
-9. Agent: *"Skvelé, mám všetko čo potrebujem! Teším sa na teba 27. marca v Modre!"*
-10. Zobrazí sa RSVP Summary Card s prehľadom odpovedí
+**Krok 4 - Potvrdenie a poďakovanie:** 9. Agent: _"Skvelé, mám všetko čo potrebujem! Teším sa na teba 27. marca v Modre!"_ 10. Zobrazí sa RSVP Summary Card s prehľadom odpovedí
 
 **Výstupné podmienky:**
+
 - Všetky povinné RSVP údaje sú zaznamenané v databáze
 - Hosť vidí zhrnutie svojich odpovedí
 - Conversation state = "completed"
 
 **Alternatívne toky:**
-- A1: Hosť potvrdí "Nie" v kroku 1 → Preskočia sa kroky 2-4, pokračuje sa krokom 5 s odlišnou správou: *"Ďakujeme za odpoveď. Budete nám chýbať!"*
+
+- A1: Hosť potvrdí "Nie" v kroku 1 → Preskočia sa kroky 2-4, pokračuje sa krokom 5 s odlišnou správou: _"Ďakujeme za odpoveď. Budete nám chýbať!"_
 - A2: Hosť chce dodatočné informácie → Agent poskytne detaily o ubytovaní/doprave/programe
 
 ---
@@ -186,36 +194,37 @@ Tento dokument definuje biznis požiadavky pre AI-poháňaný konverzačný syst
 **Aktor:** Identifikovaný člen skupiny (odpovedá za všetkých)
 
 **Vstupné podmienky:**
+
 - Člen skupiny je identifikovaný
 - Skupina ešte neodovzdala RSVP
 
 **Hlavný tok:**
 
 **Krok 1 - Potvrdenie účasti (za skupinu):**
-1. Agent: *"Prídu všetci zo skupiny (ty, Katka a Marko) na našu svadbu 27. marca? To znamená na sobáš o 15:30 aj hostinu."*
-2. Hosť: *"Áno, prídu všetci"* alebo *"Katka a ja áno, ale Marko nemôže"*
+
+1. Agent: _"Prídu všetci zo skupiny (ty, Katka a Marko) na našu svadbu 27. marca? To znamená na sobáš o 15:30 aj hostinu."_
+2. Hosť: _"Áno, prídu všetci"_ alebo _"Katka a ja áno, ale Marko nemôže"_
 3. Systém zaznamená odpoveď (willAttend = true pre tých, čo prídu; attendCeremony = true automaticky)
 
-**Krok 2 - Diétne obmedzenia:**
-4. Agent: *"Vidím že Katka je vegetariánka. Má ešte niekto nejaké iné diétne obmedzenia alebo alergie?"*
-   - Agent využíva predvyplnené dáta z databázy (`about` pole)
-5. Hosť: *"Nie, len Katka"*
+**Krok 2 - Diétne obmedzenia:** 4. Agent: _"Vidím že Katka je vegetariánka. Má ešte niekto nejaké iné diétne obmedzenia alebo alergie?"_
+
+- Agent využíva predvyplnené dáta z databázy (`about` pole)
+
+5. Hosť: _"Nie, len Katka"_
 6. Systém zaznamená
 
-**Krok 3 - Ubytovanie a doprava:**
-7. Ak skupina NIE JE z Modry: Agent sa opýta na ubytovanie/dopravu
-8. Ak JE z Modry: Preskočí sa
+**Krok 3 - Ubytovanie a doprava:** 7. Ak skupina NIE JE z Modry: Agent sa opýta na ubytovanie/dopravu 8. Ak JE z Modry: Preskočí sa
 
-**Krok 4 - Potvrdenie:**
-9. Agent: *"Skvelé, mám všetko! Teším sa na vás 27. marca!"*
-10. Zobrazí sa RSVP Summary Card pre celú skupinu
+**Krok 4 - Potvrdenie:** 9. Agent: _"Skvelé, mám všetko! Teším sa na vás 27. marca!"_ 10. Zobrazí sa RSVP Summary Card pre celú skupinu
 
 **Výstupné podmienky:**
+
 - RSVP odpoveď je zaznamenaná pre celú skupinu
 - Jeden záznam v databáze reprezentuje celú skupinu
 - Conversation state = "completed"
 
 **Alternatívne toky:**
+
 - A1: Čiastočná účasť (niektorí prídu, iní nie) → Agent spresní kto príde a zaznačí odpoveď
 - A2: Rôzne diétne požiadavky → Agent zapíše zoznam s priradením k osobám
 
@@ -226,28 +235,31 @@ Tento dokument definuje biznis požiadavky pre AI-poháňaný konverzačný syst
 **Aktor:** Identifikovaný hosť alebo návštevník
 
 **Vstupné podmienky:**
+
 - Chat je aktívny
 - Hosť má otázku
 
 **Hlavný tok:**
-1. Hosť sa opýta: *"Kde je presne sobáš?"* alebo *"O koľkej je hostina?"*
+
+1. Hosť sa opýta: _"Kde je presne sobáš?"_ alebo _"O koľkej je hostina?"_
 2. AI agent analyzuje otázku
 3. Agent poskytne relevantnú odpoveď:
-   - Miesto: *"Sobáš je v Novej sobášnej miestnosti mesta Modra, Štúrova 59"*
-   - Čas: *"Sobáš začína o 15:30, hostina je po obrade až do polnoci"*
-4. Agent ponúkne dodatočné info: *"Potrebuješ ešte niečo vedieť?"*
+   - Miesto: _"Sobáš je v Novej sobášnej miestnosti mesta Modra, Štúrova 59"_
+   - Čas: _"Sobáš začína o 15:30, hostina je po obrade až do polnoci"_
+4. Agent ponúkne dodatočné info: _"Potrebuješ ešte niečo vedieť?"_
 
 **Výstupné podmienky:**
+
 - Hosť dostal odpoveď na svoju otázku
 - Konverzácia môže pokračovať
 
 **Príklady otázok a odpovedí:**
 
-| Otázka hosťa | Odpoveď agenta |
-|--------------|----------------|
-| "Aký je dress code?" | "Odporúčame elegantný odev. Nevesta prosí bez veľkých kytíc." |
-| "Kde môžem parkovať?" | "Parkovanie je dostupné priamo pri reštaurácii Starý Dom." |
-| "Môžem priniesť darček?" | "Akékoľvek darčeky sú vítané, nevesta prosí len bez veľkých kytíc." |
+| Otázka hosťa                 | Odpoveď agenta                                                       |
+| ---------------------------- | -------------------------------------------------------------------- |
+| "Aký je dress code?"         | "Odporúčame elegantný odev. Nevesta prosí bez veľkých kytíc."        |
+| "Kde môžem parkovať?"        | "Parkovanie je dostupné priamo pri reštaurácii Starý Dom."           |
+| "Môžem priniesť darček?"     | "Akékoľvek darčeky sú vítané, nevesta prosí len bez veľkých kytíc."  |
 | "Môžem zmeniť moju odpoveď?" | "Samozrejme! Čo chceš zmeniť?" → Agent reinicializuje RSVP edit mode |
 
 ---
@@ -257,24 +269,28 @@ Tento dokument definuje biznis požiadavky pre AI-poháňaný konverzačný syst
 **Aktor:** Identifikovaný hosť, ktorý už odoslal RSVP
 
 **Vstupné podmienky:**
+
 - Hosť má dokončené RSVP (conversation state = "completed")
 - RSVP Summary Card je zobrazená
 
 **Hlavný tok:**
+
 1. Hosť klikne na tlačidlo "✏️ Upraviť" v RSVP Summary Card
-   ALEBO napíše správu: *"Chcem zmeniť moju odpoveď"*
-2. Agent: *"Samozrejme! Čo chceš zmeniť?"*
-3. Hosť špecifikuje: *"Chcem pridať že som bezlepkový"*
-4. Agent aktualizuje odpoveď: *"Dobre, poznačil som si že si vegetarián a bezlepkový."*
+   ALEBO napíše správu: _"Chcem zmeniť moju odpoveď"_
+2. Agent: _"Samozrejme! Čo chceš zmeniť?"_
+3. Hosť špecifikuje: _"Chcem pridať že som bezlepkový"_
+4. Agent aktualizuje odpoveď: _"Dobre, poznačil som si že si vegetarián a bezlepkový."_
 5. Agent zobrazí aktualizovanú RSVP Summary Card
 6. Conversation state zostáva "completed"
 
 **Výstupné podmienky:**
+
 - RSVP dáta sú aktualizované v databáze
 - Hosť vidí aktualizované zhrnutie
 - Timestamp "updatedAt" je aktualizovaný
 
 **Alternatívne toky:**
+
 - A1: Hosť chce úplne zrušiť účasť → Agent aktualizuje willAttend = false, attendCeremony = null
 - A2: Hosť chce potvrdiť účasť po predchádzajúcom odmietnutí → Agent aktualizuje willAttend = true, attendCeremony = true
 - A3: Hosť chce upraviť diétne obmedzenia → Agent aktualizuje dietaryRestrictions pole
@@ -289,12 +305,14 @@ Tento dokument definuje biznis požiadavky pre AI-poháňaný konverzačný syst
 ### 5.1 Identifikácia a autentifikácia
 
 **FR-01: QR kód identifikácia (povinná)**
+
 - Systém MUSÍ podporovať identifikáciu hosťa **výhradne** cez unikátny QR token
 - QR token MUSÍ byť unikátny pre každú skupinu hostí
 - Systém MUSÍ rozlišovať medzi individuálnymi a skupinovými pozvánkami
 - Prístup bez QR kódu NIE JE podporovaný
 
-**FR-02: Skupina vs. Individuál
+\*\*FR-02: Skupina vs. Individuál
+
 - Pri skupinovej pozvánke MUSÍ agent privítať všetkých členov skupiny po mene
 - Agent MUSÍ požiadať o identifikáciu konkrétneho komunikujúceho člena
 - Ak skupina má len 1 člena, MUSÍ sa správať ako individuálna pozvánka
@@ -303,6 +321,7 @@ Tento dokument definuje biznis požiadavky pre AI-poháňaný konverzačný syst
 
 **FR-03: Povinné polia**
 Systém MUSÍ zozbierať nasledujúce povinné informácie:
+
 - Potvrdenie účasti (willAttend: boolean)
 - Účasť na obrade (attendCeremony: boolean) - automaticky = true ak willAttend = true (nie je samostatná otázka)
 - Diétne obmedzenia (dietaryRestrictions: string | null)
@@ -310,14 +329,17 @@ Systém MUSÍ zozbierať nasledujúce povinné informácie:
 **POZNÁMKA:** Hostia nemôžu prísť len na hostinu bez sobáša. Ak hosť potvrdí účasť, automaticky sa predpokladá účasť na sobáši aj hostine.
 
 **FR-04: Podmienené polia**
+
 - Ubytovanie (needsAccommodation: boolean) - ZNIE sa ZNIE ak hosť NIE je z Modry
 - Doprava (needsDirections: boolean) - ZNIE sa ZNIE ak hosť NIE je z Modry
 
 **FR-05: Auto-fill z databázy**
+
 - Systém MUSÍ použiť dostupné informácie z databázy (pole `about`) na predvyplnenie známych údajov
-- Príklad: Ak v `about` je "vegetariánka", agent navrhne: *"Vidím že si vegetariánka. Máš ešte nejaké iné diétne obmedzenia?"*
+- Príklad: Ak v `about` je "vegetariánka", agent navrhne: _"Vidím že si vegetariánka. Máš ešte nejaké iné diétne obmedzenia?"_
 
 **FR-06: Validácia odpovedí**
+
 - Agent MUSÍ overovať pochopenie odpovede pred uložením
 - Pri nejednoznačnej odpovedi MUSÍ agent požiadať o spresnenie
 - Systém MUSÍ označiť RSVP ako kompletné (isComplete = true) iba ak sú všetky povinné polia vyplnené
@@ -325,18 +347,21 @@ Systém MUSÍ zozbierať nasledujúce povinné informácie:
 ### 5.3 Konverzačná AI
 
 **FR-07: Prirodzený jazyk**
+
 - Agent MUSÍ komunikovať v slovenčine
 - Agent MUSÍ používať neformálne oslovenie "ty"
 - Agent MUSÍ byť priateľský, teplý a osobný
 - Agent MUSÍ byť stručný (max 2-3 vety na odpoveď)
 
 **FR-08: Kontextové odpovede**
+
 - Agent MUSÍ prispôsobiť odpovede na základe conversation state
 - Agent MUSÍ pamätať predchádzajúcu históriu konverzácie
 - Agent MUSÍ rozlíšiť medzi jednotlivcom a skupinou v odpovediach
 
 **FR-09: Poskytovanie informácií**
 Systém MUSÍ vedieť odpovedať na otázky:
+
 - Základné info (dátum, čas, miesto)
 - Dress code
 - Parkovanie a doprava
@@ -345,22 +370,26 @@ Systém MUSÍ vedieť odpovedať na otázky:
 - Darčeky
 
 **FR-10: Emojis**
+
 - Agent MÔŽE používať max 1 emoji na správu
 - Odporúčané emojis: 💐, 💕, 🎉, ✨
 
 ### 5.4 Session management
 
 **FR-11: Session tracking**
+
 - Každá konverzácia MUSÍ mať unikátny session token (UUID)
 - Session token MUSÍ byť uložený v cookie s 1-ročnou expiráciou
 - Systém MUSÍ sledovať conversation state: `group_welcome`, `identifying_individual`, `identified`, `collecting_rsvp`, `completed`
 
 **FR-12: Conversation state transitions**
+
 ```
 group_welcome → identifying_individual → identified → collecting_rsvp → completed
 ```
 
 **FR-13: Persistence**
+
 - Všetky správy MUSIA byť uložené v databáze
 - RSVP odpovede MUSIA byť uložené v samostatnej tabuľke (`guest_group_responses`)
 - Systém MUSÍ umožniť obnovenie konverzácie pri návrate hosťa
@@ -368,12 +397,14 @@ group_welcome → identifying_individual → identified → collecting_rsvp → 
 ### 5.5 RSVP Summary Card
 
 **FR-14: Zobrazenie súhrnu**
+
 - Po dokončení RSVP MUSÍ systém zobraziť RSVP Summary Card
 - Karta MUSÍ obsahovať: mená hostí, účasť na sobáši, účasť na hostine, diétne obmedzenia, ubytovanie, dopravu
 - Karta MUSÍ byť sticky (zobrazená vždy navrchu chatu)
 - Karta MUSÍ byť collapsible (rozbaľovacia/zbaliacia)
 
 **FR-15: Edit funkcionalita**
+
 - Summary card MUSÍ mať tlačidlo "Upraviť"
 - Kliknutie na "Upraviť" MUSÍ iniciovať edit mode konverzáciu
 
@@ -454,10 +485,11 @@ GuestGroupResponse {
 ### 7.2 Príklady RSVP odpovedí
 
 **Príklad 1: Individuálny hosť - Potvrdená účasť**
+
 ```json
 {
   "willAttend": true,
-  "attendCeremony": true,  // Automaticky true (hosť príde na sobáš aj hostinu)
+  "attendCeremony": true, // Automaticky true (hosť príde na sobáš aj hostinu)
   "dietaryRestrictions": "Vegetarián",
   "needsAccommodation": false,
   "needsDirections": true,
@@ -466,10 +498,11 @@ GuestGroupResponse {
 ```
 
 **Príklad 2: Skupina - Potvrdená účasť**
+
 ```json
 {
   "willAttend": true,
-  "attendCeremony": true,  // Automaticky true (všetci prídu na sobáš aj hostinu)
+  "attendCeremony": true, // Automaticky true (všetci prídu na sobáš aj hostinu)
   "dietaryRestrictions": "Katka - vegetariánka, bezlepková diéta; Marko - detské menu",
   "needsAccommodation": true,
   "needsDirections": false,
@@ -478,10 +511,11 @@ GuestGroupResponse {
 ```
 
 **Príklad 3: Odmietnutie účasti**
+
 ```json
 {
   "willAttend": false,
-  "attendCeremony": null,  // null pretože hosť vôbec nepríde
+  "attendCeremony": null, // null pretože hosť vôbec nepríde
   "dietaryRestrictions": null,
   "needsAccommodation": null,
   "needsDirections": null,
@@ -496,29 +530,34 @@ GuestGroupResponse {
 ### 8.1 Kontextová personalizácia
 
 **Podľa typu pozvánky:**
-- Individuálna: Používa singulár (*"Prídeš..."*, *"Potrebuješ..."*)
-- Skupinová: Používa plurál (*"Prídu všetci..."*, *"Potrebujete..."*)
+
+- Individuálna: Používa singulár (_"Prídeš..."_, _"Potrebuješ..."_)
+- Skupinová: Používa plurál (_"Prídu všetci..."_, _"Potrebujete..."_)
 
 **Podľa lokácie:**
+
 - Hostia z Modry: NEKLADÚ sa otázky o ubytovaní a doprave
 - Hostia mimo Modry: Otázky sú súčasťou RSVP procesu
 
 **Podľa známych informácií:**
+
 - Ak databáza obsahuje `about` pole (napr. "vegetariánka"), agent to využije:
-  - *"Vidím že Katka je vegetariánka. Má ešte niekto iné diétne obmedzenia?"*
+  - _"Vidím že Katka je vegetariánka. Má ešte niekto iné diétne obmedzenia?"_
 
 ### 8.2 Tón a štýl komunikácie
 
 **Základné pravidlá:**
+
 - Priateľský, teplý, osobný tón
 - Neformálne oslovenie "ty"
 - Stručnosť (2-3 vety)
 - 1 emoji max na správu
 
 **Prispôsobenie situácii:**
-- Potvrdenie účasti → Nadšenie: *"To je super, teším sa na teba! 🎉"*
-- Odmietnutie účasti → Empatia: *"Ďakujeme za odpoveď. Budete nám chýbať! 💕"*
-- Zložité diétne obmedzenia → Pozornosť: *"Dobre, poznačil som si. Kuchyňa bude vedieť."*
+
+- Potvrdenie účasti → Nadšenie: _"To je super, teším sa na teba! 🎉"_
+- Odmietnutie účasti → Empatia: _"Ďakujeme za odpoveď. Budete nám chýbať! 💕"_
+- Zložité diétne obmedzenia → Pozornosť: _"Dobre, poznačil som si. Kuchyňa bude vedieť."_
 
 ---
 
@@ -597,18 +636,22 @@ GuestGroupResponse {
 ### B. Svadobné informácie (Knowledge Base)
 
 **Základné údaje:**
+
 - Dátum: 27. marec 2026
 - Miesto: Modra, Slovensko
 
 **Sobáš (Obrad):**
+
 - Čas: 15:30
 - Miesto: Nová sobášna miestnosť mesta Modra, Štúrova 59, 900 01 Modra
 
 **Svadba (Hostina):**
+
 - Čas: Po obrade až do polnoci
 - Miesto: Reštaurácia Starý Dom, Dukelská 2, 900 01 Modra
 
 **Darčeky:**
+
 - Nevesta nechce veľké kytice
 - Akékoľvek iné darčeky sú vítané
 
@@ -626,6 +669,7 @@ Systém bol zjednodušený tak, aby fungoval výhradne s QR kódmi:
 - **Nová požiadavka (v1.2):** Systém funguje **výhradne s QR kódmi**. Manuálna identifikácia bola odstránená.
 
 **Dotknuté sekcie:**
+
 - Sekcia 3: Aktori systému
   - Odstránená sekcia 3.2: Návštevníci bez pozvánky
   - Prečíslované sekcie
@@ -662,6 +706,7 @@ Upravená požiadavka týkajúca sa účasti hostí na sobáši a hostine:
 - **Nová požiadavka (v1.1):** Hostia musia prísť na sobáš aj hostinu. Nie je možné potvrdiť účasť len na hostine.
 
 **Dotknuté sekcie:**
+
 - UC-05: Zber RSVP - Individuálny hosť
   - Odstránený samostatný krok "Účasť na obrade"
   - Agent teraz v úvodnej otázke vysvetlí: "To znamená na sobáš o 15:30 aj hostinu"

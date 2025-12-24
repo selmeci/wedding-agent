@@ -131,12 +131,8 @@
           "name": "chat_messages_session_id_chat_sessions_id_fk",
           "tableFrom": "chat_messages",
           "tableTo": "chat_sessions",
-          "columnsFrom": [
-            "session_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["session_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -227,9 +223,7 @@
       "indexes": {
         "chat_sessions_session_token_unique": {
           "name": "chat_sessions_session_token_unique",
-          "columns": [
-            "session_token"
-          ],
+          "columns": ["session_token"],
           "isUnique": true
         }
       },
@@ -238,12 +232,8 @@
           "name": "chat_sessions_guest_id_guests_id_fk",
           "tableFrom": "chat_sessions",
           "tableTo": "guests",
-          "columnsFrom": [
-            "guest_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["guest_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         },
@@ -251,12 +241,8 @@
           "name": "chat_sessions_group_id_guest_groups_id_fk",
           "tableFrom": "chat_sessions",
           "tableTo": "guest_groups",
-          "columnsFrom": [
-            "group_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["group_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -359,9 +345,7 @@
       "indexes": {
         "guest_group_responses_group_id_unique": {
           "name": "guest_group_responses_group_id_unique",
-          "columns": [
-            "group_id"
-          ],
+          "columns": ["group_id"],
           "isUnique": true
         }
       },
@@ -370,12 +354,8 @@
           "name": "guest_group_responses_group_id_guest_groups_id_fk",
           "tableFrom": "guest_group_responses",
           "tableTo": "guest_groups",
-          "columnsFrom": [
-            "group_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["group_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -383,12 +363,8 @@
           "name": "guest_group_responses_responded_by_guests_id_fk",
           "tableFrom": "guest_group_responses",
           "tableTo": "guests",
-          "columnsFrom": [
-            "responded_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["responded_by"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -441,9 +417,7 @@
       "indexes": {
         "guest_groups_qr_token_unique": {
           "name": "guest_groups_qr_token_unique",
-          "columns": [
-            "qr_token"
-          ],
+          "columns": ["qr_token"],
           "isUnique": true
         }
       },
@@ -513,12 +487,8 @@
           "name": "guest_responses_guest_id_guests_id_fk",
           "tableFrom": "guest_responses",
           "tableTo": "guests",
-          "columnsFrom": [
-            "guest_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["guest_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -601,12 +571,8 @@
           "name": "guests_group_id_guest_groups_id_fk",
           "tableFrom": "guests",
           "tableTo": "guest_groups",
-          "columnsFrom": [
-            "group_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["group_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -672,9 +638,7 @@
       "indexes": {
         "photo_uploads_r2_key_unique": {
           "name": "photo_uploads_r2_key_unique",
-          "columns": [
-            "r2_key"
-          ],
+          "columns": ["r2_key"],
           "isUnique": true
         }
       },
@@ -683,12 +647,8 @@
           "name": "photo_uploads_guest_id_guests_id_fk",
           "tableFrom": "photo_uploads",
           "tableTo": "guests",
-          "columnsFrom": [
-            "guest_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["guest_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
