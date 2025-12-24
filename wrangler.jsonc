@@ -20,7 +20,7 @@
     {
       "binding": "DB",
       "database_name": "wedding-db",
-      "database_id": "1d51bc2c-d93d-4bc8-964b-42fbdf5cda03",
+      "database_id": "dd9ecf92-e8d0-4dd7-a65b-561f4cd1d930",
       "migrations_dir": "./drizzle"
     }
   ],
