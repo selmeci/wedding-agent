@@ -198,6 +198,23 @@ app.get("/agents/chat/:qrToken/reset", async (c) => {
   return c.json({ message: "Agent state reset successfully" }, 200);
 });
 
+// Serve static assets and handle SPA routing
+app.get("/*", async (c) => {
+  const url = new URL(c.req.url);
+
+  // Try to fetch the requested asset
+  const assetResponse = await c.env.ASSETS.fetch(c.req.raw);
+
+  // If asset exists, return it
+  if (assetResponse.status !== 404) {
+    return assetResponse;
+  }
+
+  // Otherwise, serve index.html for SPA routing
+  const indexRequest = new Request(new URL("/index.html", url.origin), c.req.raw);
+  return await c.env.ASSETS.fetch(indexRequest);
+});
+
 /**
  * Worker entry point that routes incoming requests to the appropriate handler
  */
