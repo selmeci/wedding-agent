@@ -11,7 +11,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/button/Button";
 import { Header } from "@/components/Header";
 import { MemoizedMarkdown } from "@/components/memoized-markdown";
-import { Heart } from "@/components/PixelArt";
+import { Bride, Groom, Heart } from "@/components/PixelArt";
 import { Textarea } from "@/components/textarea/Textarea";
 import { ToolInvocationCard } from "@/components/tool-invocation-card/ToolInvocationCard";
 import type { tools } from "./tools";
@@ -107,8 +107,26 @@ export default function Chat() {
 	return (
 		<div className="min-h-screen w-full bg-gradient-to-br from-pink-50 via-white to-pink-100">
 			<Header />
-			<div className="container mx-auto px-4 py-6 max-w-4xl">
-				<div className="bg-white rounded-xl shadow-xl overflow-hidden border border-pink-200">
+
+			<main className="py-8">
+				<div className="container mx-auto px-4 max-w-4xl">
+					{/* Hero Section with Pixel Art */}
+					<div className="text-center mb-8">
+						<div className="flex items-center justify-center gap-8 mb-6">
+							<Bride className="w-24 h-24 md:w-32 md:h-32" />
+							<Heart className="w-16 h-16 md:w-20 md:h-20" animated />
+							<Groom className="w-24 h-24 md:w-32 md:h-32" />
+						</div>
+						<h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-2">
+							Vitajte na našej svadobnej stránke!
+						</h2>
+						<p className="text-gray-600">
+							Porozprávaj sa s naším svadobným asistentom
+						</p>
+					</div>
+
+					{/* Chat Interface */}
+					<div className="bg-white rounded-xl shadow-xl overflow-hidden border border-pink-200">
 					<div className="bg-gradient-pink p-4 border-b border-white/20 flex items-center justify-between">
 						<div className="flex items-center gap-3">
 							<Heart className="w-8 h-8" animated />
@@ -356,8 +374,9 @@ export default function Chat() {
 							</div>
 						</div>
 					</form>
+					</div>
 				</div>
-			</div>
+			</main>
 		</div>
 	);
 }
