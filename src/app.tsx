@@ -6,7 +6,7 @@ import { PaperPlaneTiltIcon, StopIcon, TrashIcon } from "@phosphor-icons/react";
 import { useAgentChat } from "agents/ai-react";
 import { useAgent } from "agents/react";
 import { isStaticToolUIPart } from "ai";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 // Component imports
 import { Button } from "@/components/button/Button";
 import { Countdown } from "@/components/Countdown/Countdown";
@@ -23,21 +23,31 @@ const toolsRequiringConfirmation: (keyof typeof tools)[] = [];
 
 export default function Chat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const prevMessagesLengthRef = useRef<number>(0);
   const isInitialLoadRef = useRef<boolean>(true);
 
-  const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, []);
+  const scrollToBottom = useCallback((instant = false) => {
+    // Method 1: scrollIntoView (preferred)
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({
+        behavior: instant ? "auto" : "smooth",
+        block: "end"
+      });
+    }
 
-  const scrollToTop = useCallback(() => {
-    // Use setTimeout to ensure DOM is fully rendered
-    setTimeout(() => {
-      const messagesDiv = messagesEndRef.current?.parentElement;
-      if (messagesDiv) {
-        messagesDiv.scrollTop = 0;
+    // Method 2: Direct scroll (fallback)
+    if (messagesContainerRef.current) {
+      const container = messagesContainerRef.current;
+      if (instant) {
+        container.scrollTop = container.scrollHeight;
+      } else {
+        container.scrollTo({
+          behavior: "smooth",
+          top: container.scrollHeight
+        });
       }
-    }, 100);
+    }
   }, []);
 
   // Extract qrToken and debug flag from URL query parameters
@@ -90,37 +100,46 @@ export default function Chat() {
     agent
   });
 
-  // Smart scroll: to top on initial load, to bottom on new messages
-  useEffect(() => {
+  // Effect 1: Initial load scroll
+  useLayoutEffect(() => {
     if (agentMessages.length === 0) return;
 
-    // Initial load detection
     if (isInitialLoadRef.current) {
-      console.log('[Scroll] Initial load detected, scrolling to TOP. Messages:', agentMessages.length);
       isInitialLoadRef.current = false;
       prevMessagesLengthRef.current = agentMessages.length;
 
-      // On initial load with existing messages, scroll to TOP
-      if (agentMessages.length > 0) {
-        scrollToTop();
-      }
+      // Delay to ensure DOM is rendered
+      setTimeout(() => {
+        scrollToBottom(true); // instant scroll
+      }, 50);
       return;
     }
+  }, [agentMessages, scrollToBottom]);
 
-    // New message detection: only scroll if user is actively chatting (status is not idle)
-    // This prevents auto-scroll during batch loading of historical messages
+  // Effect 2: Scroll during streaming (CRITICAL for seeing AI responses)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Need for response scrolling
+  useLayoutEffect(() => {
+    if (status === "streaming") {
+      // Use requestAnimationFrame for smooth performance
+      requestAnimationFrame(() => {
+        scrollToBottom(true); // instant scroll during streaming
+      });
+    }
+  }, [agentMessages, status, scrollToBottom]);
+
+  // Effect 3: Scroll on new message (not during streaming)
+  useLayoutEffect(() => {
     const hasNewMessage = agentMessages.length > prevMessagesLengthRef.current;
-    const isActivelyChatting = status === "streaming" || status === "submitted";
+    const isNotStreaming = status !== "streaming";
 
-    console.log('[Scroll] hasNewMessage:', hasNewMessage, 'isActivelyChatting:', isActivelyChatting, 'status:', status, 'length:', agentMessages.length, 'prev:', prevMessagesLengthRef.current);
-
-    if (hasNewMessage && isActivelyChatting) {
-      console.log('[Scroll] Scrolling to BOTTOM');
-      scrollToBottom();
+    if (hasNewMessage && isNotStreaming) {
+      setTimeout(() => {
+        scrollToBottom(false); // smooth scroll for new messages
+      }, 50);
     }
 
     prevMessagesLengthRef.current = agentMessages.length;
-  }, [agentMessages, status, scrollToBottom, scrollToTop]);
+  }, [agentMessages, status, scrollToBottom]);
 
   const pendingToolCallConfirmation = agentMessages.some((m: UIMessage) =>
     m.parts?.some(
@@ -172,7 +191,10 @@ export default function Chat() {
             </div>
 
             {/* Messages */}
-            <div className="flex-1 min-h-0 overflow-y-auto p-3 md:p-4 space-y-4 pb-4 bg-gray-50">
+            <div
+              ref={messagesContainerRef}
+              className="flex-1 min-h-0 overflow-y-auto p-3 md:p-4 space-y-4 pb-4 bg-gray-50"
+            >
               {agentMessages.length === 0 && (
                 <div className="h-full flex items-center justify-center">
                   <div className="text-center text-gray-400 text-sm">
