@@ -11,7 +11,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/button/Button";
 import { Header } from "@/components/Header";
 import { MemoizedMarkdown } from "@/components/memoized-markdown";
-import { Bride, Groom, Heart } from "@/components/PixelArt";
+import { Heart } from "@/components/PixelArt";
 import { Textarea } from "@/components/textarea/Textarea";
 import { ToolInvocationCard } from "@/components/tool-invocation-card/ToolInvocationCard";
 import type { tools } from "./tools";
@@ -108,26 +108,11 @@ export default function Chat() {
 		<div className="min-h-screen w-full bg-gradient-to-br from-pink-50 via-white to-pink-100">
 			<Header />
 
-			<main className="py-8">
-				<div className="container mx-auto px-4 max-w-4xl">
-					{/* Hero Section with Pixel Art */}
-					<div className="text-center mb-8">
-						<div className="flex items-center justify-center gap-8 mb-6">
-							<Bride className="w-24 h-24 md:w-32 md:h-32" />
-							<Heart className="w-16 h-16 md:w-20 md:h-20" animated />
-							<Groom className="w-24 h-24 md:w-32 md:h-32" />
-						</div>
-						<h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-2">
-							Vitajte na našej svadobnej stránke!
-						</h2>
-						<p className="text-gray-600">
-							Porozprávaj sa s naším svadobným asistentom
-						</p>
-					</div>
-
+			<main className="py-2 md:py-8 flex flex-col h-[calc(100vh-7rem)] md:h-auto">
+				<div className="container mx-auto px-2 md:px-4 max-w-4xl flex-1 flex flex-col md:block">
 					{/* Chat Interface */}
-					<div className="bg-white rounded-xl shadow-xl overflow-hidden border border-pink-200">
-					<div className="bg-gradient-pink p-4 border-b border-white/20 flex items-center justify-between">
+					<div className="flex flex-col flex-1 md:flex-initial bg-white rounded-xl shadow-xl overflow-hidden border border-pink-200">
+					<div className="bg-gradient-pink p-3 md:p-4 border-b border-white/20 flex items-center justify-between">
 						<div className="flex items-center gap-3">
 							<Heart className="w-8 h-8" animated />
 							<div>
@@ -152,7 +137,7 @@ export default function Chat() {
 					</div>
 
 					{/* Messages */}
-					<div className="flex-1 overflow-y-auto p-4 space-y-4 pb-24 min-h-[60vh] max-h-[70vh] bg-gray-50">
+					<div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-4 pb-4 md:min-h-[60vh] md:max-h-[70vh] bg-gray-50">
 						{agentMessages.length === 0 && (
 							<div className="h-full flex items-center justify-center">
 								<div className="text-center text-gray-400 text-sm">
@@ -314,7 +299,7 @@ export default function Chat() {
 							});
 							setTextareaHeight("auto"); // Reset height after submission
 						}}
-						className="p-4 bg-white border-t border-gray-200"
+						className="p-3 md:p-4 bg-white border-t border-gray-200"
 					>
 						<div className="flex items-center gap-2">
 							<div className="flex-1 relative">
