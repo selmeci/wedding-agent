@@ -17,8 +17,8 @@ export function Bride({ className = "" }: { className?: string }) {
       <rect x="22" y="8" width="4" height="4" fill="#FFFFFF" />
 
       {/* Hair */}
-      <rect x="10" y="6" width="12" height="2" fill="#8B4513" />
-      <rect x="8" y="8" width="16" height="4" fill="#8B4513" />
+      <rect x="10" y="6" width="12" height="2" fill="#F4E4C1" />
+      <rect x="8" y="8" width="16" height="4" fill="#F4E4C1" />
 
       {/* Face */}
       <rect x="10" y="12" width="12" height="8" fill="#FFD4A3" />
