@@ -65,7 +65,8 @@ export const GetWeddingInfoOutputSchema = z.object({
   date: z.string(),
   dressCode: z.string(),
   gifts: z.object({
-    details: z.string(),
+    flowers: z.string(),
+    materialGifts: z.string(),
     summary: z.string()
   }),
   location: z.string(),

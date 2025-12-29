@@ -46,9 +46,12 @@ export const getWeddingInfoTool = tool<
         "Smart casual - pánske sako nie je povinné, ženy môžu ľubovoľné šaty",
 
       gifts: {
-        details:
-          "Ak chcete darovať kvety, preferujeme menšie, jednoduché kytice. Finančné príspevky na svadobnú cestu sú tiež vítané.",
-        summary: "Nevesta nechce veľké kytice. Akékoľvek iné darčeky sú vítané."
+        flowers:
+          "Nerobte si starosti s veľkou kytičkou, radosť nám spravíte aj jednou ružičkou. 🌹",
+        materialGifts:
+          "Vezmite toto oznámenie ako malú radu, že svadba nie je o trápení, čo dať k svadobnému daru. Pokiaľ niečím prispejete, budeme za to radi, oveľa dôležitejšie však pre nás bude, že strávite tento deň s nami. 💝",
+        summary:
+          "Žiadne veľké kytice prosím. Neprajeme si hmotné dary - finančný príspevok je vítaný, ale najdôležitejšie je že budete s nami."
       },
       location: "Modra, Slovensko",
 
