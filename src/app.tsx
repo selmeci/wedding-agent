@@ -227,7 +227,7 @@ export default function Chat() {
 														<Heart className="w-6 h-6" />
 													</div>
 												</div>
-												<div className="max-w-[75%] md:max-w-[60%] rounded-2xl px-4 py-3 shadow-sm bg-white border border-gray-100 rounded-bl-none">
+												<div className="max-w-[85%] md:max-w-[75%] rounded-2xl px-4 py-3 shadow-sm bg-white border border-gray-100 rounded-bl-none">
 													<div className="flex gap-2 items-center justify-center">
 														<Heart className="w-4 h-4 heart-bounce-1" />
 														<Heart className="w-4 h-4 heart-bounce-2" />
@@ -261,10 +261,10 @@ export default function Chat() {
 																// biome-ignore lint/suspicious/noArrayIndexKey: immutable index
 																<div key={i}>
 																	<div
-																		className={`max-w-[75%] md:max-w-[60%] rounded-2xl px-4 py-2.5 shadow-sm ${
+																		className={`rounded-2xl px-4 py-2.5 shadow-sm ${
 																			isUser
-																				? "bg-pink-500 text-white rounded-br-none"
-																				: "bg-white text-gray-900 border border-gray-100 rounded-bl-none"
+																				? "max-w-[90%] md:max-w-[85%] bg-pink-500 text-white rounded-br-none"
+																				: "max-w-[85%] md:max-w-[75%] bg-white text-gray-900 border border-gray-100 rounded-bl-none"
 																		}`}
 																	>
 																		{part.text.startsWith(

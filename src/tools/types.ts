@@ -147,10 +147,33 @@ export const UpdateRsvpOutputSchema = z.discriminatedUnion("success", [
   UpdateRsvpOutputFailureSchema
 ]);
 
+const AccommodationSchema = z.object({
+  name: z.string(),
+  address: z.string(),
+  distance: z.string(),
+  features: z.array(z.string()),
+  contact: z.object({
+    phone: z.string().optional(),
+    email: z.string().optional(),
+    website: z.string().optional()
+  }),
+  priceRange: z.string(),
+  notes: z.string().optional()
+});
+
+export const GetAccommodationInfoInputSchema = z.object({});
+
+export const GetAccommodationInfoOutputSchema = z.object({
+  accommodations: z.array(AccommodationSchema),
+  generalInfo: z.string(),
+  type: z.literal("get-accommodation-info")
+});
+
 export const OutputsSchema = z.discriminatedUnion("type", [
   ConfirmIdentityOutputSchema,
   ConfirmAttendanceOutputSchema,
   GetWeddingInfoOutputSchema,
+  GetAccommodationInfoOutputSchema,
   IdentificationContextOutputSchema,
   UpdateRsvpOutputSchema
 ] as const);
@@ -177,5 +200,12 @@ export type IdentificationContextOutput = z.infer<
 
 export type UpdateRsvpInput = z.infer<typeof UpdateRsvpInputSchema>;
 export type UpdateRsvpOutput = z.infer<typeof UpdateRsvpOutputSchema>;
+
+export type GetAccommodationInfoInput = z.infer<
+  typeof GetAccommodationInfoInputSchema
+>;
+export type GetAccommodationInfoOutput = z.infer<
+  typeof GetAccommodationInfoOutputSchema
+>;
 
 export type Outputs = z.infer<typeof OutputsSchema>;

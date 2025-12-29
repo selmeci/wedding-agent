@@ -24,6 +24,7 @@ import {
   confirmAttendanceTool,
   confirmIdentityTool,
   executions,
+  getAccommodationInfoTool,
   getWeddingInfoTool,
   updateRsvpTool
 } from "@/tools";
@@ -117,10 +118,12 @@ export class Chat extends AIChatAgent<Env, WeddingAgentState> {
       }))
       .with("rsvp_collection", () => ({
         confirmAttendance: confirmAttendanceTool,
+        getAccommodationInfo: getAccommodationInfoTool,
         getWeddingInfo: getWeddingInfoTool,
         updateRsvp: updateRsvpTool
       }))
       .with("information_provision", "chat_general", () => ({
+        getAccommodationInfo: getAccommodationInfoTool,
         getWeddingInfo: getWeddingInfoTool
       }))
       .exhaustive();
