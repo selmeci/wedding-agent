@@ -1,74 +1,131 @@
 import { Header } from "./Header";
 import { Container } from "./ui";
 
-function GroomWithStopSign({ className }: { className?: string }) {
+function CoupleAtGate({ className }: { className?: string }) {
   return (
     <svg
-      viewBox="0 0 64 64"
+      viewBox="0 0 160 96"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       className={className}
       style={{ imageRendering: "pixelated" }}
     >
-      {/* Groom */}
-      <rect x="8" y="12" width="12" height="2" fill="#2C1810" />
-      <rect x="6" y="14" width="16" height="4" fill="#2C1810" />
-      <rect x="8" y="18" width="12" height="8" fill="#FFD4A3" />
-      <rect x="10" y="20" width="2" height="2" fill="#111827" />
-      <rect x="16" y="20" width="2" height="2" fill="#111827" />
-      <rect x="12" y="24" width="4" height="1" fill="#111827" />
-      <rect x="12" y="26" width="4" height="2" fill="#FFD4A3" />
-      <rect x="11" y="28" width="2" height="2" fill="#111827" />
-      <rect x="15" y="28" width="2" height="2" fill="#111827" />
-      <rect x="13" y="28" width="2" height="2" fill="#FFFFFF" />
-      <rect x="8" y="30" width="12" height="6" fill="#1F2937" />
-      <rect x="6" y="32" width="16" height="4" fill="#1F2937" />
-      <rect x="12" y="30" width="4" height="4" fill="#FFFFFF" />
-      <rect x="13" y="31" width="2" height="1" fill="#D1D5DB" />
-      <rect x="13" y="33" width="2" height="1" fill="#D1D5DB" />
-      <rect x="6" y="30" width="2" height="4" fill="#1F2937" />
-      <rect x="4" y="34" width="2" height="2" fill="#FFD4A3" />
-      <rect x="20" y="30" width="2" height="4" fill="#1F2937" />
-      <rect x="22" y="32" width="8" height="2" fill="#FFD4A3" />
-      {/* STOP Sign */}
-      <polygon
-        points="44,18 50,16 56,18 58,24 56,30 50,32 44,30 42,24"
-        fill="#DC2626"
-      />
-      <polygon
-        points="44,18 50,16 56,18 58,24 56,30 50,32 44,30 42,24"
-        fill="none"
-        stroke="#991B1B"
-        strokeWidth="1"
-      />
-      <polygon
-        points="44.5,19 50,17 55.5,19 57,24 55.5,29 50,31 44.5,29 43,24"
-        fill="none"
-        stroke="#FFFFFF"
-        strokeWidth="0.5"
-      />
-      {/* S */}
-      <rect x="45" y="21" width="3" height="1" fill="#FFFFFF" />
-      <rect x="45" y="22" width="1" height="1" fill="#FFFFFF" />
-      <rect x="45" y="23" width="3" height="1" fill="#FFFFFF" />
-      <rect x="47" y="24" width="1" height="1" fill="#FFFFFF" />
-      <rect x="45" y="25" width="3" height="1" fill="#FFFFFF" />
-      {/* T */}
-      <rect x="49" y="21" width="3" height="1" fill="#FFFFFF" />
-      <rect x="50" y="22" width="1" height="4" fill="#FFFFFF" />
-      {/* O */}
-      <rect x="45" y="27" width="3" height="1" fill="#FFFFFF" />
-      <rect x="45" y="28" width="1" height="3" fill="#FFFFFF" />
-      <rect x="47" y="28" width="1" height="3" fill="#FFFFFF" />
-      <rect x="45" y="30" width="3" height="1" fill="#FFFFFF" />
-      {/* P */}
-      <rect x="49" y="27" width="1" height="4" fill="#FFFFFF" />
-      <rect x="50" y="27" width="2" height="1" fill="#FFFFFF" />
-      <rect x="51" y="28" width="1" height="1" fill="#FFFFFF" />
-      <rect x="50" y="29" width="2" height="1" fill="#FFFFFF" />
-      {/* Post */}
-      <rect x="48" y="32" width="4" height="12" fill="#6B7280" />
-      <rect x="46" y="44" width="8" height="2" fill="#4B5563" />
+      {/* BRIDE (left side) */}
+      <g transform="translate(20, 40)">
+        {/* Veil */}
+        <rect x="8" y="4" width="16" height="2" fill="#FFFFFF" />
+        <rect x="6" y="6" width="20" height="2" fill="#FFFFFF" />
+        <rect x="6" y="8" width="4" height="4" fill="#FFFFFF" />
+        <rect x="22" y="8" width="4" height="4" fill="#FFFFFF" />
+        {/* Hair */}
+        <rect x="10" y="6" width="12" height="2" fill="#F4E4C1" />
+        <rect x="8" y="8" width="16" height="4" fill="#F4E4C1" />
+        {/* Face */}
+        <rect x="10" y="12" width="12" height="8" fill="#FFD4A3" />
+        {/* Eyes */}
+        <rect x="12" y="14" width="2" height="2" fill="#111827" />
+        <rect x="18" y="14" width="2" height="2" fill="#111827" />
+        {/* Smile */}
+        <rect x="14" y="18" width="4" height="1" fill="#FF6B8E" />
+        {/* Neck */}
+        <rect x="14" y="20" width="4" height="2" fill="#FFD4A3" />
+        {/* Dress */}
+        <rect x="10" y="22" width="12" height="6" fill="#FFFFFF" />
+        <rect x="8" y="24" width="16" height="4" fill="#FFFFFF" />
+        <rect x="14" y="24" width="4" height="1" fill="#FF9BB0" />
+        <rect x="12" y="26" width="8" height="1" fill="#FFE3E8" />
+        {/* Arms */}
+        <rect x="8" y="22" width="2" height="4" fill="#FFD4A3" />
+        <rect x="22" y="22" width="2" height="4" fill="#FFD4A3" />
+        {/* Hands */}
+        <rect x="6" y="26" width="2" height="2" fill="#FFD4A3" />
+        <rect x="24" y="26" width="2" height="2" fill="#FFD4A3" />
+        {/* Bouquet */}
+        <rect x="14" y="28" width="4" height="2" fill="#90EE90" />
+        <rect x="13" y="27" width="2" height="1" fill="#FF9BB0" />
+        <rect x="17" y="27" width="2" height="1" fill="#FF6B8E" />
+      </g>
+
+      {/* GROOM (right side) */}
+      <g transform="translate(108, 40)">
+        {/* Hair */}
+        <rect x="10" y="6" width="12" height="2" fill="#2C1810" />
+        <rect x="8" y="8" width="16" height="4" fill="#2C1810" />
+        {/* Face */}
+        <rect x="10" y="12" width="12" height="8" fill="#FFD4A3" />
+        {/* Eyes */}
+        <rect x="12" y="14" width="2" height="2" fill="#111827" />
+        <rect x="18" y="14" width="2" height="2" fill="#111827" />
+        {/* Smile */}
+        <rect x="14" y="18" width="4" height="1" fill="#111827" />
+        {/* Neck */}
+        <rect x="14" y="20" width="4" height="2" fill="#FFD4A3" />
+        {/* Bow tie */}
+        <rect x="13" y="22" width="2" height="2" fill="#111827" />
+        <rect x="17" y="22" width="2" height="2" fill="#111827" />
+        <rect x="15" y="22" width="2" height="2" fill="#FFFFFF" />
+        {/* Suit */}
+        <rect x="10" y="24" width="12" height="6" fill="#1F2937" />
+        <rect x="8" y="26" width="16" height="4" fill="#1F2937" />
+        <rect x="14" y="24" width="4" height="4" fill="#FFFFFF" />
+        <rect x="15" y="25" width="2" height="1" fill="#D1D5DB" />
+        <rect x="15" y="27" width="2" height="1" fill="#D1D5DB" />
+        {/* Arms */}
+        <rect x="8" y="24" width="2" height="4" fill="#1F2937" />
+        <rect x="22" y="24" width="2" height="4" fill="#1F2937" />
+        {/* Hands */}
+        <rect x="6" y="28" width="2" height="2" fill="#FFD4A3" />
+        <rect x="24" y="28" width="2" height="2" fill="#FFD4A3" />
+      </g>
+
+      {/* ORNAMENTAL GATE (center) */}
+      {/* Left pillar */}
+      <rect x="62" y="20" width="6" height="56" fill="#8B7355" />
+      <rect x="60" y="18" width="10" height="4" fill="#A0826D" />
+      <rect x="60" y="74" width="10" height="4" fill="#A0826D" />
+
+      {/* Right pillar */}
+      <rect x="92" y="20" width="6" height="56" fill="#8B7355" />
+      <rect x="90" y="18" width="10" height="4" fill="#A0826D" />
+      <rect x="90" y="74" width="10" height="4" fill="#A0826D" />
+
+      {/* Arch top */}
+      <rect x="68" y="20" width="24" height="4" fill="#8B7355" />
+      <rect x="70" y="16" width="20" height="4" fill="#A0826D" />
+
+      {/* Gate doors */}
+      <rect x="68" y="24" width="11" height="50" fill="#6B5A4D" />
+      <rect x="81" y="24" width="11" height="50" fill="#6B5A4D" />
+
+      {/* Door panels (decorative) */}
+      <rect x="70" y="28" width="7" height="18" fill="#8B7355" />
+      <rect x="70" y="50" width="7" height="20" fill="#8B7355" />
+      <rect x="83" y="28" width="7" height="18" fill="#8B7355" />
+      <rect x="83" y="50" width="7" height="20" fill="#8B7355" />
+
+      {/* Door handles */}
+      <rect x="77" y="46" width="2" height="4" fill="#D4AF37" />
+      <rect x="81" y="46" width="2" height="4" fill="#D4AF37" />
+
+      {/* LOCK (center of gate) */}
+      {/* Lock body */}
+      <rect x="74" y="40" width="12" height="10" fill="#D4AF37" />
+      <rect x="75" y="41" width="10" height="8" fill="#B8960F" />
+      {/* Lock shackle */}
+      <rect x="77" y="36" width="2" height="4" fill="#D4AF37" />
+      <rect x="81" y="36" width="2" height="4" fill="#D4AF37" />
+      <rect x="77" y="34" width="6" height="2" fill="#D4AF37" />
+      {/* Keyhole */}
+      <rect x="79" y="44" width="2" height="3" fill="#111827" />
+
+      {/* Decorative flowers on arch */}
+      <rect x="72" y="18" width="2" height="2" fill="#FF9BB0" />
+      <rect x="76" y="17" width="2" height="2" fill="#FF6B8E" />
+      <rect x="82" y="17" width="2" height="2" fill="#FF6B8E" />
+      <rect x="86" y="18" width="2" height="2" fill="#FF9BB0" />
+
+      {/* Ground/base */}
+      <rect x="0" y="78" width="160" height="18" fill="#C8B8A0" fillOpacity="0.3" />
     </svg>
   );
 }
@@ -79,16 +136,18 @@ export function UnauthorizedPage() {
       <Header />
       <main className="flex-1 flex items-center justify-center p-8">
         <Container>
-          <div className="text-center max-w-3xl mx-auto">
-            <div className="mb-8">
-              <GroomWithStopSign className="w-40 h-40 md:w-48 md:h-48 lg:w-64 lg:h-64 mx-auto" />
+          <div className="text-center max-w-4xl mx-auto">
+            <div className="mb-12">
+              <CoupleAtGate className="w-full max-w-md md:max-w-lg lg:max-w-2xl mx-auto" />
             </div>
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-4 font-serif">
-              Prístup obmedzený
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-6 font-serif">
+              Vstup len pre pozvaných hostí
             </h1>
-            <p className="text-lg md:text-xl text-gray-600 leading-relaxed">
-              Táto stránka je momentálne dostupná iba pre pozvaných hostí s QR
-              kódom.
+            <p className="text-lg md:text-xl text-gray-600 leading-relaxed mb-4">
+              Táto stránka je prístupná iba s QR kódom z vašej pozvánky.
+            </p>
+            <p className="text-base md:text-lg text-gray-500">
+              QR kód nájdete na vašej svadobnej pozvánke. 💕
             </p>
           </div>
         </Container>
