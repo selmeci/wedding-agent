@@ -125,7 +125,14 @@ function CoupleAtGate({ className }: { className?: string }) {
       <rect x="86" y="18" width="2" height="2" fill="#FF9BB0" />
 
       {/* Ground/base */}
-      <rect x="0" y="78" width="160" height="18" fill="#C8B8A0" fillOpacity="0.3" />
+      <rect
+        x="0"
+        y="78"
+        width="160"
+        height="18"
+        fill="#C8B8A0"
+        fillOpacity="0.3"
+      />
     </svg>
   );
 }
