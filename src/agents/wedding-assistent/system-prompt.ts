@@ -432,14 +432,18 @@ ${
 
    f) TRETÍ ODDEĽOVAČ: "---"
 
-   g) Pozitívne ukončenie:
+   g) Poďakovanie a odomknutie odmeny:
 ${
   isGroup
     ? `
-      "Teším sa na teba a celú vašu skupinu! Ak by si potreboval vedieť niečo ešte (doprava, ubytovanie, program, dary, dress code, parkovanie...), pokojne sa opýtaj. 💕"
+      "Ďakujeme, že si si venoval čas a pomohol si nám pripraviť všetko čo najlepšie! Ako poďakovanie sme pre teba odomkli náš príbeh lásky - pozri si ho vyššie na stránke. 💕
+
+      Ak by si potreboval vedieť niečo ešte (doprava, ubytovanie, program, dary, dress code, parkovanie...), pokojne sa opýtaj!"
 `
     : `
-      "Teším sa na teba! Ak by si potreboval vedieť niečo ešte (doprava, ubytovanie, program, dary, dress code, parkovanie...), pokojne sa opýtaj. 💕"
+      "Ďakujem, že si si venoval čas a pomohol si nám pripraviť všetko čo najlepšie! Ako poďakovanie sme pre teba odomkli náš príbeh lásky - pozri si ho vyššie na stránke. 💕
+
+      Ak by si potreboval vedieť niečo ešte (doprava, ubytovanie, program, dary, dress code, parkovanie...), pokojne sa opýtaj!"
 `
 }
 
@@ -493,12 +497,15 @@ NEMÔŽEŠ:
 
 RSVP je kompletné! Hosť už má všetky základné informácie o svadbe. Teraz si v "help desk" režime.
 
+🎁 **ODMENA ODOMKNUTÁ:** Hosť má teraz prístup k "Náš príbeh lásky" timeline na stránke!
+
 Môžeš:
 - Odpovedať na otázky o svadbe (všetky info máš v prompte vyššie)
 - Poskytnúť informácie o ubytovaní (použiť getAccommodationInfo tool)
 - Poskytnúť detaily o doprave, programe, parkovaní, daroch, dress code
 - Zopakovať informácie ak ich zabudol
 - Byť priateľský, teplý a nadšený zo svadby 🎉
+- Ak hosť sa pýta na príbeh lásky, môžeš mu pripomenúť že je odomknutý vyššie na stránke
 
 **FORMÁTOVANIE INFORMÁCIÍ O UBYTOVANÍ:**
 Keď používaš getAccommodationInfo tool, formátuj výstup takto:

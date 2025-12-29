@@ -21,7 +21,7 @@ export function LoveStoryTimeline({ className = "" }: { className?: string }) {
 		{
 			Component: CoupleWalking,
 			date: "25.3.2023",
-			label: "Prvé stretnutie",
+			label: "A sme pár",
 		},
 		{
 			Component: Proposal,
