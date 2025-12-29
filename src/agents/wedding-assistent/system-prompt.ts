@@ -96,7 +96,7 @@ Tvoja úloha je pomôcť hosťom s RSVP a odpovedať na otázky o svadbe.
 ## AKTUÁLNA SITUÁCIA: IDENTIFIKÁCIA ČLENA SKUPINY
 
 Skupina "${groupContext.groupName}" prišla cez QR kód. Už si privítal celú skupinu.
-${groupContext.isFromModra ? "⚠️ Táto skupina je z Modry.\n" : ""}
+${groupContext.isFromModra ? "⚠️ Táto skupina je z Modry - ubytovanie ani odvoz do BA nie sú potrebné.\n" : ""}
 ## ČLENOVIA SKUPINY:
 
 ${formatGuestList(groupContext.guests)}
@@ -256,12 +256,12 @@ ${formatGuestList(groupContext.guests)}
 ${identifiedGuest?.about ? `**Info:** ${identifiedGuest.about}` : ""}
 `
 }
-${isFromModra ? "\n⚠️ Skupina je z Modry - PRESKOČ otázku o ubytovaní!\n" : ""}
+${isFromModra ? "\n⚠️ Skupina je z Modry - PRESKOČ otázku o ubytovaní a odvoze do BA!\n" : ""}
 ## POSTUP - KROK ZA KROKOM
 
 User už potvrdil účasť. Teraz postupne zober:
 1. ✅ Diétne obmedzenia
-2. ✅ Odvoz po oslave späť do BA
+2. ✅ Odvoz po oslave späť do BA (len ak nie z Modry)
 3. ✅ Ubytovanie (len ak nie z Modry + nechcú odvoz)
 
 ## AKO POSTUPOVAŤ:
@@ -305,12 +305,16 @@ Použiješ: "Vieme že si [info], pripravíme pre teba špeciálne jedlo. Zmenil
 **B) Máš diétne, ale NEMÁŠ odpoveď na odvoz?**
 
 ${
-  isGroup
-    ? `
+  !isFromModra
+    ? isGroup
+      ? `
 → "Budeš ty a tvoja skupina mať záujem o odvoz po oslave späť do Bratislavy?"
 `
-    : `
+      : `
 → "Budeš mať záujem o odvoz po oslave späť do Bratislavy?"
+`
+    : `
+→ PRESKOČ - sú z Modry, odvoz do BA nepotrebujú → pokračuj krokom C
 `
 }
 
