@@ -73,7 +73,7 @@ export class Chat extends AIChatAgent<Env, WeddingAgentState> {
   private getInitialGreeting(groupContext: GroupInfo): string {
     // QR flow - group greeting (UC-01, UC-02)
     // Greet all members by name and ask who's chatting
-    return `Ahoj ${groupContext.guestNames.join(", ")}! Vitajte na našej svadobnej stránke! 💕 Kto z vás práve píše?`;
+    return `Ahoj ${groupContext.guestNames.join(", ")}! 💕 Som váš osobný svadobný asistent. Pomôžem vám potvrdiť účasť na svadbe, zozbierať potrebné informácie pre hostinu a zodpovedať všetky otázky ohľadom nášho veľkého dňa. Vážime si, že nám venujete čas! Kto z vás práve píše?`;
   }
 
   /**
