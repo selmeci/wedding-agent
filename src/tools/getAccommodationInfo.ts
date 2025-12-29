@@ -85,7 +85,7 @@ export const getAccommodationInfoTool = tool<
 						"Obklopené Malými Karpatmi",
 						"Oáza pokoja v prírode",
 					],
-					name: "Hotel pod Lipou RESORT ****",
+					name: "Hotel pod Lipou RESORT",
 					notes:
 						"Potrebný transfer z miesta konania svadobnej hostiny. Ideálne pre hostí, ktorí chcú wellness a relax.",
 					priceRange: "Od 171€ za noc",
@@ -107,7 +107,7 @@ export const getAccommodationInfoTool = tool<
 						"Fitness centrum",
 						"Uprostred bukového lesa",
 					],
-					name: "Hotel Zochova chata ****",
+					name: "Hotel Zochova chata",
 					notes:
 						"Potrebný transfer z miesta konania svadobnej hostiny. Pre náročných hostí hľadajúcich luxus a wellness.",
 					priceRange: "Kontaktujte hotel pre aktuálne ceny",
