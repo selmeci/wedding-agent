@@ -158,20 +158,20 @@ ${
    DOLEZITE: Nemusim pisat otazky 1:1 tak ako su uvedene priklady, bud tvorivy pri pokladani otazok.
 
    **AK niekto má diétne info** (napr. "vegetariánka", "bezlepková diéta", alergie):
-   "Vieme že [Meno] je [info], pre neho/ňu pripravíme špeciálne jedlo. Zmenilo sa niečo alebo má niekto iný z vašej skupiny nejaké diétne obmedzenia?"
+   "Vieme že [Meno] je [info], pre neho/ňu pripravíme špeciálne jedlo. Zmenilo sa niečo alebo má niekto iný z vašej skupiny nejaké diétne obmedzenia, intolerancie či alergie?"
 
    **AK NIKTO nemá diétne info v 'Info' poli:**
-   "Má niekto z vašej skupiny nejaké diétne obmedzenia alebo alergie?"
+   "Má niekto z vašej skupiny nejaké diétne obmedzenia, intolerancie či alergie?"
 `
     : `
    → ANALYZUJ 'Info' pole hosťa vo výpise vyššie
    DOLEZITE: Nemusim pisat otazky 1:1 tak ako su uvedene priklady, bud tvorivy pri pokladani otazok.
 
    **AK má diétne info:**
-   "Vieme že si [info], pripravíme pre teba špeciálne jedlo. Zmenilo sa niečo alebo máš ešte nejaké iné obmedzenia?"
+   "Vieme že si [info], pripravíme pre teba špeciálne jedlo. Zmenilo sa niečo alebo máš ešte nejaké iné diétne obmedzenia, intolerancie či alergie?"
 
    **AK nemá info:**
-   "Máš nejaké diétne obmedzenia alebo alergie?"
+   "Máš nejaké diétne obmedzenia, intolerancie či alergie?"
 `
 }
 
@@ -254,20 +254,20 @@ ${
 → AI samo ROZHODNE ako personalizovať otázku na základe dát
 
 **AK niekto má diétne info (napr. "vegetariánka", "bezlepková diéta", alergie):**
-Použiješ štýl: "Vieme že [Meno] je [info], pre neho/ňu pripravíme špeciálne jedlo. Zmenilo sa niečo alebo má niekto iný z vašej skupiny nejaké diétne obmedzenia?"
+Použiješ štýl: "Vieme že [Meno] je [info], pre neho/ňu pripravíme špeciálne jedlo. Zmenilo sa niečo alebo má niekto iný z vašej skupiny nejaké diétne obmedzenia, intolerancie či alergie?"
 
 **AK NIKTO nemá diétne info v 'Info' poli:**
-"Má niekto z vašej skupiny nejaké diétne obmedzenia alebo alergie?"
+"Má niekto z vašej skupiny nejaké diétne obmedzenia, intolerancie či alergie?"
 `
     : `
 → ANALYZUJ 'Info' pole hosťa vo výpise vyššie
 → AI samo ROZHODNE ako personalizovať otázku
 
 **AK má diétne info:**
-Použiješ: "Vieme že si [info], pripravíme pre teba špeciálne jedlo. Zmenilo sa niečo alebo máš ešte nejaké iné obmedzenia?"
+Použiješ: "Vieme že si [info], pripravíme pre teba špeciálne jedlo. Zmenilo sa niečo alebo máš ešte nejaké iné diétne obmedzenia, intolerancie či alergie?"
 
 **AK nemá info:**
-"Máš nejaké diétne obmedzenia alebo alergie?"
+"Máš nejaké diétne obmedzenia, intolerancie či alergie?"
 `
 }
 
