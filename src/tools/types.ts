@@ -46,45 +46,6 @@ export const ConfirmIdentityOutputSchema = z.discriminatedUnion("success", [
   ConfirmIdentityOutputFailureSchema
 ]);
 
-const EventSchema = z.object({
-  address: z.string(),
-  description: z.string(),
-  time: z.string(),
-  venue: z.string()
-});
-
-export const GetWeddingInfoInputSchema = z.object({});
-
-export const GetWeddingInfoOutputSchema = z.object({
-  ceremony: EventSchema,
-  contact: z.object({
-    bride: z.string(),
-    groom: z.string(),
-    message: z.string()
-  }),
-  date: z.string(),
-  dressCode: z.string(),
-  gifts: z.object({
-    flowers: z.string(),
-    materialGifts: z.string(),
-    summary: z.string()
-  }),
-  location: z.string(),
-  parking: z.object({
-    available: z.boolean(),
-    location: z.string()
-  }),
-  reception: EventSchema.extend({
-    distance: z.string()
-  }),
-  schedule: z.object({
-    ceremony: z.string(),
-    photos: z.string(),
-    reception: z.string()
-  }),
-  type: z.literal("get-wedding-info")
-});
-
 export const IdentificationContextInputSchema = z.object({});
 
 export const IdentificationContextOutputSchema = z.object({
@@ -149,17 +110,17 @@ export const UpdateRsvpOutputSchema = z.discriminatedUnion("success", [
 ]);
 
 const AccommodationSchema = z.object({
-  name: z.string(),
   address: z.string(),
-  distance: z.string(),
-  features: z.array(z.string()),
   contact: z.object({
-    phone: z.string().optional(),
     email: z.string().optional(),
+    phone: z.string().optional(),
     website: z.string().optional()
   }),
-  priceRange: z.string(),
-  notes: z.string().optional()
+  distance: z.string(),
+  features: z.array(z.string()),
+  name: z.string(),
+  notes: z.string().optional(),
+  priceRange: z.string()
 });
 
 export const GetAccommodationInfoInputSchema = z.object({});
@@ -173,7 +134,6 @@ export const GetAccommodationInfoOutputSchema = z.object({
 export const OutputsSchema = z.discriminatedUnion("type", [
   ConfirmIdentityOutputSchema,
   ConfirmAttendanceOutputSchema,
-  GetWeddingInfoOutputSchema,
   GetAccommodationInfoOutputSchema,
   IdentificationContextOutputSchema,
   UpdateRsvpOutputSchema
@@ -188,9 +148,6 @@ export type ConfirmAttendanceInput = z.infer<
 export type ConfirmAttendanceOutput = z.infer<
   typeof ConfirmAttendanceOutputSchema
 >;
-
-export type GetWeddingInfoInput = z.infer<typeof GetWeddingInfoInputSchema>;
-export type GetWeddingInfoOutput = z.infer<typeof GetWeddingInfoOutputSchema>;
 
 export type IdentificationContextInput = z.infer<
   typeof IdentificationContextInputSchema

@@ -211,7 +211,10 @@ app.get("/*", async (c) => {
   }
 
   // Otherwise, serve index.html for SPA routing
-  const indexRequest = new Request(new URL("/index.html", url.origin), c.req.raw);
+  const indexRequest = new Request(
+    new URL("/index.html", url.origin),
+    c.req.raw
+  );
   return await c.env.ASSETS.fetch(indexRequest);
 });
 
