@@ -160,7 +160,7 @@ export default function Chat() {
 	return (
 		<div className="flex flex-col h-screen w-full bg-gradient-to-br from-pink-50 via-white to-pink-100">
 			<Header />
-			<Countdown targetDate="2026-03-27T15:00:00+01:00" />
+			<Countdown targetDate="2026-03-27T14:30:00Z" />
 
 			<main className="flex-1 flex flex-col overflow-hidden py-2 md:py-4">
 				<div className="container mx-auto px-2 md:px-4 max-w-4xl flex-1 flex flex-col min-h-0">
