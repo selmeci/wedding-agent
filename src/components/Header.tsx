@@ -19,7 +19,7 @@ export function Header() {
           </h1>
           {/* Date */}
           <p className="text-center text-white/90 mt-1 text-xs">
-            27. marec 2026 · Modra
+            27. marca 2026 · Modra
           </p>
         </div>
 
@@ -32,7 +32,7 @@ export function Header() {
               Ivonka & Roman
             </h1>
             <p className="text-white/90 mt-1 text-sm lg:text-base">
-              27. marec 2026 · Modra
+              27. marca 2026 · Modra
             </p>
           </div>
           <Heart className="w-10 h-10 lg:w-12 lg:h-12" animated />

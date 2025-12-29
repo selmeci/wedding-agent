@@ -30,9 +30,9 @@ export const getWeddingInfoTool = tool<
       ceremony: {
         address: "Štúrova 59, 900 01 Modra",
         description:
-          "Sobáš sa uskutoční v modernej sobášnej miestnosti v centre Modry",
+          "Sobáš sa uskutoční v Sobášnej sieni v Modre",
         time: "15:30",
-        venue: "Nová sobášna miestnosť mesta Modra"
+        venue: "Sobášna sieň v Modre"
       },
 
       contact: {
@@ -40,7 +40,7 @@ export const getWeddingInfoTool = tool<
         groom: "Roman",
         message: "Pre akékoľvek otázky nás môžete kontaktovať priamo"
       },
-      date: "27. marec 2026",
+      date: "27. marca 2026",
 
       dressCode:
         "Smart casual - pánske sako nie je povinné, ženy môžu ľubovoľné šaty",

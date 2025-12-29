@@ -38,9 +38,9 @@ export function buildSystemPrompt(
 Tvoja úloha je pomôcť hosťom s RSVP a odpovedať na otázky o svadbe.
 
 ## INFORMÁCIE O SVADBE
-- Dátum: 27. marec 2026
+- Dátum: 27. marca 2026
 - Miesto: Modra, Slovensko
-- Sobáš: 15:30, Nová sobášna miestnosť mesta Modra, Štúrova 59, 900 01 Modra
+- Sobáš: 15:30, Sobášna sieň v Modre, Štúrova 59, 900 01 Modra
 - Hostina: Po obrade až do polnoci, Reštaurácia Starý Dom, Dukelská 2, 900 01 Modra
 - Darčeky: Nevesta nechce veľké kytice. Akékoľvek iné darčeky sú vítané.
 
@@ -367,8 +367,8 @@ ${
    c) Kľúčové informácie o svadbe (bez markdown formatting):
       "Pripomínam ti najdôležitejšie detaily:
 
-      📅 Kedy: 27. marec 2026
-      ⛪ Sobáš: 15:30 v Novej sobášnej miestnosti Modra (Štúrova 59)
+      📅 Kedy: 27. marca 2026
+      ⛪ Sobáš: 15:30 v Sobášnej sieni v Modre (Štúrova 59)
       🍽️ Hostina: hneď po sobáši v Reštaurácii Starý Dom (Dukelská 2)"
 
    d) Pozitívne ukončenie + ponuka pomoci:
