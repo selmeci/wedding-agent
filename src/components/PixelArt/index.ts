@@ -1,4 +1,11 @@
+export { BabyCrawling } from "./BabyCrawling";
+export { BabySitting } from "./BabySitting";
 export { Bride } from "./Bride";
+export { CoupleWalking } from "./CoupleWalking";
+export { GiftBox } from "./GiftBox";
 export { Groom } from "./Groom";
 export { GroomWithStop } from "./GroomWithStop";
 export { Heart } from "./Heart";
+export { LoveStoryTimeline } from "./LoveStoryTimeline";
+export { Proposal } from "./Proposal";
+export { WeddingCouple } from "./WeddingCouple";

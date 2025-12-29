@@ -12,7 +12,7 @@ import { Button } from "@/components/button/Button";
 import { Countdown } from "@/components/Countdown/Countdown";
 import { Header } from "@/components/Header";
 import { MemoizedMarkdown } from "@/components/memoized-markdown";
-import { Heart } from "@/components/PixelArt";
+import { GiftBox, Heart, LoveStoryTimeline } from "@/components/PixelArt";
 import { Textarea } from "@/components/textarea/Textarea";
 import { ToolInvocationCard } from "@/components/tool-invocation-card/ToolInvocationCard";
 import type { tools } from "./tools";
@@ -161,6 +161,7 @@ export default function Chat() {
     <div className="flex flex-col h-screen w-full bg-gradient-to-br from-pink-50 via-white to-pink-100">
       <Header />
       <Countdown targetDate="2026-03-27T14:30:00Z" />
+      <LoveStoryTimeline />
 
       <main className="flex-1 flex flex-col overflow-hidden py-2 md:py-4">
         <div className="container mx-auto px-2 md:px-4 max-w-4xl flex-1 flex flex-col min-h-0">
@@ -253,92 +254,99 @@ export default function Chat() {
                       )}
                       {!showAvatar && !isUser && <div className="w-10" />}
 
-                      <div>
-                        <div>
-                          {m.parts?.map((part, i) => {
-                            if (part.type === "text") {
-                              return (
-                                // biome-ignore lint/suspicious/noArrayIndexKey: immutable index
-                                <div key={i}>
-                                  <div
-                                    className={`rounded-2xl px-4 py-2.5 shadow-sm ${
-                                      isUser
-                                        ? "max-w-[90%] md:max-w-[85%] bg-pink-500 text-white rounded-br-none"
-                                        : "max-w-[85%] md:max-w-[75%] bg-white text-gray-900 border border-gray-100 rounded-bl-none"
-                                    }`}
-                                  >
-                                    {part.text.startsWith(
-                                      "scheduled message"
-                                    ) && (
-                                      <span className="absolute -top-3 -left-2 text-base">
-                                        🕒
-                                      </span>
+                      <div className="flex flex-col">
+                        {m.parts?.map((part, i) => {
+                          if (part.type === "text") {
+                            return (
+                              // biome-ignore lint/suspicious/noArrayIndexKey: immutable index
+                              <div key={i}>
+                                <div
+                                  className={`rounded-2xl px-4 py-2.5 shadow-sm ${
+                                    isUser
+                                      ? "max-w-[90%] md:max-w-[85%] bg-pink-500 text-white rounded-br-none"
+                                      : "max-w-[85%] md:max-w-[75%] bg-white text-gray-900 border border-gray-100 rounded-bl-none"
+                                  }`}
+                                >
+                                  {part.text.startsWith(
+                                    "scheduled message"
+                                  ) && (
+                                    <span className="absolute -top-3 -left-2 text-base">
+                                      🕒
+                                    </span>
+                                  )}
+                                  <MemoizedMarkdown
+                                    id={`${m.id}-${i}`}
+                                    content={part.text.replace(
+                                      /^scheduled message: /,
+                                      ""
                                     )}
-                                    <MemoizedMarkdown
-                                      id={`${m.id}-${i}`}
-                                      content={part.text.replace(
-                                        /^scheduled message: /,
-                                        ""
-                                      )}
-                                    />
-                                  </div>
-                                  <p
-                                    className={`text-xs mt-1.5 ${
-                                      isUser
-                                        ? "text-pink-600 text-right"
-                                        : "text-gray-400 text-left"
-                                    }`}
-                                  >
-                                    {formatTime(
-                                      m.metadata?.createdAt
-                                        ? new Date(m.metadata.createdAt)
-                                        : new Date()
-                                    )}
-                                  </p>
+                                  />
                                 </div>
-                              );
-                            }
+                                <p
+                                  className={`text-xs mt-1.5 ${
+                                    isUser
+                                      ? "text-pink-600 text-right"
+                                      : "text-gray-400 text-left"
+                                  }`}
+                                >
+                                  {formatTime(
+                                    m.metadata?.createdAt
+                                      ? new Date(m.metadata.createdAt)
+                                      : new Date()
+                                  )}
+                                </p>
+                              </div>
+                            );
+                          }
 
-                            if (
-                              isStaticToolUIPart(part) &&
-                              m.role === "assistant" &&
-                              isDebugMode
-                            ) {
-                              const toolCallId = part.toolCallId;
-                              const toolName = part.type.replace("tool-", "");
-                              const needsConfirmation =
-                                toolsRequiringConfirmation.includes(
-                                  toolName as keyof typeof tools
-                                );
-
-                              return (
-                                <ToolInvocationCard
-                                  // biome-ignore lint/suspicious/noArrayIndexKey: using index is safe here as the array is static
-                                  key={`${toolCallId}-${i}`}
-                                  toolUIPart={part}
-                                  toolCallId={toolCallId}
-                                  needsConfirmation={needsConfirmation}
-                                  onSubmit={({ toolCallId, result }) => {
-                                    addToolOutput({
-                                      output: result,
-                                      toolCallId,
-                                      toolName: part.type.replace("tool-", "")
-                                    });
-                                  }}
-                                  addToolResult={(toolCallId, result) => {
-                                    addToolOutput({
-                                      output: result,
-                                      toolCallId,
-                                      toolName: part.type.replace("tool-", "")
-                                    });
-                                  }}
-                                />
+                          if (
+                            isStaticToolUIPart(part) &&
+                            m.role === "assistant" &&
+                            isDebugMode
+                          ) {
+                            const toolCallId = part.toolCallId;
+                            const toolName = part.type.replace("tool-", "");
+                            const needsConfirmation =
+                              toolsRequiringConfirmation.includes(
+                                toolName as keyof typeof tools
                               );
-                            }
-                            return null;
-                          })}
-                        </div>
+
+                            return (
+                              <ToolInvocationCard
+                                // biome-ignore lint/suspicious/noArrayIndexKey: using index is safe here as the array is static
+                                key={`${toolCallId}-${i}`}
+                                toolUIPart={part}
+                                toolCallId={toolCallId}
+                                needsConfirmation={needsConfirmation}
+                                onSubmit={({ toolCallId, result }) => {
+                                  addToolOutput({
+                                    output: result,
+                                    toolCallId,
+                                    toolName: part.type.replace("tool-", "")
+                                  });
+                                }}
+                                addToolResult={(toolCallId, result) => {
+                                  addToolOutput({
+                                    output: result,
+                                    toolCallId,
+                                    toolName: part.type.replace("tool-", "")
+                                  });
+                                }}
+                              />
+                            );
+                          }
+                          return null;
+                        })}
                       </div>
+
+                      {showAvatar && isUser && (
+                        <div className="flex-shrink-0">
+                          <div className="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center shadow-sm">
+                            <GiftBox className="w-6 h-6" />
+                          </div>
+                        </div>
+                      )}
+                      {!showAvatar && isUser && <div className="w-10" />}
                     </div>
                   </div>
                 );
