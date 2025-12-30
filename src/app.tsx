@@ -228,15 +228,10 @@ export default function Chat() {
 			setTimelineJustUnlocked(true);
 			setIsTimelineTabNew(true); // Set badge for new tab
 
-			// Auto-switch to timeline tab after 500ms (allow animation to be visible)
-			setTimeout(() => {
-				setActiveTab("timeline");
-			}, 500);
-
-			// Remove animation class after animation completes
+			// Remove pulse animation after animation completes
 			setTimeout(() => {
 				setTimelineJustUnlocked(false);
-			}, 1500);
+			}, 3000); // Extended duration for better visibility
 		}
 
 		// Update previous state reference
@@ -300,13 +295,20 @@ export default function Chat() {
 												activeTab === "timeline"
 													? "bg-white text-pink-600 shadow-md"
 													: "text-white hover:bg-white/10"
-											} ${timelineJustUnlocked ? "animate-pulse" : ""}`}
+											} ${
+												timelineJustUnlocked
+													? "animate-pulse ring-2 ring-yellow-400 ring-offset-2 ring-offset-pink-500 shadow-lg shadow-yellow-400/50"
+													: ""
+											}`}
 										>
 											<span className="hidden sm:inline">Náš príbeh lásky</span>
 											<span className="sm:hidden">💕</span>
-											{/* New badge */}
+											{/* Enhanced new badge with larger ping effect */}
 											{isTimelineTabNew && (
-												<span className="absolute -top-1 -right-1 w-2 h-2 bg-yellow-400 rounded-full animate-ping" />
+												<>
+													<span className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full" />
+													<span className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full animate-ping" />
+												</>
 											)}
 										</button>
 									)}
@@ -515,7 +517,7 @@ export default function Chat() {
 								<form
 									onSubmit={(e) => {
 										e.preventDefault();
-										handleAgentSubmit(e, {
+										void handleAgentSubmit(e, {
 											annotations: {
 												hello: "world",
 											},
