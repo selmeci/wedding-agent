@@ -1,11 +1,13 @@
 export { BabyCrawling } from "./BabyCrawling";
 export { BabySitting } from "./BabySitting";
 export { Bride } from "./Bride";
+export { BrokenHeart } from "./BrokenHeart";
 export { CoupleWalking } from "./CoupleWalking";
 export { GiftBox } from "./GiftBox";
 export { Groom } from "./Groom";
 export { GroomWithStop } from "./GroomWithStop";
 export { Heart } from "./Heart";
 export { LoveStoryTimeline } from "./LoveStoryTimeline";
+export { PhotoUploadAnimation } from "./PhotoUploadAnimation";
 export { Proposal } from "./Proposal";
 export { WeddingCouple } from "./WeddingCouple";

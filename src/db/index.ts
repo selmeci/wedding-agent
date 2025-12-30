@@ -19,16 +19,16 @@ export * from "./guests";
 export * from "./photo-uploads";
 
 export const schema = {
-  accommodations,
-  chatMessages,
-  chatSessions,
-  guestGroupResponses,
-  guestGroups,
-  guestGroupsRelations,
-  guestResponses,
-  guests,
-  guestsRelations,
-  photoUploads
+	accommodations,
+	chatMessages,
+	chatSessions,
+	guestGroupResponses,
+	guestGroups,
+	guestGroupsRelations,
+	guestResponses,
+	guests,
+	guestsRelations,
+	photoUploads,
 } as const;
 
 export type Schema = typeof schema;

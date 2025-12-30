@@ -2,187 +2,187 @@ import { z } from "zod";
 import { ConversationStateSchema } from "@/agents/wedding-assistent/types";
 
 export const ConfirmIdentityInputSchema = z.object({
-  confidence: z.string(),
-  guestId: z.uuid(),
-  reasoning: z.string()
+	confidence: z.string(),
+	guestId: z.uuid(),
+	reasoning: z.string(),
 });
 
 export const ConfirmIdentityOutputSuccessSchema = z.object({
-  guest: z.object({
-    about: z.string().nullable(),
-    firstName: z.string(),
-    groupId: z.uuid(),
-    groupName: z.string(),
-    id: z.uuid(),
-    isFromModra: z.boolean().nullable(),
-    lastName: z.string(),
-    relationship: z.string()
-  }),
-  identificationLog: z.object({
-    confidence: z.string(),
-    guestId: z.uuid(),
-    reasoning: z.string(),
-    timestamp: z.number()
-  }),
-  message: z.string(),
-  stateUpdate: z.object({
-    conversationState: ConversationStateSchema,
-    groupId: z.uuid(),
-    guestId: z.uuid(),
-    identificationAttempts: z.number().int()
-  }),
-  success: z.literal(true),
-  type: z.literal("confirm-identity")
+	guest: z.object({
+		about: z.string().nullable(),
+		firstName: z.string(),
+		groupId: z.uuid(),
+		groupName: z.string(),
+		id: z.uuid(),
+		isFromModra: z.boolean().nullable(),
+		lastName: z.string(),
+		relationship: z.string(),
+	}),
+	identificationLog: z.object({
+		confidence: z.string(),
+		guestId: z.uuid(),
+		reasoning: z.string(),
+		timestamp: z.number(),
+	}),
+	message: z.string(),
+	stateUpdate: z.object({
+		conversationState: ConversationStateSchema,
+		groupId: z.uuid(),
+		guestId: z.uuid(),
+		identificationAttempts: z.number().int(),
+	}),
+	success: z.literal(true),
+	type: z.literal("confirm-identity"),
 });
 
 export const ConfirmIdentityOutputFailureSchema = z.object({
-  error: z.string(),
-  success: z.literal(false),
-  type: z.literal("confirm-identity")
+	error: z.string(),
+	success: z.literal(false),
+	type: z.literal("confirm-identity"),
 });
 
 export const ConfirmIdentityOutputSchema = z.discriminatedUnion("success", [
-  ConfirmIdentityOutputSuccessSchema,
-  ConfirmIdentityOutputFailureSchema
+	ConfirmIdentityOutputSuccessSchema,
+	ConfirmIdentityOutputFailureSchema,
 ]);
 
 export const IdentificationContextInputSchema = z.object({});
 
 export const IdentificationContextOutputSchema = z.object({
-  attemptsRemaining: z.number(),
-  identificationAttempts: z.number(),
-  maxAttempts: z.number(),
-  maxAttemptsReached: z.boolean(),
-  type: z.literal("identification-context")
+	attemptsRemaining: z.number(),
+	identificationAttempts: z.number(),
+	maxAttempts: z.number(),
+	maxAttemptsReached: z.boolean(),
+	type: z.literal("identification-context"),
 });
 
 export const ConfirmAttendanceInputSchema = z.object({
-  willAttend: z.boolean()
+	willAttend: z.boolean(),
 });
 
 export const ConfirmAttendanceOutputSuccessSchema = z.object({
-  message: z.string(),
-  stateUpdate: z.object({
-    conversationState: ConversationStateSchema,
-    rsvpData: z
-      .object({
-        willAttend: z.boolean(),
-        attendCeremony: z.boolean().nullable(),
-        dietaryRestrictions: z.string().nullable(),
-        needsAccommodation: z.boolean().nullable(),
-        needsTransportAfter: z.boolean().nullable(),
-        transportDestination: z.string().nullable()
-      })
-      .optional()
-  }),
-  success: z.literal(true),
-  type: z.literal("confirm-attendance")
+	message: z.string(),
+	stateUpdate: z.object({
+		conversationState: ConversationStateSchema,
+		rsvpData: z
+			.object({
+				willAttend: z.boolean(),
+				attendCeremony: z.boolean().nullable(),
+				dietaryRestrictions: z.string().nullable(),
+				needsAccommodation: z.boolean().nullable(),
+				needsTransportAfter: z.boolean().nullable(),
+				transportDestination: z.string().nullable(),
+			})
+			.optional(),
+	}),
+	success: z.literal(true),
+	type: z.literal("confirm-attendance"),
 });
 
 export const ConfirmAttendanceOutputFailureSchema = z.object({
-  error: z.string(),
-  success: z.literal(false),
-  type: z.literal("confirm-attendance")
+	error: z.string(),
+	success: z.literal(false),
+	type: z.literal("confirm-attendance"),
 });
 
 export const ConfirmAttendanceOutputSchema = z.discriminatedUnion("success", [
-  ConfirmAttendanceOutputSuccessSchema,
-  ConfirmAttendanceOutputFailureSchema
+	ConfirmAttendanceOutputSuccessSchema,
+	ConfirmAttendanceOutputFailureSchema,
 ]);
 
 export const UpdateRsvpInputSchema = z.object({
-  attendCeremony: z.boolean().nullable(),
-  dietaryRestrictions: z.string().nullable(),
-  needsAccommodation: z.boolean().nullable(),
-  needsTransportAfter: z.boolean().nullable(),
-  transportDestination: z.string().nullable(),
-  willAttend: z.boolean()
+	attendCeremony: z.boolean().nullable(),
+	dietaryRestrictions: z.string().nullable(),
+	needsAccommodation: z.boolean().nullable(),
+	needsTransportAfter: z.boolean().nullable(),
+	transportDestination: z.string().nullable(),
+	willAttend: z.boolean(),
 });
 
 export const UpdateRsvpOutputSuccessSchema = z.object({
-  message: z.string(),
-  stateUpdate: z.object({
-    conversationState: ConversationStateSchema,
-    rsvpComplete: z.boolean(),
-    rsvpData: z.object({
-      willAttend: z.boolean(),
-      attendCeremony: z.boolean().nullable(),
-      dietaryRestrictions: z.string().nullable(),
-      needsAccommodation: z.boolean().nullable(),
-      needsTransportAfter: z.boolean().nullable(),
-      transportDestination: z.string().nullable()
-    })
-  }),
-  success: z.literal(true),
-  type: z.literal("update-rsvp")
+	message: z.string(),
+	stateUpdate: z.object({
+		conversationState: ConversationStateSchema,
+		rsvpComplete: z.boolean(),
+		rsvpData: z.object({
+			willAttend: z.boolean(),
+			attendCeremony: z.boolean().nullable(),
+			dietaryRestrictions: z.string().nullable(),
+			needsAccommodation: z.boolean().nullable(),
+			needsTransportAfter: z.boolean().nullable(),
+			transportDestination: z.string().nullable(),
+		}),
+	}),
+	success: z.literal(true),
+	type: z.literal("update-rsvp"),
 });
 
 export const UpdateRsvpOutputFailureSchema = z.object({
-  error: z.string(),
-  success: z.literal(false),
-  type: z.literal("update-rsvp")
+	error: z.string(),
+	success: z.literal(false),
+	type: z.literal("update-rsvp"),
 });
 
 export const UpdateRsvpOutputSchema = z.discriminatedUnion("success", [
-  UpdateRsvpOutputSuccessSchema,
-  UpdateRsvpOutputFailureSchema
+	UpdateRsvpOutputSuccessSchema,
+	UpdateRsvpOutputFailureSchema,
 ]);
 
 const AccommodationSchema = z.object({
-  address: z.string(),
-  contact: z.object({
-    email: z.string().optional(),
-    phone: z.string().optional(),
-    website: z.string().optional()
-  }),
-  distance: z.string(),
-  features: z.array(z.string()),
-  name: z.string(),
-  notes: z.string().optional(),
-  priceRange: z.string()
+	address: z.string(),
+	contact: z.object({
+		email: z.string().optional(),
+		phone: z.string().optional(),
+		website: z.string().optional(),
+	}),
+	distance: z.string(),
+	features: z.array(z.string()),
+	name: z.string(),
+	notes: z.string().optional(),
+	priceRange: z.string(),
 });
 
 export const GetAccommodationInfoInputSchema = z.object({});
 
 export const GetAccommodationInfoOutputSchema = z.object({
-  accommodations: z.array(AccommodationSchema),
-  generalInfo: z.string(),
-  type: z.literal("get-accommodation-info")
+	accommodations: z.array(AccommodationSchema),
+	generalInfo: z.string(),
+	type: z.literal("get-accommodation-info"),
 });
 
 export const OutputsSchema = z.discriminatedUnion("type", [
-  ConfirmIdentityOutputSchema,
-  ConfirmAttendanceOutputSchema,
-  GetAccommodationInfoOutputSchema,
-  IdentificationContextOutputSchema,
-  UpdateRsvpOutputSchema
+	ConfirmIdentityOutputSchema,
+	ConfirmAttendanceOutputSchema,
+	GetAccommodationInfoOutputSchema,
+	IdentificationContextOutputSchema,
+	UpdateRsvpOutputSchema,
 ] as const);
 
 export type ConfirmIdentityInput = z.infer<typeof ConfirmIdentityInputSchema>;
 export type ConfirmIdentityOutput = z.infer<typeof ConfirmIdentityOutputSchema>;
 
 export type ConfirmAttendanceInput = z.infer<
-  typeof ConfirmAttendanceInputSchema
+	typeof ConfirmAttendanceInputSchema
 >;
 export type ConfirmAttendanceOutput = z.infer<
-  typeof ConfirmAttendanceOutputSchema
+	typeof ConfirmAttendanceOutputSchema
 >;
 
 export type IdentificationContextInput = z.infer<
-  typeof IdentificationContextInputSchema
+	typeof IdentificationContextInputSchema
 >;
 export type IdentificationContextOutput = z.infer<
-  typeof IdentificationContextOutputSchema
+	typeof IdentificationContextOutputSchema
 >;
 
 export type UpdateRsvpInput = z.infer<typeof UpdateRsvpInputSchema>;
 export type UpdateRsvpOutput = z.infer<typeof UpdateRsvpOutputSchema>;
 
 export type GetAccommodationInfoInput = z.infer<
-  typeof GetAccommodationInfoInputSchema
+	typeof GetAccommodationInfoInputSchema
 >;
 export type GetAccommodationInfoOutput = z.infer<
-  typeof GetAccommodationInfoOutputSchema
+	typeof GetAccommodationInfoOutputSchema
 >;
 
 export type Outputs = z.infer<typeof OutputsSchema>;

@@ -153,3 +153,38 @@ code {
 .love-story-unlock {
   animation: slideDownFadeIn 800ms ease-out forwards;
 }
+
+/* Photo upload animation */
+@keyframes fly-photo {
+  0% {
+    left: 0;
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-50%) scale(1.2);
+  }
+  100% {
+    left: 100%;
+    opacity: 0;
+    transform: translateY(-50%) scale(0.8);
+  }
+}
+
+@keyframes spin-slow {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-fly-photo {
+  animation: fly-photo 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.animate-spin-slow {
+  animation: spin-slow 1.2s linear infinite;
+}

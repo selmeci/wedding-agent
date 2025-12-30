@@ -1,40 +1,40 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.3.10/schema.json",
-  "assist": {
-    "actions": {
-      "source": {
-        "organizeImports": "on",
-        "useSortedKeys": "on"
-      }
-    },
-    "enabled": true
-  },
-  "files": {
-    "ignoreUnknown": false,
-    "includes": ["src/**", "!node_modules", "!dist", "!**/*.css", "!./env.d.ts"]
-  },
-  "formatter": {
-    "enabled": true,
-    "indentStyle": "tab",
-    "lineEnding": "lf"
-  },
-  "javascript": {
-    "formatter": {
-      "quoteStyle": "double"
-    }
-  },
-  "linter": {
-    "enabled": true,
-    "rules": {
-      "recommended": true,
-      "style": {
-        "noNonNullAssertion": "on"
-      }
-    }
-  },
-  "vcs": {
-    "clientKind": "git",
-    "enabled": false,
-    "useIgnoreFile": false
-  }
+	"$schema": "https://biomejs.dev/schemas/2.3.10/schema.json",
+	"assist": {
+		"actions": {
+			"source": {
+				"organizeImports": "on",
+				"useSortedKeys": "on"
+			}
+		},
+		"enabled": true
+	},
+	"files": {
+		"ignoreUnknown": false,
+		"includes": ["src/**", "!node_modules", "!dist", "!**/*.css", "!./env.d.ts"]
+	},
+	"formatter": {
+		"enabled": true,
+		"indentStyle": "tab",
+		"lineEnding": "lf"
+	},
+	"javascript": {
+		"formatter": {
+			"quoteStyle": "double"
+		}
+	},
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"recommended": true,
+			"style": {
+				"noNonNullAssertion": "on"
+			}
+		}
+	},
+	"vcs": {
+		"clientKind": "git",
+		"enabled": false,
+		"useIgnoreFile": false
+	}
 }

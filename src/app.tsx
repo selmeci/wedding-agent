@@ -177,6 +177,7 @@ export default function Chat() {
 	}, [agentMessages, status, scrollToBottom]);
 
 	// Effect 4: Scroll on focus mode change (layout reflow)
+	// biome-ignore lint/correctness/useExhaustiveDependencies: isMobileFocus intentionally triggers scroll
 	useEffect(() => {
 		// Scroll when focus mode changes (both activation and deactivation)
 		// Wait for layout reflow after visibility changes
@@ -645,7 +646,10 @@ export default function Chat() {
 							</div>
 						) : (
 							/* Photos Tab Content */
-							<PhotoUpload />
+							<PhotoUpload
+								qrToken={qrToken}
+								guestId={agentState?.guestId ?? null}
+							/>
 						)}
 					</div>
 				</div>
