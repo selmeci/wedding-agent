@@ -211,7 +211,7 @@ export const guestGroupSeedData: GuestGroupSeed[] = [
 			{
 				about: "Teta Anka. Z Pezinka, treba sa spýtať na dopravu.",
 				email: "",
-				firstName: "Anka",
+				firstName: "Teta Anka",
 				lastName: "",
 				phone: "",
 				relationship: "rodina nevesty",
@@ -219,7 +219,7 @@ export const guestGroupSeedData: GuestGroupSeed[] = [
 			{
 				about: "Ujo Pišta. Z Pezinka, treba sa spýtať na dopravu.",
 				email: "",
-				firstName: "Pišta",
+				firstName: "Ujo Pišta",
 				lastName: "",
 				phone: "",
 				relationship: "rodina nevesty",
