@@ -477,12 +477,18 @@ ${
 ${
   isGroup
     ? `
-      "Ďakujeme, že si si venoval čas a pomohol si nám pripraviť všetko čo najlepšie! Ako poďakovanie sme pre teba odomkli náš príbeh lásky - nájdeš ho v záložke 'Náš príbeh' hore. 💕
+      "Ďakujeme, že si si venoval čas a pomohol si nám pripraviť všetko čo najlepšie! Ako poďakovanie sme pre teba odomkli dva špeciálne taby:
+
+      - 💕 **Náš príbeh** - Pozri si náš príbeh lásky od prvého stretnutia po zásnuby
+      - 📸 **Fotky** - V deň svadby tu budeš môcť nahrať svoje fotky zo svadby! Robte prosím čo najviac fotiek počas celého dňa - budeme radi za každú spomienku, ktorú s nami zdieľate.
 
       Ak by si potreboval vedieť niečo ešte (doprava, ubytovanie, program, dary, dress code, parkovanie...), pokojne sa opýtaj!"
 `
     : `
-      "Ďakujem, že si si venoval čas a pomohol si nám pripraviť všetko čo najlepšie! Ako poďakovanie sme pre teba odomkli náš príbeh lásky - nájdeš ho v záložke 'Náš príbeh' hore. 💕
+      "Ďakujem, že si si venoval čas a pomohol si nám pripraviť všetko čo najlepšie! Ako poďakovanie sme pre teba odomkli dva špeciálne taby:
+
+      - 💕 **Náš príbeh** - Pozri si náš príbeh lásky od prvého stretnutia po zásnuby
+      - 📸 **Fotky** - V deň svadby tu budeš môcť nahrať svoje fotky zo svadby! Rob prosím čo najviac fotiek počas celého dňa - budeme radi za každú spomienku, ktorú s nami zdieľaš.
 
       Ak by si potreboval vedieť niečo ešte (doprava, ubytovanie, program, dary, dress code, parkovanie...), pokojne sa opýtaj!"
 `
