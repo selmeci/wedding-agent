@@ -1,0 +1,1 @@
+ALTER TABLE `guest_group_responses` ADD `transport_destination` text;

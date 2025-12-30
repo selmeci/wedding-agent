@@ -85,6 +85,7 @@ export const UpdateRsvpInputSchema = z.object({
   dietaryRestrictions: z.string().nullable(),
   needsAccommodation: z.boolean().nullable(),
   needsTransportAfter: z.boolean().nullable(),
+  transportDestination: z.string().nullable(),
   willAttend: z.boolean()
 });
 

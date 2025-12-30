@@ -27,12 +27,15 @@ export const updateRsvpTool = tool<UpdateRsvpInput, UpdateRsvpOutput>({
   Collect these fields through natural conversation:
   - willAttend: Did they confirm attendance?
   - dietaryRestrictions: Any dietary needs? (check 'about' field in guest list for pre-filled info)
-  - needsTransportAfter: Do they want organized transport after celebration to Bratislava?
-  - needsAccommodation: Do they need accommodation info? (SKIP if from Modra OR has transport interest)
+  - needsTransportAfter: Do they want organized transport after celebration?
+  - transportDestination: If they want transport, where to? (e.g., "Bratislava", "Pezinok", "Senec"). Must be within ~25 min from Modra.
+  - needsAccommodation: Do they need accommodation info? (SKIP if from Modra OR wants transport)
 
   Rules:
   - attendCeremony is ALWAYS true if willAttend is true (guests cannot attend only reception)
-  - If willAttend is false, set dietaryRestrictions, needsTransportAfter, needsAccommodation to null
+  - If willAttend is false, set all optional fields to null
+  - If needsTransportAfter is true, transportDestination MUST be provided
+  - If needsTransportAfter is false, transportDestination should be null
   - For groups: format dietaryRestrictions as "Name1 - restriction, Name2 - restriction"
   `,
 
@@ -41,6 +44,7 @@ export const updateRsvpTool = tool<UpdateRsvpInput, UpdateRsvpOutput>({
     attendCeremony,
     dietaryRestrictions,
     needsTransportAfter,
+    transportDestination,
     needsAccommodation
   }) => {
     console.log("Updating RSVP...", {
@@ -48,6 +52,7 @@ export const updateRsvpTool = tool<UpdateRsvpInput, UpdateRsvpOutput>({
       dietaryRestrictions,
       needsAccommodation,
       needsTransportAfter,
+      transportDestination,
       willAttend
     });
 
@@ -88,6 +93,7 @@ export const updateRsvpTool = tool<UpdateRsvpInput, UpdateRsvpOutput>({
       needsAccommodation,
       needsDirections: null, // DEPRECATED
       needsTransportAfter,
+      transportDestination,
       respondedBy: guestId,
       updatedAt: new Date(),
       willAttend
