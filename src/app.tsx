@@ -41,12 +41,6 @@ export default function Chat() {
 	// State for mobile focus mode (hide header/countdown when typing)
 	const [isMobileFocus, setIsMobileFocus] = useState(false);
 
-	// State for tab switcher (chat vs timeline vs summary vs photos)
-	const [activeTab, setActiveTab] = useState<
-		"chat" | "timeline" | "summary" | "photos"
-	>("chat");
-	const [isTimelineTabNew, setIsTimelineTabNew] = useState(false);
-
 	const scrollToBottom = useCallback((instant = false) => {
 		// Method 1: scrollIntoView (preferred)
 		if (messagesEndRef.current) {
@@ -74,6 +68,17 @@ export default function Chat() {
 	const searchParams = new URLSearchParams(window.location.search);
 	const qrToken = searchParams.get("qrToken") || "";
 	const isDebugMode = searchParams.get("debug") === "true";
+
+	// Check if wedding has already happened
+	const weddingDate = new Date("2026-03-27T14:30:00Z");
+	const isAfterWedding = new Date() > weddingDate;
+
+	// State for tab switcher (chat vs timeline vs summary vs photos)
+	// Default to photos tab after wedding, chat before
+	const [activeTab, setActiveTab] = useState<
+		"chat" | "timeline" | "summary" | "photos"
+	>(isAfterWedding ? "photos" : "chat");
+	const [isTimelineTabNew, setIsTimelineTabNew] = useState(false);
 
 	// State for tracking agent conversation state
 	const [agentState, setAgentState] = useState<WeddingAgentState | null>(null);
@@ -287,6 +292,23 @@ export default function Chat() {
 
 								{/* Tab Switcher */}
 								<div className="flex gap-1 bg-white/10 rounded-full p-1">
+									{/* Photos Tab - FIRST after wedding if completed */}
+									{isAfterWedding &&
+										agentState?.conversationState === "completed" && (
+											<button
+												onClick={() => setActiveTab("photos")}
+												type="button"
+												className={`px-3 sm:px-4 py-1.5 sm:py-2 min-h-[44px] rounded-full text-sm font-medium transition-all ${
+													activeTab === "photos"
+														? "bg-white text-pink-600 shadow-md"
+														: "text-white hover:bg-white/10"
+												}`}
+											>
+												<span className="hidden sm:inline">Fotky</span>
+												<span className="sm:hidden">📸</span>
+											</button>
+										)}
+
 									{/* Chat Tab */}
 									<button
 										onClick={() => setActiveTab("chat")}
@@ -347,21 +369,22 @@ export default function Chat() {
 										</button>
 									)}
 
-									{/* Photos Tab - only if completed */}
-									{agentState?.conversationState === "completed" && (
-										<button
-											onClick={() => setActiveTab("photos")}
-											type="button"
-											className={`px-3 sm:px-4 py-1.5 sm:py-2 min-h-[44px] rounded-full text-sm font-medium transition-all ${
-												activeTab === "photos"
-													? "bg-white text-pink-600 shadow-md"
-													: "text-white hover:bg-white/10"
-											}`}
-										>
-											<span className="hidden sm:inline">Fotky</span>
-											<span className="sm:hidden">📸</span>
-										</button>
-									)}
+									{/* Photos Tab - last position before wedding if completed */}
+									{!isAfterWedding &&
+										agentState?.conversationState === "completed" && (
+											<button
+												onClick={() => setActiveTab("photos")}
+												type="button"
+												className={`px-3 sm:px-4 py-1.5 sm:py-2 min-h-[44px] rounded-full text-sm font-medium transition-all ${
+													activeTab === "photos"
+														? "bg-white text-pink-600 shadow-md"
+														: "text-white hover:bg-white/10"
+												}`}
+											>
+												<span className="hidden sm:inline">Fotky</span>
+												<span className="sm:hidden">📸</span>
+											</button>
+										)}
 								</div>
 							</div>
 
