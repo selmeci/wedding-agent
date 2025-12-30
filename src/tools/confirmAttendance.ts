@@ -92,7 +92,15 @@ export const confirmAttendanceTool = tool<
         ? "✓ Účasť potvrdená. Povedz useru potvrdenie a UKONČI odpoveď. V ďalšej konverzácii začneš zbierať RSVP údaje."
         : "✓ Účasť odmietnutá. RSVP je kompletné.",
       stateUpdate: {
-        conversationState: nextState
+        conversationState: nextState,
+        rsvpData: {
+          willAttend,
+          attendCeremony: willAttend ? true : null,
+          dietaryRestrictions: null,
+          needsAccommodation: null,
+          needsTransportAfter: null,
+          transportDestination: null
+        }
       },
       success: true,
       type: "confirm-attendance"

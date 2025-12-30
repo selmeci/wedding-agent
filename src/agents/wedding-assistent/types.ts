@@ -36,6 +36,15 @@ export interface WeddingAgentState {
   conversationState: ConversationState;
   identificationAttempts: number;
   rsvpComplete: boolean;
+  // RSVP data for summary tab
+  rsvpData?: {
+    willAttend: boolean;
+    attendCeremony: boolean | null;
+    dietaryRestrictions: string | null;
+    needsAccommodation: boolean | null;
+    needsTransportAfter: boolean | null;
+    transportDestination: string | null;
+  };
 }
 
 /**

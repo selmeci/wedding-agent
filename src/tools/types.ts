@@ -63,7 +63,17 @@ export const ConfirmAttendanceInputSchema = z.object({
 export const ConfirmAttendanceOutputSuccessSchema = z.object({
   message: z.string(),
   stateUpdate: z.object({
-    conversationState: ConversationStateSchema
+    conversationState: ConversationStateSchema,
+    rsvpData: z
+      .object({
+        willAttend: z.boolean(),
+        attendCeremony: z.boolean().nullable(),
+        dietaryRestrictions: z.string().nullable(),
+        needsAccommodation: z.boolean().nullable(),
+        needsTransportAfter: z.boolean().nullable(),
+        transportDestination: z.string().nullable()
+      })
+      .optional()
   }),
   success: z.literal(true),
   type: z.literal("confirm-attendance")
@@ -93,7 +103,15 @@ export const UpdateRsvpOutputSuccessSchema = z.object({
   message: z.string(),
   stateUpdate: z.object({
     conversationState: ConversationStateSchema,
-    rsvpComplete: z.boolean()
+    rsvpComplete: z.boolean(),
+    rsvpData: z.object({
+      willAttend: z.boolean(),
+      attendCeremony: z.boolean().nullable(),
+      dietaryRestrictions: z.string().nullable(),
+      needsAccommodation: z.boolean().nullable(),
+      needsTransportAfter: z.boolean().nullable(),
+      transportDestination: z.string().nullable()
+    })
   }),
   success: z.literal(true),
   type: z.literal("update-rsvp")

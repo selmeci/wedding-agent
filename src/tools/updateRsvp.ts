@@ -124,7 +124,15 @@ export const updateRsvpTool = tool<UpdateRsvpInput, UpdateRsvpOutput>({
       message: "", // Empty - AI will provide friendly message in same response
       stateUpdate: {
         conversationState: finalConversationState,
-        rsvpComplete: true
+        rsvpComplete: true,
+        rsvpData: {
+          willAttend,
+          attendCeremony,
+          dietaryRestrictions,
+          needsAccommodation,
+          needsTransportAfter,
+          transportDestination
+        }
       },
       success: true,
       type: "update-rsvp"
