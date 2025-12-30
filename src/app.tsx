@@ -34,6 +34,7 @@ export default function Chat() {
 	const messagesContainerRef = useRef<HTMLDivElement>(null);
 	const prevMessagesLengthRef = useRef<number>(0);
 	const isInitialLoadRef = useRef<boolean>(true);
+	const textareaRef = useRef<HTMLTextAreaElement>(null);
 
 	// State for mobile focus mode (hide header/countdown when typing)
 	const [isMobileFocus, setIsMobileFocus] = useState(false);
@@ -102,8 +103,10 @@ export default function Chat() {
 		const message = agentInput;
 		setAgentInput("");
 
-		// Deactivate focus mode after sending message
-		setIsMobileFocus(false);
+		// Keep focus mode active and refocus textarea for continuous messaging
+		setTimeout(() => {
+			textareaRef.current?.focus();
+		}, 0);
 
 		// Send message to agent
 		await sendMessage(
@@ -528,6 +531,7 @@ export default function Chat() {
 									<div className="flex items-center gap-2">
 										<div className="flex-1 relative">
 											<Textarea
+												ref={textareaRef}
 												rows={1}
 												disabled={pendingToolCallConfirmation}
 												placeholder={
