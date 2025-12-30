@@ -3,6 +3,7 @@
 import type { UIMessage } from "@ai-sdk/react";
 // Icon imports
 import { PaperPlaneTiltIcon, StopIcon, TrashIcon } from "@phosphor-icons/react";
+import { CaretDownIcon } from "@radix-ui/react-icons";
 import { useAgentChat } from "agents/ai-react";
 import { useAgent } from "agents/react";
 import { isStaticToolUIPart } from "ai";
@@ -33,6 +34,9 @@ export default function Chat() {
 	const messagesContainerRef = useRef<HTMLDivElement>(null);
 	const prevMessagesLengthRef = useRef<number>(0);
 	const isInitialLoadRef = useRef<boolean>(true);
+
+	// State for mobile focus mode (hide header/countdown when typing)
+	const [isMobileFocus, setIsMobileFocus] = useState(false);
 
 	const scrollToBottom = useCallback((instant = false) => {
 		// Method 1: scrollIntoView (preferred)
@@ -94,6 +98,9 @@ export default function Chat() {
 
 		const message = agentInput;
 		setAgentInput("");
+
+		// Deactivate focus mode after sending message
+		setIsMobileFocus(false);
 
 		// Send message to agent
 		await sendMessage(
@@ -159,6 +166,17 @@ export default function Chat() {
 		prevMessagesLengthRef.current = agentMessages.length;
 	}, [agentMessages, status, scrollToBottom]);
 
+	// Effect 4: Scroll on focus mode change (layout reflow)
+	useEffect(() => {
+		// Scroll when focus mode changes (both activation and deactivation)
+		// Wait for layout reflow after visibility changes
+		const timeoutId = setTimeout(() => {
+			scrollToBottom(true);
+		}, 150);
+
+		return () => clearTimeout(timeoutId);
+	}, [isMobileFocus, scrollToBottom]);
+
 	const pendingToolCallConfirmation = agentMessages.some((m: UIMessage) =>
 		m.parts?.some(
 			(part) =>
@@ -211,10 +229,20 @@ export default function Chat() {
 
 	return (
 		<div className="flex flex-col h-screen w-full bg-gradient-to-br from-pink-50 via-white to-pink-100">
-			<Header />
-			<Countdown targetDate="2026-03-27T14:30:00Z" />
+			{/* Header and Countdown - hidden on mobile during focus mode */}
+			<div className={`transition-opacity duration-300 ease-in-out ${isMobileFocus ? "hidden md:block" : "block"}`}>
+				<Header />
+				<Countdown targetDate="2026-03-27T14:30:00Z" />
+			</div>
+
+			{/* Timeline - hidden on mobile during focus mode UNLESS just unlocked */}
 			{agentState?.conversationState === "completed" && (
-				<div ref={timelineRef}>
+				<div
+					ref={timelineRef}
+					className={`transition-opacity duration-300 ease-in-out ${
+						isMobileFocus && !timelineJustUnlocked ? "hidden md:block" : "block"
+					}`}
+				>
 					<LoveStoryTimeline
 						className={timelineJustUnlocked ? "love-story-unlock" : ""}
 					/>
@@ -227,6 +255,17 @@ export default function Chat() {
 					<div className="flex flex-col flex-1 min-h-0 max-h-full bg-white rounded-xl shadow-xl overflow-hidden border border-pink-200">
 						<div className="bg-gradient-pink p-3 md:p-4 border-b border-white/20 flex items-center justify-between">
 							<div className="flex items-center gap-3">
+								{/* Minimize button - visible only in focus mode on mobile */}
+								{isMobileFocus && (
+									<button
+										onClick={() => setIsMobileFocus(false)}
+										className="md:hidden mr-1 text-white bg-white/10 hover:bg-white/25 rounded-full p-2.5 transition-all shadow-lg ring-2 ring-white/30"
+										type="button"
+										aria-label="Zobraziť hlavičku"
+									>
+										<CaretDownIcon className="w-6 h-6 drop-shadow-md" />
+									</button>
+								)}
 								<Heart className="w-8 h-8" animated />
 								<div>
 									<h2 className="font-semibold text-base text-white">
@@ -253,6 +292,13 @@ export default function Chat() {
 						<div
 							ref={messagesContainerRef}
 							className="flex-1 min-h-0 overflow-y-auto p-3 md:p-4 space-y-4 pb-4 bg-gray-50"
+							onClick={() => {
+								// Deactivate focus mode when clicking anywhere in messages area
+								// User can still scroll to read without deactivating
+								if (isMobileFocus) {
+									setIsMobileFocus(false);
+								}
+							}}
 						>
 							{agentMessages.length === 0 && (
 								<div className="h-full flex items-center justify-center">
@@ -425,6 +471,11 @@ export default function Chat() {
 									},
 								});
 							}}
+							onClick={(e) => {
+								// Prevent click propagation to messages container
+								// This keeps focus mode active when clicking in input area
+								e.stopPropagation();
+							}}
 							className="flex-shrink-0 p-3 md:p-4 bg-white border-t border-gray-200"
 						>
 							<div className="flex items-center gap-2">
@@ -440,6 +491,7 @@ export default function Chat() {
 										className="flex w-full border border-gray-300 px-3 py-2 placeholder:text-gray-500 text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none rounded-2xl text-base bg-white h-[44px]! min-h-[44px]! max-h-[44px]! pr-12"
 										value={agentInput}
 										onChange={handleAgentInputChange}
+										onFocus={() => setIsMobileFocus(true)}
 										onKeyDown={(e) => {
 											if (e.key === "Enter" && !e.nativeEvent.isComposing) {
 												e.preventDefault();
