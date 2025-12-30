@@ -186,7 +186,7 @@ export default function Chat() {
     return () => clearTimeout(timeoutId);
   }, [isMobileFocus, scrollToBottom]);
 
-  // Effect 5: Scroll when switching back to chat tab
+  // Effect 5: Scroll when switching back to chat tab AND deactivate focus mode on other tabs
   useEffect(() => {
     if (activeTab === "chat") {
       // Wait for DOM to render chat messages
@@ -195,6 +195,9 @@ export default function Chat() {
       }, 100);
 
       return () => clearTimeout(timeoutId);
+    } else {
+      // Deactivate focus mode when viewing other tabs (header is auto-hidden)
+      setIsMobileFocus(false);
     }
   }, [activeTab, scrollToBottom]);
 
@@ -243,9 +246,9 @@ export default function Chat() {
 
   return (
     <div className="flex flex-col h-screen w-full bg-gradient-to-br from-pink-50 via-white to-pink-100">
-      {/* Header and Countdown - hidden on mobile during focus mode */}
+      {/* Header and Countdown - hidden on mobile during focus mode OR when viewing other tabs */}
       <div
-        className={`transition-opacity duration-300 ease-in-out ${isMobileFocus ? "hidden md:block" : "block"}`}
+        className={`transition-opacity duration-300 ease-in-out ${isMobileFocus || activeTab !== "chat" ? "hidden md:block" : "block"}`}
       >
         <Header />
         <Countdown targetDate="2026-03-27T14:30:00Z" />
@@ -257,13 +260,23 @@ export default function Chat() {
           <div className="flex flex-col flex-1 min-h-0 max-h-full bg-white rounded-xl shadow-xl overflow-hidden border border-pink-200">
             <div className="bg-gradient-pink p-3 md:p-4 border-b border-white/20 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                {/* Minimize button - visible only in focus mode on mobile */}
-                {isMobileFocus && (
+                {/* Minimize button - visible when header is hidden (focus mode or other tabs) */}
+                {(isMobileFocus || activeTab !== "chat") && (
                   <button
-                    onClick={() => setIsMobileFocus(false)}
+                    onClick={() => {
+                      if (activeTab === "chat") {
+                        setIsMobileFocus(false);
+                      } else {
+                        setActiveTab("chat");
+                      }
+                    }}
                     className="md:hidden mr-1 text-white bg-white/10 hover:bg-white/25 rounded-full p-2.5 transition-all shadow-lg ring-2 ring-white/30"
                     type="button"
-                    aria-label="Zobraziť hlavičku"
+                    aria-label={
+                      activeTab === "chat"
+                        ? "Zobraziť hlavičku"
+                        : "Späť na chat"
+                    }
                   >
                     <CaretDownIcon className="w-6 h-6 drop-shadow-md" />
                   </button>
