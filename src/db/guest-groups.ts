@@ -7,19 +7,19 @@ import { guests } from "./guests";
  * Example: Family, couple with +1
  */
 export const guestGroups = sqliteTable("guest_groups", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => crypto.randomUUID()),
-  name: text("name").notNull(), // e.g., "Rodina Novákovcov", "Marek a Katka"
-  qrToken: text("qr_token").notNull().unique(),
-  isFromModra: integer("is_from_modra", { mode: "boolean" }).default(false),
-  createdAt: integer("created_at", { mode: "timestamp" })
-    .notNull()
-    .default(sql`(unixepoch())`)
+	createdAt: integer("created_at", { mode: "timestamp" })
+		.notNull()
+		.default(sql`(unixepoch())`),
+	id: text("id")
+		.primaryKey()
+		.$defaultFn(() => crypto.randomUUID()),
+	isFromModra: integer("is_from_modra", { mode: "boolean" }).default(false),
+	name: text("name").notNull(), // e.g., "Rodina Novákovcov", "Marek a Katka"
+	qrToken: text("qr_token").notNull().unique(),
 });
 
 export const guestGroupsRelations = relations(guestGroups, ({ many }) => ({
-  guests: many(guests)
+	guests: many(guests),
 }));
 
 export type GuestGroup = typeof guestGroups.$inferSelect;
