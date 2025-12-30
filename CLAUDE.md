@@ -36,9 +36,13 @@ npm run db:migrate           # Apply migrations locally
 npm run db:migrate:remote    # Apply migrations to remote D1
 
 # Code quality
-npm run format               # Format with Prettier
-npm run check               # Run Prettier + Biome + TypeScript checks
-npm test                    # Run Vitest tests
+pnpm exec biome format --write .   # Format code with Biome (PREFERRED - DO NOT use npm run format)
+npm run check                      # Run Prettier + Biome + TypeScript checks
+npm test                           # Run Vitest tests
+
+# IMPORTANT: Code Formatting
+# Always use `pnpm exec biome format --write .` for formatting code
+# DO NOT use `npm run format` or `prettier` directly
 
 # Type generation
 npm run cf:typegen          # Generate Cloudflare types
