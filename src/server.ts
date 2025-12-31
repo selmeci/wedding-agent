@@ -1,7 +1,7 @@
 import { getAgentByName } from "agents";
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
-import type { Chat } from "@/agents";
+import type { Chat, ReportAgent } from "@/agents";
 import { accommodationSeedData } from "@/data/accommodations";
 import { guestGroupSeedData } from "@/data/guest-groups";
 import {
@@ -197,6 +197,29 @@ app.get("/agents/chat/:qrToken/reset", async (c) => {
 	await agent.resetState();
 
 	return c.json({ message: "Agent state reset successfully" }, 200);
+});
+
+// Report Agent route - Token-protected analytics
+app.all("/agents/report/:qrToken", async (c) => {
+	const qrToken = c.req.param("qrToken");
+	const expectedToken = c.env.SECRET_REPORT_TOKEN;
+
+	console.log("Received request for report agent with qrToken");
+
+	// Validate qrToken against expected report token
+	if (!qrToken || qrToken !== expectedToken) {
+		console.log("Unauthorized report agent access attempt");
+		return c.json({ error: "Unauthorized" }, 401);
+	}
+
+	// Get or create ReportAgent DO instance
+	const agent = await getAgentByName<Env, ReportAgent>(
+		c.env.ReportAgent as unknown as DurableObjectNamespace<ReportAgent>,
+		qrToken, // Use qrToken as agent name (singleton per token)
+	);
+
+	const response = await agent.fetch(c.req.raw);
+	return response || c.notFound();
 });
 
 // Photo upload API

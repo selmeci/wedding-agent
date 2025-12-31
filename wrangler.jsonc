@@ -34,6 +34,10 @@
       {
         "name": "Chat",
         "class_name": "Chat"
+      },
+      {
+        "name": "ReportAgent",
+        "class_name": "ReportAgent"
       }
     ]
   },
@@ -41,6 +45,10 @@
     {
       "tag": "v1",
       "new_sqlite_classes": ["Chat"]
+    },
+    {
+      "tag": "v2",
+      "new_sqlite_classes": ["ReportAgent"]
     }
   ],
   "observability": {

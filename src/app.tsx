@@ -64,10 +64,11 @@ export default function Chat() {
 		}
 	}, []);
 
-	// Extract qrToken and debug flag from URL query parameters
+	// Extract parameters from URL query
 	const searchParams = new URLSearchParams(window.location.search);
 	const qrToken = searchParams.get("qrToken") || "";
 	const isDebugMode = searchParams.get("debug") === "true";
+	const mode = searchParams.get("mode") || "chat"; // "chat" or "report"
 
 	// Check if wedding has already happened
 	const weddingDate = new Date("2026-03-27T14:30:00Z");
@@ -88,7 +89,7 @@ export default function Chat() {
 	const prevConversationStateRef = useRef<string | null>(null);
 
 	const agent = useAgent({
-		agent: "chat",
+		agent: mode === "report" ? "report" : "chat",
 		name: qrToken,
 		onStateUpdate: (newState: WeddingAgentState) => {
 			setAgentState(newState);
@@ -253,13 +254,24 @@ export default function Chat() {
 
 	return (
 		<div className="flex flex-col h-screen w-full bg-gradient-to-br from-pink-50 via-white to-pink-100">
-			{/* Header and Countdown - hidden on mobile during focus mode OR when viewing other tabs */}
-			<div
-				className={`transition-opacity duration-300 ease-in-out ${isMobileFocus || activeTab !== "chat" ? "hidden md:block" : "block"}`}
-			>
-				<Header />
-				<Countdown targetDate="2026-03-27T14:30:00Z" />
-			</div>
+			{/* Header and Countdown - different in report mode */}
+			{mode === "report" ? (
+				<div className="bg-gradient-pink p-4 text-center">
+					<h1 className="text-2xl font-bold text-white">
+						📊 RSVP Report Dashboard
+					</h1>
+					<p className="text-white/80 text-sm mt-1">
+						Reporting asistent pre svadobné RSVP
+					</p>
+				</div>
+			) : (
+				<div
+					className={`transition-opacity duration-300 ease-in-out ${isMobileFocus || activeTab !== "chat" ? "hidden md:block" : "block"}`}
+				>
+					<Header />
+					<Countdown targetDate="2026-03-27T14:30:00Z" />
+				</div>
+			)}
 
 			<main className="flex-1 flex flex-col overflow-hidden py-2 md:py-4">
 				<div className="container mx-auto px-2 md:px-4 max-w-4xl flex-1 flex flex-col min-h-0">
@@ -267,125 +279,132 @@ export default function Chat() {
 					<div className="flex flex-col flex-1 min-h-0 max-h-full bg-white rounded-xl shadow-xl overflow-hidden border border-pink-200">
 						<div className="bg-gradient-pink p-3 md:p-4 border-b border-white/20 flex items-center justify-between">
 							<div className="flex items-center gap-3">
-								{/* Minimize button - visible when header is hidden (focus mode or other tabs) */}
-								{(isMobileFocus || activeTab !== "chat") && (
-									<button
-										onClick={() => {
-											if (activeTab === "chat") {
-												setIsMobileFocus(false);
-											} else {
-												setActiveTab("chat");
-											}
-										}}
-										className="md:hidden mr-1 text-white bg-white/10 hover:bg-white/25 rounded-full p-2.5 transition-all shadow-lg ring-2 ring-white/30"
-										type="button"
-										aria-label={
-											activeTab === "chat"
-												? "Zobraziť hlavičku"
-												: "Späť na chat"
-										}
-									>
-										<CaretDownIcon className="w-6 h-6 drop-shadow-md" />
-									</button>
-								)}
-								<Heart className="w-8 h-8" animated />
-
-								{/* Tab Switcher */}
-								<div className="flex gap-1 bg-white/10 rounded-full p-1">
-									{/* Photos Tab - FIRST after wedding if completed */}
-									{isAfterWedding &&
-										agentState?.conversationState === "completed" && (
-											<button
-												onClick={() => setActiveTab("photos")}
-												type="button"
-												className={`px-3 sm:px-4 py-1.5 sm:py-2 min-h-[44px] rounded-full text-sm font-medium transition-all ${
-													activeTab === "photos"
-														? "bg-white text-pink-600 shadow-md"
-														: "text-white hover:bg-white/10"
-												}`}
-											>
-												<span className="hidden sm:inline">Fotky</span>
-												<span className="sm:hidden">📸</span>
-											</button>
-										)}
-
-									{/* Chat Tab */}
-									<button
-										onClick={() => setActiveTab("chat")}
-										type="button"
-										className={`px-3 sm:px-4 py-1.5 sm:py-2 min-h-[44px] rounded-full text-sm font-medium transition-all ${
-											activeTab === "chat"
-												? "bg-white text-pink-600 shadow-md"
-												: "text-white hover:bg-white/10"
-										}`}
-									>
-										<span className="hidden sm:inline">Svadobný asistent</span>
-										<span className="sm:hidden">💬</span>
-									</button>
-
-									{/* Timeline Tab - only if completed */}
-									{agentState?.conversationState === "completed" && (
+								{/* Minimize button - visible when header is hidden (focus mode or other tabs) - NOT in report mode */}
+								{mode !== "report" &&
+									(isMobileFocus || activeTab !== "chat") && (
 										<button
 											onClick={() => {
-												setActiveTab("timeline");
-												setIsTimelineTabNew(false);
+												if (activeTab === "chat") {
+													setIsMobileFocus(false);
+												} else {
+													setActiveTab("chat");
+												}
 											}}
+											className="md:hidden mr-1 text-white bg-white/10 hover:bg-white/25 rounded-full p-2.5 transition-all shadow-lg ring-2 ring-white/30"
 											type="button"
-											className={`px-3 sm:px-4 py-1.5 sm:py-2 min-h-[44px] rounded-full text-sm font-medium transition-all relative ${
-												activeTab === "timeline"
-													? "bg-white text-pink-600 shadow-md"
-													: "text-white hover:bg-white/10"
-											} ${
-												timelineJustUnlocked
-													? "animate-pulse ring-2 ring-yellow-400 ring-offset-2 ring-offset-pink-500 shadow-lg shadow-yellow-400/50"
-													: ""
-											}`}
+											aria-label={
+												activeTab === "chat"
+													? "Zobraziť hlavičku"
+													: "Späť na chat"
+											}
 										>
-											<span className="hidden sm:inline">Náš príbeh lásky</span>
-											<span className="sm:hidden">💕</span>
-											{/* Enhanced new badge with larger ping effect */}
-											{isTimelineTabNew && (
-												<>
-													<span className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full" />
-													<span className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full animate-ping" />
-												</>
-											)}
+											<CaretDownIcon className="w-6 h-6 drop-shadow-md" />
 										</button>
 									)}
+								<Heart className="w-8 h-8" animated />
 
-									{/* Summary Tab - only if completed */}
-									{agentState?.conversationState === "completed" && (
+								{/* Tab Switcher - ONLY in chat mode, NOT in report mode */}
+								{mode !== "report" && (
+									<div className="flex gap-1 bg-white/10 rounded-full p-1">
+										{/* Photos Tab - FIRST after wedding if completed */}
+										{isAfterWedding &&
+											agentState?.conversationState === "completed" && (
+												<button
+													onClick={() => setActiveTab("photos")}
+													type="button"
+													className={`px-3 sm:px-4 py-1.5 sm:py-2 min-h-[44px] rounded-full text-sm font-medium transition-all ${
+														activeTab === "photos"
+															? "bg-white text-pink-600 shadow-md"
+															: "text-white hover:bg-white/10"
+													}`}
+												>
+													<span className="hidden sm:inline">Fotky</span>
+													<span className="sm:hidden">📸</span>
+												</button>
+											)}
+
+										{/* Chat Tab */}
 										<button
-											onClick={() => setActiveTab("summary")}
+											onClick={() => setActiveTab("chat")}
 											type="button"
 											className={`px-3 sm:px-4 py-1.5 sm:py-2 min-h-[44px] rounded-full text-sm font-medium transition-all ${
-												activeTab === "summary"
+												activeTab === "chat"
 													? "bg-white text-pink-600 shadow-md"
 													: "text-white hover:bg-white/10"
 											}`}
 										>
-											<span className="hidden sm:inline">Prehľad</span>
-											<span className="sm:hidden">📋</span>
+											<span className="hidden sm:inline">
+												Svadobný asistent
+											</span>
+											<span className="sm:hidden">💬</span>
 										</button>
-									)}
 
-									{/* Photos Tab - last position before wedding if completed */}
-									{!isAfterWedding &&
-										agentState?.conversationState === "completed" && (
+										{/* Timeline Tab - only if completed */}
+										{agentState?.conversationState === "completed" && (
 											<button
-												onClick={() => setActiveTab("photos")}
+												onClick={() => {
+													setActiveTab("timeline");
+													setIsTimelineTabNew(false);
+												}}
+												type="button"
+												className={`px-3 sm:px-4 py-1.5 sm:py-2 min-h-[44px] rounded-full text-sm font-medium transition-all relative ${
+													activeTab === "timeline"
+														? "bg-white text-pink-600 shadow-md"
+														: "text-white hover:bg-white/10"
+												} ${
+													timelineJustUnlocked
+														? "animate-pulse ring-2 ring-yellow-400 ring-offset-2 ring-offset-pink-500 shadow-lg shadow-yellow-400/50"
+														: ""
+												}`}
+											>
+												<span className="hidden sm:inline">
+													Náš príbeh lásky
+												</span>
+												<span className="sm:hidden">💕</span>
+												{/* Enhanced new badge with larger ping effect */}
+												{isTimelineTabNew && (
+													<>
+														<span className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full" />
+														<span className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full animate-ping" />
+													</>
+												)}
+											</button>
+										)}
+
+										{/* Summary Tab - only if completed */}
+										{agentState?.conversationState === "completed" && (
+											<button
+												onClick={() => setActiveTab("summary")}
 												type="button"
 												className={`px-3 sm:px-4 py-1.5 sm:py-2 min-h-[44px] rounded-full text-sm font-medium transition-all ${
-													activeTab === "photos"
+													activeTab === "summary"
 														? "bg-white text-pink-600 shadow-md"
 														: "text-white hover:bg-white/10"
 												}`}
 											>
-												<span className="hidden sm:inline">Fotky</span>
-												<span className="sm:hidden">📸</span>
+												<span className="hidden sm:inline">Prehľad</span>
+												<span className="sm:hidden">📋</span>
 											</button>
 										)}
-								</div>
+
+										{/* Photos Tab - last position before wedding if completed */}
+										{!isAfterWedding &&
+											agentState?.conversationState === "completed" && (
+												<button
+													onClick={() => setActiveTab("photos")}
+													type="button"
+													className={`px-3 sm:px-4 py-1.5 sm:py-2 min-h-[44px] rounded-full text-sm font-medium transition-all ${
+														activeTab === "photos"
+															? "bg-white text-pink-600 shadow-md"
+															: "text-white hover:bg-white/10"
+													}`}
+												>
+													<span className="hidden sm:inline">Fotky</span>
+													<span className="sm:hidden">📸</span>
+												</button>
+											)}
+									</div>
+								)}
 							</div>
 
 							{isDebugMode && (
@@ -395,14 +414,15 @@ export default function Chat() {
 									shape="square"
 									className="rounded-full h-9 w-9 text-white hover:bg-white/20"
 									onClick={clearHistory}
+									aria-label="Vymazať históriu chatu"
 								>
 									<TrashIcon size={20} />
 								</Button>
 							)}
 						</div>
 
-						{/* Conditional content based on active tab */}
-						{activeTab === "chat" ? (
+						{/* Conditional content based on active tab (report mode always shows chat) */}
+						{mode === "report" || activeTab === "chat" ? (
 							<>
 								{/* Messages */}
 								{/* biome-ignore lint/a11y/noStaticElementInteractions: Background click to deactivate focus mode is intentional UX pattern */}

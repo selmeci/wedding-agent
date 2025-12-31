@@ -3,7 +3,10 @@ import { drizzle } from "drizzle-orm/d1";
 import { accommodations } from "./accommodations";
 import { chatMessages } from "./chat-messages";
 import { chatSessions } from "./chat-sessions";
-import { guestGroupResponses } from "./guest-group-responses";
+import {
+	guestGroupResponses,
+	guestGroupResponsesRelations,
+} from "./guest-group-responses";
 import { guestGroups, guestGroupsRelations } from "./guest-groups";
 import { guestResponses } from "./guest-responses";
 import { guests, guestsRelations } from "./guests";
@@ -23,6 +26,7 @@ export const schema = {
 	chatMessages,
 	chatSessions,
 	guestGroupResponses,
+	guestGroupResponsesRelations,
 	guestGroups,
 	guestGroupsRelations,
 	guestResponses,

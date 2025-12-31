@@ -1,4 +1,4 @@
-import { sql } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 import { guestGroups } from "./guest-groups";
 import { guests } from "./guests";
@@ -35,6 +35,16 @@ export const guestGroupResponses = sqliteTable("guest_group_responses", {
 		.default(sql`(unixepoch())`),
 	willAttend: integer("will_attend", { mode: "boolean" }),
 });
+
+export const guestGroupResponsesRelations = relations(
+	guestGroupResponses,
+	({ one }) => ({
+		group: one(guestGroups, {
+			fields: [guestGroupResponses.groupId],
+			references: [guestGroups.id],
+		}),
+	}),
+);
 
 export type GuestGroupResponse = typeof guestGroupResponses.$inferSelect;
 export type NewGuestGroupResponse = typeof guestGroupResponses.$inferInsert;

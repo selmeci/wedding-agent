@@ -1,5 +1,7 @@
 import { relations, sql } from "drizzle-orm";
 import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { guestGroupResponses } from "@/db/guest-group-responses";
+import { guestResponses } from "./guest-responses";
 import { guests } from "./guests";
 
 /**
@@ -20,6 +22,7 @@ export const guestGroups = sqliteTable("guest_groups", {
 
 export const guestGroupsRelations = relations(guestGroups, ({ many }) => ({
 	guests: many(guests),
+	responses: many(guestGroupResponses),
 }));
 
 export type GuestGroup = typeof guestGroups.$inferSelect;
