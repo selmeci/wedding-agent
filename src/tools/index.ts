@@ -1,9 +1,11 @@
+import { changeAttendanceDecisionTool } from "./changeAttendanceDecision";
 import { confirmAttendanceTool } from "./confirmAttendance";
 import { confirmIdentityTool } from "./confirmIdentity";
 import { getAccommodationInfoTool } from "./getAccommodationInfo";
 import { getIdentificationContextTool } from "./getIdentificationContext";
 import { updateRsvpTool } from "./updateRsvp";
 
+export { changeAttendanceDecisionTool } from "./changeAttendanceDecision";
 export { confirmAttendanceTool } from "./confirmAttendance";
 export { confirmIdentityTool } from "./confirmIdentity";
 export { getAccommodationInfoTool } from "./getAccommodationInfo";
@@ -18,6 +20,7 @@ export { updateRsvpTool } from "./updateRsvp";
 export const executions = {};
 
 export const tools = {
+	changeAttendanceDecisionTool,
 	confirmAttendanceTool,
 	confirmIdentityTool,
 	getAccommodationInfoTool,

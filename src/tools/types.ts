@@ -150,12 +150,49 @@ export const GetAccommodationInfoOutputSchema = z.object({
 	type: z.literal("get-accommodation-info"),
 });
 
+export const ChangeAttendanceDecisionInputSchema = z.object({
+	newDecision: z.boolean(),
+});
+
+export const ChangeAttendanceDecisionOutputSuccessSchema = z.object({
+	message: z.string(),
+	stateUpdate: z.object({
+		conversationState: ConversationStateSchema,
+		rsvpComplete: z.boolean(),
+		rsvpData: z.object({
+			willAttend: z.boolean(),
+			attendCeremony: z.boolean().nullable(),
+			dietaryRestrictions: z.string().nullable(),
+			needsAccommodation: z.boolean().nullable(),
+			needsTransportAfter: z.boolean().nullable(),
+			transportDestination: z.string().nullable(),
+		}),
+	}),
+	success: z.literal(true),
+	type: z.literal("change-attendance-decision"),
+});
+
+export const ChangeAttendanceDecisionOutputFailureSchema = z.object({
+	error: z.string(),
+	success: z.literal(false),
+	type: z.literal("change-attendance-decision"),
+});
+
+export const ChangeAttendanceDecisionOutputSchema = z.discriminatedUnion(
+	"success",
+	[
+		ChangeAttendanceDecisionOutputSuccessSchema,
+		ChangeAttendanceDecisionOutputFailureSchema,
+	],
+);
+
 export const OutputsSchema = z.discriminatedUnion("type", [
 	ConfirmIdentityOutputSchema,
 	ConfirmAttendanceOutputSchema,
 	GetAccommodationInfoOutputSchema,
 	IdentificationContextOutputSchema,
 	UpdateRsvpOutputSchema,
+	ChangeAttendanceDecisionOutputSchema,
 ] as const);
 
 export type ConfirmIdentityInput = z.infer<typeof ConfirmIdentityInputSchema>;
@@ -183,6 +220,13 @@ export type GetAccommodationInfoInput = z.infer<
 >;
 export type GetAccommodationInfoOutput = z.infer<
 	typeof GetAccommodationInfoOutputSchema
+>;
+
+export type ChangeAttendanceDecisionInput = z.infer<
+	typeof ChangeAttendanceDecisionInputSchema
+>;
+export type ChangeAttendanceDecisionOutput = z.infer<
+	typeof ChangeAttendanceDecisionOutputSchema
 >;
 
 export type Outputs = z.infer<typeof OutputsSchema>;

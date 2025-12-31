@@ -21,6 +21,7 @@ import {
 } from "@/agents/wedding-assistent/utils";
 import { createDb, type Database } from "@/db";
 import {
+	changeAttendanceDecisionTool,
 	confirmAttendanceTool,
 	confirmIdentityTool,
 	executions,
@@ -121,6 +122,7 @@ export class Chat extends AIChatAgent<Env, WeddingAgentState> {
 				updateRsvp: updateRsvpTool,
 			}))
 			.with("information_provision", "chat_general", () => ({
+				changeAttendanceDecision: changeAttendanceDecisionTool,
 				getAccommodationInfo: getAccommodationInfoTool,
 			}))
 			.exhaustive();
@@ -198,6 +200,24 @@ export class Chat extends AIChatAgent<Env, WeddingAgentState> {
 											);
 										}
 									})
+									.with(
+										{ type: "change-attendance-decision" },
+										async (output) => {
+											if (output.success) {
+												this.setState({
+													...this.state,
+													...output.stateUpdate,
+												});
+
+												console.log(
+													"Attendance decision changed. State:",
+													output.stateUpdate.conversationState,
+													"Guest now attending:",
+													output.stateUpdate.rsvpData.willAttend,
+												);
+											}
+										},
+									)
 									.otherwise(async () => {});
 							}
 						}

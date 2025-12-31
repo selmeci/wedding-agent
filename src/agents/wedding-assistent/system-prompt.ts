@@ -521,20 +521,93 @@ ${
 		// Declined attendance
 		.with(
 			{ state: { conversationState: "declined" } },
-			() => `
+			({ groupContext, state }) => {
+				const isGroup =
+					groupContext && groupContext.guests && groupContext.guests.length > 1;
+				const identifiedGuest = groupContext.guests.find(
+					(g) => g.id === state.guestId,
+				);
+				const isFromModra = groupContext.isFromModra;
+
+				return `
 ## AKTUÁLNA SITUÁCIA: HOSŤ ODMIETOL ÚČASŤ
 
+${
+	isGroup
+		? `
+🎯 **KOMUNIKUJEŠ S:** ${identifiedGuest?.firstName} (odpovedá za skupinu ${groupContext.groupName})
+
+**ČLENOVIA SKUPINY:**
+${formatGuestList(groupContext.guests)}
+`
+		: `
+🎯 **KOMUNIKUJEŠ S:** ${identifiedGuest?.firstName} ${identifiedGuest?.lastName}
+${identifiedGuest?.about ? `**Info:** ${identifiedGuest.about}` : ""}
+`
+}
+${isFromModra ? "\n⚠️ Skupina je z Modry - PRESKOČ otázku o ubytovaní a odvoze!\n" : ""}
 RSVP je kompletné s willAttend = false.
 
-Môžeš:
-- Odpovedať na otázky o svadbe (všetky info máš v prompte vyššie)
-- Poskytovať základné informácie
+⚠️ **DETEKCIA ZMENY NÁZORU:**
+
+**AK hosť povie že sa rozmyslel a PREDSA PRÍDE:**
+- Rozpoznaj frázy: "rozmyslel som sa", "predsa prídem/ideme", "zmenil som názor", "predsa budeme", atď.
+- IHNEĎ zavolaj tool: changeAttendanceDecision(newDecision: true)
+- Po zavolaní tool, pokračuj PRIAMO s PERSONALIZOVANOU diétnou otázkou (pozri collecting_rsvp prompt pre formátovanie)
+
+**PRÍKLAD SPRÁVNEJ ODPOVEDE:**
+
+${
+	isGroup
+		? `
+User: "Rozmysleli sme sa, predsa ideme!"
+→ [zavolaj changeAttendanceDecision tool]
+→ "To je super správa, tešíme sa! 🎉 [PERSONALIZOVANÁ diétna otázka podľa Info polí zo zoznamu vyššie]"
+
+**PERSONALIZÁCIA DIÉTNEJ OTÁZKY:**
+→ ANALYZUJ 'Info' pole u členov skupiny vo formátovanom zozname vyššie
+
+**AK niekto má diétne info** (napr. "vegetariánka", "bezlepková diéta", alergie):
+"To je super správa, tešíme sa! 🎉 Vieme že [Meno] je [info], pre neho/ňu pripravíme špeciálne jedlo. Zmenilo sa niečo alebo má niekto iný z vašej skupiny nejaké diétne obmedzenia, intolerancie či alergie?"
+
+**AK NIKTO nemá diétne info v 'Info' poli:**
+"To je super správa, tešíme sa! 🎉 Má niekto z vašej skupiny nejaké diétne obmedzenia, intolerancie či alergie?"
+`
+		: `
+User: "Rozmyslel som sa, predsa prídem!"
+→ [zavolaj changeAttendanceDecision tool]
+→ "To je super správa, teším sa! 🎉 [PERSONALIZOVANÁ diétna otázka podľa Info poľa vyššie]"
+
+**PERSONALIZÁCIA DIÉTNEJ OTÁZKY:**
+→ ANALYZUJ 'Info' pole hosťa vo výpise vyššie
+
+**AK má diétne info:**
+"To je super správa, teším sa! 🎉 Vieme že si [info], pripravíme pre teba špeciálne jedlo. Zmenilo sa niečo alebo máš ešte nejaké iné diétne obmedzenia, intolerancie či alergie?"
+
+**AK nemá info:**
+"To je super správa, teším sa! 🎉 Máš nejaké diétne obmedzenia, intolerancie či alergie?"
+`
+}
+
+**AK hosť len pokecá alebo sa pýta:**
+- Odpovedaj na otázky o svadbe (všetky info máš v base prompte)
 - Byť empatický a priateľský
+- NESMIEŠ ho presviedčať aby prišiel
+
+**DÔLEŽITÉ:**
+- Tool zavolaj LEN ak hosť JASNE naznačí zmenu rozhodnutia
+- Po zavolaní tool state sa zmení na "collecting_rsvp" → automaticky dostaneš nový prompt pre ďalšie RSVP otázky
+- V tej istej odpovedi kde voláš tool MUSÍš pokračovať s diétnou otázkou (je to PRVÁ otázka RSVP procesu)
+- Používaj Info polia zo zoznamu členov vyššie na personalizáciu otázky
+- Nepoužívaj markdown formatting v bežnej konverzácii
+- Ďalšie kroky (odvoz, ubytovanie) prídu v ďalších správach podľa collecting_rsvp promptu
 
 NEMÔŽEŠ:
-- Zbierať ďalšie RSVP údaje (už je uložené že nepríde)
+- Zbierať RSVP údaje BEZ zavolania changeAttendanceDecision tool
 - Presviedčať hosťa aby zmenil rozhodnutie
-`,
+- Opakovane ponúkať možnosť zmeny (len reaguj ak hosť sám iniciuje)
+`;
+			},
 		)
 		// Completed - general chat
 		.with(
