@@ -222,6 +222,57 @@ app.all("/agents/report/:qrToken", async (c) => {
 	return response || c.notFound();
 });
 
+// Report Agent - Get messages endpoint
+app.get("/agents/report/:qrToken/get-messages", async (c) => {
+	const qrToken = c.req.param("qrToken");
+	const expectedToken = c.env.SECRET_REPORT_TOKEN;
+
+	console.log("Received get-messages request for report agent");
+
+	// Validate qrToken against expected report token
+	if (!qrToken || qrToken !== expectedToken) {
+		console.log("Unauthorized report agent get-messages access attempt");
+		return c.json({ error: "Unauthorized" }, 401);
+	}
+
+	// Get ReportAgent DO instance
+	const agent = await getAgentByName<Env, ReportAgent>(
+		c.env.ReportAgent as unknown as DurableObjectNamespace<ReportAgent>,
+		qrToken,
+	);
+
+	const response = await agent.fetch(c.req.raw);
+	return response || c.notFound();
+});
+
+// Report Agent - Reset endpoint
+app.get("/agents/report/:qrToken/reset", async (c) => {
+	const qrToken = c.req.param("qrToken");
+	const expectedToken = c.env.SECRET_REPORT_TOKEN;
+
+	console.log("Received reset request for report agent");
+
+	// Validate qrToken against expected report token
+	if (!qrToken || qrToken !== expectedToken) {
+		console.log("Unauthorized report agent reset access attempt");
+		return c.json({ error: "Unauthorized" }, 401);
+	}
+
+	// Get ReportAgent DO instance
+	const agent = await getAgentByName<Env, ReportAgent>(
+		c.env.ReportAgent as unknown as DurableObjectNamespace<ReportAgent>,
+		qrToken,
+	);
+
+	// ReportAgent doesn't have resetState method, so we'll use clearHistory via fetch
+	const resetRequest = new Request(`${c.req.url}/clear-history`, {
+		method: "POST",
+	});
+	await agent.fetch(resetRequest);
+
+	return c.json({ message: "Report agent history cleared successfully" }, 200);
+});
+
 // Photo upload API
 // POST /api/photos - Upload photo
 app.post("/api/photos", async (c) => {
