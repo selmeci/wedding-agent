@@ -39,16 +39,22 @@ export const confirmAttendanceTool = tool<
     - Call with willAttend: false
     - This creates complete RSVP and ends the flow
 
+  For single-guest groups: Pass guestId directly (no prior confirmIdentity needed).
+  For multi-guest groups: guestId comes from agent state (set by confirmIdentity).
+
   Do NOT ask additional questions before calling this tool!`,
 
-	execute: async ({ willAttend }) => {
-		console.log("Confirming attendance...", { willAttend });
+	execute: async ({ willAttend, guestId: inputGuestId }) => {
+		console.log("Confirming attendance...", { inputGuestId, willAttend });
 
 		const { agent } = getCurrentAgent<Chat>();
 		if (!agent) throw new Error("No agent found");
 
 		const db = agent.getDatabase();
-		const { groupId, guestId } = agent.state;
+		const { groupId, guestId: stateGuestId } = agent.state;
+
+		// Use provided guestId or fall back to state (for single-guest flow)
+		const guestId = inputGuestId || stateGuestId;
 
 		if (!groupId || !guestId) {
 			console.log("Guest must be identified before confirming attendance");
@@ -57,6 +63,14 @@ export const confirmAttendanceTool = tool<
 				success: false,
 				type: "confirm-attendance",
 			};
+		}
+
+		// Update agent state with guestId if it was passed directly (single-guest flow)
+		if (inputGuestId && !stateGuestId) {
+			agent.setState({
+				...agent.state,
+				guestId: inputGuestId,
+			});
 		}
 
 		const responseData: NewGuestGroupResponse = {
@@ -96,12 +110,12 @@ export const confirmAttendanceTool = tool<
 			stateUpdate: {
 				conversationState: nextState,
 				rsvpData: {
-					willAttend,
 					attendCeremony: willAttend ? true : null,
 					dietaryRestrictions: null,
 					needsAccommodation: null,
 					needsTransportAfter: null,
 					transportDestination: null,
+					willAttend,
 				},
 			},
 			success: true,

@@ -365,15 +365,16 @@ ${WEDDING_DATA}
 				const isSingleGuest = groupContext.guests.length === 1;
 
 				// ============================================================
-				// SINGLE GUEST - Auto-identification
+				// SINGLE GUEST - Skip identification, go straight to attendance
 				// ============================================================
 				if (isSingleGuest) {
 					const guest = groupContext.guests[0];
 
 					return `
-## CURRENT STATE: SINGLE GUEST AUTO-IDENTIFICATION
+## CURRENT STATE: SINGLE GUEST - DIRECT ATTENDANCE CONFIRMATION
 
-Group "${groupContext.groupName}" has only ONE member - automatic identification.
+Group "${groupContext.groupName}" has only ONE member - we already know who it is.
+No need to ask for identification - call confirmAttendance directly!
 ${groupContext.isFromModra ? "⚠️ Guest is from Modra - skip transport/accommodation questions later.\n" : ""}
 
 **GUEST DATA:**
@@ -388,26 +389,22 @@ Now waiting for their yes/no response.
 
 **WHEN GUEST RESPONDS:**
 
-**Step 1: ALWAYS call confirmIdentity first (auto-identify)**
-→ guestId: "${guest.id}"
-→ confidence: "high"
-→ reasoning: "Single member group - auto-identification"
+Analyze their response and call confirmAttendance directly:
 
-**Step 2: Analyze response and call confirmAttendance**
+**IF CONFIRMS (áno, prídem, budem, idem, jasné, určite, etc.):**
+→ Call: confirmAttendance(willAttend: true, guestId: "${guest.id}")
+→ Response: "Super, teším sa na teba! 🎉" + dietary question below
 
-IF CONFIRMS (áno, prídem, budem, idem, etc.):
-  → Call: confirmAttendance(willAttend=true)
-  → Response: "To je super, teším sa! 🎉" + dietary question below
-
-IF DECLINES (nie, nemôžem, bohužiaľ, etc.):
-  → Call: confirmAttendance(willAttend=false)
-  → Response: "Ďakujem za odpoveď. Budeš nám chýbať! 💕 Ak by sa niečo zmenilo, môžeš mi napísať."
+**IF DECLINES (nie, nemôžem, bohužiaľ, žiaľ, etc.):**
+→ Call: confirmAttendance(willAttend: false, guestId: "${guest.id}")
+→ Response: "Ďakujem za odpoveď. Budeš nám chýbať! 💕 Ak by sa niečo zmenilo, môžeš mi napísať."
 
 ${buildDietaryQuestionLogic(false, groupContext.guests, guest)}
 
 ## CONSTRAINTS
-- Call BOTH tools in single response (confirmIdentity + confirmAttendance)
-- Single member = auto-identify, never ask "who are you"
+- Single guest = NO identification needed, skip confirmIdentity
+- Call confirmAttendance directly with the guest's response
+- Include guestId in the confirmAttendance call
 - NO markdown formatting in response
 `;
 				}
@@ -633,53 +630,55 @@ ${identifiedGuest?.about ? `**Info:** ${identifiedGuest.about}` : ""}`
 
 ⚠️ Transport is NOT confirmed, NOT arranged, we are ONLY collecting interest
 ⚠️ We make NO promises - if enough people interested, we MIGHT try to arrange it
-⚠️ FORBIDDEN phrases:
-  - "vieme zorganizovať" ❌
-  - "máme autobus" ❌
-  - "zabezpečíme" ❌
-  - Any implication that transport is available ❌
+
+## ❌ FORBIDDEN PHRASES - NEVER SAY:
+- "Organizujeme dopravu/odvoz" ❌
+- "Organizujeme spoločnú dopravu" ❌
+- "vieme zorganizovať" ❌
+- "máme autobus" ❌
+- "zabezpečíme odvoz" ❌
+- "okolo polnoci" (čas nie je stanovený) ❌
+- Any implication that transport IS happening ❌
+- Any definite language about transport ❌
+
+## ✅ CORRECT PHRASING - USE CONDITIONAL LANGUAGE:
+- "Zisťujeme záujem..." (we are gauging interest)
+- "Ak bude dosť záujemcov, pokúsime sa..." (if enough interest, we'll try)
+- "Zbierame predbežný záujem..." (collecting preliminary interest)
+- "Zatiaľ nič nesľubujeme..." (no promises yet)
+- "Možno by sme vedeli..." (maybe we could)
 
 ## YOUR TASK
 
-Ask about transport interest. Use ONLY these types of phrasings:
+Ask about transport interest. Use EXACTLY this type of conditional phrasing:
 - "Zisťujeme záujem o spoločný odvoz do ${cityToUse} po oslave. Ak bude dosť záujemcov, pokúsime sa niečo zorganizovať. ${isGroup ? "Mali by ste" : "Mal/a by si"} záujem?"
 - "Zbierame predbežný záujem o odvoz späť do ${cityToUse}. Zatiaľ nič nesľubujeme, ale chceme vedieť počet záujemcov. ${isGroup ? "Počítate" : "Počítaš"} s tým?"
+
+DO NOT modify this phrasing. DO NOT add "organizujeme". DO NOT imply transport exists.
 
 ## WHEN GUEST ANSWERS
 
 **IF YES (chcem odvoz, áno, mám záujem):**
-→ Call BOTH tools in same response:
-  1. saveTransport(needsTransportAfter: true, transportDestination: "${cityToUse}")
-  2. updateRsvp with all collected data
-→ Show final RSVP summary (use template below)
+→ Call saveTransport(needsTransportAfter: true, transportDestination: "${cityToUse}")
+→ Response: "Super, poznačím si záujem! Mám všetky potrebné informácie. Môžem ti uložiť RSVP?"
+→ This question triggers next turn where updateRsvp will be called
 
 **IF NO (nie, nemám záujem, idem vlastným):**
 → Call saveTransport(needsTransportAfter: false, transportDestination: null)
 → Response: "Dobre! ${isGroup ? "Plánujete" : "Plánuješ"} ostať cez noc v Modre? Môžem pomôcť s tipmi na ubytovanie."
 → Tool will advance to accommodation tips step
 
-## WHEN GUEST CONFIRMS RSVP (áno, môžeš, zhrň to, etc.)
-
-→ IMMEDIATELY call updateRsvp tool with all collected data
-→ Show final RSVP summary using the template below
-
-## RSVP DATA TO USE (for updateRsvp call)
-
-- willAttend: true
-- attendCeremony: true
-- dietaryRestrictions: [from state/conversation]
-- needsTransportAfter: [from saveTransport call or state]
-- transportDestination: "${cityToUse}" if needsTransportAfter, else null
-
-${buildFinalSummaryTemplate(isGroup)}
+## IMPORTANT: ONE TOOL PER RESPONSE
+⚠️ NEVER call multiple tools in one response - this causes API errors
+⚠️ After saveTransport with YES, ASK a question to trigger next turn for updateRsvp
 
 ## CONSTRAINTS
 
 ✅ Call saveTransport after guest answers about transport
-✅ If guest wants transport → call updateRsvp in SAME response
 ✅ Use "ty" form (never "vy")
+✅ Call only ONE tool per response
 
-❌ Do NOT ask "Môžem zhrnúť?" after YES on transport - just finalize immediately
+❌ NEVER call multiple tools in same response
 ❌ NEVER mention email - we do NOT send emails to guests
 `;
 			},
@@ -726,17 +725,18 @@ Ask: "${isGroup ? "Plánujete" : "Plánuješ"} ostať cez noc v Modre? Môžem p
 ## WHEN GUEST ANSWERS ABOUT ACCOMMODATION
 
 **IF YES (áno, chcem tipy, potrebujem ubytovanie):**
-1. Call getAccommodationInfo tool
+1. Call getAccommodationInfo tool (ONE tool only)
 2. Show formatted accommodation list (use markdown)
-3. Then IMMEDIATELY call updateRsvp tool and show final RSVP summary
+3. End with question: "Mám všetky potrebné informácie. Môžem ti uložiť RSVP?"
+→ This question triggers next turn where updateRsvp will be called
 
 **IF NO (nie, nepotrebujem, mám vyriešené):**
-→ IMMEDIATELY call updateRsvp tool and show final RSVP summary
+→ Call updateRsvp tool (ONE tool only)
+→ Show final RSVP summary
 
-## WHEN GUEST CONFIRMS RSVP (áno, môžeš, áno zhrň to, etc.)
-
-→ IMMEDIATELY call updateRsvp tool with all collected data
-→ Show final RSVP summary using the template below
+## IMPORTANT: ONE TOOL PER RESPONSE
+⚠️ NEVER call multiple tools in one response - this causes API errors
+⚠️ After showing accommodation tips, ASK a question to trigger next turn for updateRsvp
 
 ## ACCOMMODATION FORMATTING (if getAccommodationInfo used)
 
@@ -772,10 +772,10 @@ ${buildFinalSummaryTemplate(isGroup)}
 
 ✅ Use "ty" form (never "vy")
 ✅ USE markdown for accommodation list
-✅ Call updateRsvp IMMEDIATELY when guest confirms (or after showing tips)
+✅ Call only ONE tool per response
 ✅ Show the final RSVP summary template after calling updateRsvp
 
-❌ Do NOT ask "Môžem zhrnúť?" - just do it
+❌ NEVER call multiple tools in same response
 ❌ Do NOT save any accommodation data (only informational)
 ❌ NEVER mention email - we do NOT send emails to guests
 `;

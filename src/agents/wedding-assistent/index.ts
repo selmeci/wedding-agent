@@ -134,6 +134,7 @@ export class Chat extends AIChatAgent<Env, WeddingAgentState> {
 		const tools = match(this.state.conversationState)
 			// Identification states
 			.with("group_welcome", "identifying_individual", () => ({
+				confirmAttendance: confirmAttendanceTool, // For single-guest auto-ID flow
 				confirmIdentity: confirmIdentityTool,
 			}))
 			// Attendance confirmation

@@ -57,6 +57,7 @@ export const IdentificationContextOutputSchema = z.object({
 });
 
 export const ConfirmAttendanceInputSchema = z.object({
+	guestId: z.string().optional(), // Optional: for single-guest flow where we skip confirmIdentity
 	willAttend: z.boolean(),
 });
 
@@ -66,12 +67,12 @@ export const ConfirmAttendanceOutputSuccessSchema = z.object({
 		conversationState: ConversationStateSchema,
 		rsvpData: z
 			.object({
-				willAttend: z.boolean(),
 				attendCeremony: z.boolean().nullable(),
 				dietaryRestrictions: z.string().nullable(),
 				needsAccommodation: z.boolean().nullable(),
 				needsTransportAfter: z.boolean().nullable(),
 				transportDestination: z.string().nullable(),
+				willAttend: z.boolean(),
 			})
 			.optional(),
 	}),
@@ -105,12 +106,12 @@ export const UpdateRsvpOutputSuccessSchema = z.object({
 		conversationState: ConversationStateSchema,
 		rsvpComplete: z.boolean(),
 		rsvpData: z.object({
-			willAttend: z.boolean(),
 			attendCeremony: z.boolean().nullable(),
 			dietaryRestrictions: z.string().nullable(),
 			needsAccommodation: z.boolean().nullable(),
 			needsTransportAfter: z.boolean().nullable(),
 			transportDestination: z.string().nullable(),
+			willAttend: z.boolean(),
 		}),
 	}),
 	success: z.literal(true),
@@ -160,12 +161,12 @@ export const ChangeAttendanceDecisionOutputSuccessSchema = z.object({
 		conversationState: ConversationStateSchema,
 		rsvpComplete: z.boolean(),
 		rsvpData: z.object({
-			willAttend: z.boolean(),
 			attendCeremony: z.boolean().nullable(),
 			dietaryRestrictions: z.string().nullable(),
 			needsAccommodation: z.boolean().nullable(),
 			needsTransportAfter: z.boolean().nullable(),
 			transportDestination: z.string().nullable(),
+			willAttend: z.boolean(),
 		}),
 	}),
 	success: z.literal(true),
