@@ -1,9 +1,9 @@
 export function GroomWithStop({ className = "" }: { className?: string }) {
 	return (
 		<svg
-			width="64"
-			height="64"
-			viewBox="0 0 64 64"
+			width="128"
+			height="128"
+			viewBox="0 0 128 128"
 			fill="none"
 			xmlns="http://www.w3.org/2000/svg"
 			className={`pixel-art ${className}`}
@@ -11,97 +11,161 @@ export function GroomWithStop({ className = "" }: { className?: string }) {
 			aria-label="Ženích so STOP značkou"
 		>
 			{/* === GROOM (left side) === */}
-			{/* Hair */}
-			<rect x="8" y="12" width="12" height="2" fill="#2C1810" />
-			<rect x="6" y="14" width="16" height="4" fill="#2C1810" />
+			{/* Hair (scaled 2x + enhanced) */}
+			<rect x="16" y="24" width="24" height="4" fill="#2C1810" />
+			<rect x="12" y="28" width="32" height="8" fill="#2C1810" />
 
-			{/* Face */}
-			<rect x="8" y="18" width="12" height="8" fill="#FFD4A3" />
+			{/* NEW: Hair texture */}
+			<rect x="18" y="26" width="8" height="4" fill="#4A2C20" />
+			<rect x="30" y="28" width="6" height="4" fill="#3D241A" />
+			<rect x="14" y="30" width="4" height="4" fill="#1F1510" />
 
-			{/* Eyes */}
-			<rect x="10" y="20" width="2" height="2" fill="#111827" />
-			<rect x="16" y="20" width="2" height="2" fill="#111827" />
+			{/* Face (scaled 2x) */}
+			<rect x="16" y="36" width="24" height="16" fill="#FFD4A3" />
 
-			{/* Smile */}
-			<rect x="12" y="24" width="4" height="1" fill="#111827" />
+			{/* NEW: Face shading */}
+			<rect x="16" y="36" width="2" height="14" fill="#E8C090" opacity="0.5" />
+			<rect x="38" y="36" width="2" height="14" fill="#E8C090" opacity="0.5" />
 
-			{/* Neck */}
-			<rect x="12" y="26" width="4" height="2" fill="#FFD4A3" />
+			{/* Eyes (scaled 2x + enhanced) */}
+			<rect x="20" y="40" width="4" height="4" fill="#111827" />
+			<rect x="32" y="40" width="4" height="4" fill="#111827" />
 
-			{/* Bow tie */}
-			<rect x="11" y="28" width="2" height="2" fill="#111827" />
-			<rect x="15" y="28" width="2" height="2" fill="#111827" />
-			<rect x="13" y="28" width="2" height="2" fill="#FFFFFF" />
+			{/* NEW: Eye highlights */}
+			<rect x="21" y="41" width="2" height="2" fill="#FFFFFF" opacity="0.7" />
+			<rect x="33" y="41" width="2" height="2" fill="#FFFFFF" opacity="0.7" />
 
-			{/* Suit jacket */}
-			<rect x="8" y="30" width="12" height="6" fill="#1F2937" />
-			<rect x="6" y="32" width="16" height="4" fill="#1F2937" />
+			{/* NEW: Eyebrows */}
+			<rect x="19" y="38" width="6" height="2" fill="#2C1810" />
+			<rect x="31" y="38" width="6" height="2" fill="#2C1810" />
 
-			{/* Shirt (white center) */}
-			<rect x="12" y="30" width="4" height="4" fill="#FFFFFF" />
+			{/* Smile (scaled 2x + enhanced) */}
+			<rect x="24" y="48" width="8" height="2" fill="#111827" />
 
-			{/* Buttons */}
-			<rect x="13" y="31" width="2" height="1" fill="#D1D5DB" />
-			<rect x="13" y="33" width="2" height="1" fill="#D1D5DB" />
+			{/* NEW: Smile corners */}
+			<rect x="22" y="46" width="2" height="2" fill="#D97706" opacity="0.4" />
+			<rect x="32" y="46" width="2" height="2" fill="#D97706" opacity="0.4" />
 
-			{/* Left arm */}
-			<rect x="6" y="30" width="2" height="4" fill="#1F2937" />
-			<rect x="4" y="34" width="2" height="2" fill="#FFD4A3" />
+			{/* Ear */}
+			<rect x="12" y="40" width="4" height="8" fill="#FFD4A3" />
+			<rect x="13" y="42" width="2" height="4" fill="#E8C090" />
 
-			{/* Right arm - extended toward STOP sign */}
-			<rect x="20" y="30" width="2" height="4" fill="#1F2937" />
-			<rect x="22" y="32" width="8" height="2" fill="#FFD4A3" />
+			{/* Neck (scaled 2x) */}
+			<rect x="24" y="52" width="8" height="4" fill="#FFD4A3" />
 
-			{/* === STOP SIGN (right side) === */}
+			{/* Bow tie (scaled 2x + enhanced) */}
+			<rect x="22" y="56" width="4" height="4" fill="#111827" />
+			<rect x="30" y="56" width="4" height="4" fill="#111827" />
+			<rect x="26" y="56" width="4" height="4" fill="#FFFFFF" />
+
+			{/* NEW: Bow tie center detail */}
+			<rect x="27" y="57" width="2" height="2" fill="#F3F4F6" />
+			<rect x="24" y="58" width="2" height="2" fill="#1F2937" />
+			<rect x="30" y="58" width="2" height="2" fill="#1F2937" />
+
+			{/* Suit jacket (scaled 2x) */}
+			<rect x="16" y="60" width="24" height="12" fill="#1F2937" />
+			<rect x="12" y="64" width="32" height="8" fill="#1F2937" />
+
+			{/* NEW: Jacket lapel details */}
+			<rect x="18" y="60" width="2" height="10" fill="#111827" opacity="0.5" />
+			<rect x="36" y="60" width="2" height="10" fill="#111827" opacity="0.5" />
+
+			{/* Shirt (white center) (scaled 2x) */}
+			<rect x="24" y="60" width="8" height="8" fill="#FFFFFF" />
+
+			{/* NEW: Shirt texture */}
+			<rect x="26" y="62" width="4" height="4" fill="#F9FAFB" />
+
+			{/* Buttons (scaled 2x + enhanced) */}
+			<rect x="26" y="62" width="4" height="2" fill="#D1D5DB" />
+			<rect x="26" y="66" width="4" height="2" fill="#D1D5DB" />
+
+			{/* NEW: Button shine */}
+			<rect x="27" y="63" width="2" height="1" fill="#E5E7EB" />
+
+			{/* Left arm (scaled 2x) */}
+			<rect x="12" y="60" width="4" height="8" fill="#1F2937" />
+			<rect x="8" y="68" width="4" height="4" fill="#FFD4A3" />
+
+			{/* NEW: Left arm sleeve detail */}
+			<rect x="12" y="66" width="4" height="2" fill="#FFFFFF" opacity="0.6" />
+			<rect x="9" y="70" width="2" height="2" fill="#E8C090" />
+
+			{/* Right arm - extended toward STOP sign (scaled 2x) */}
+			<rect x="40" y="60" width="4" height="8" fill="#1F2937" />
+			<rect x="44" y="64" width="16" height="4" fill="#FFD4A3" />
+
+			{/* NEW: Right arm details */}
+			<rect x="40" y="66" width="4" height="2" fill="#FFFFFF" opacity="0.6" />
+			<rect x="46" y="66" width="4" height="2" fill="#E8C090" opacity="0.4" />
+			<rect x="56" y="65" width="4" height="2" fill="#FFE8C9" />
+
+			{/* === STOP SIGN (right side) === (scaled 2x + enhanced) */}
 			{/* Red octagon background */}
 			<polygon
-				points="44,18 50,16 56,18 58,24 56,30 50,32 44,30 42,24"
+				points="88,36 100,32 112,36 116,48 112,60 100,64 88,60 84,48"
 				fill="#DC2626"
 			/>
 
 			{/* Darker red outline */}
 			<polygon
-				points="44,18 50,16 56,18 58,24 56,30 50,32 44,30 42,24"
+				points="88,36 100,32 112,36 116,48 112,60 100,64 88,60 84,48"
 				fill="none"
 				stroke="#991B1B"
-				strokeWidth="1"
+				strokeWidth="2"
 			/>
 
 			{/* White border inside */}
 			<polygon
-				points="44.5,19 50,17 55.5,19 57,24 55.5,29 50,31 44.5,29 43,24"
+				points="89,38 100,34 111,38 114,48 111,58 100,62 89,58 86,48"
 				fill="none"
 				stroke="#FFFFFF"
-				strokeWidth="0.5"
+				strokeWidth="1"
 			/>
 
-			{/* "STOP" text in pixel art style */}
+			{/* NEW: Sign shine effect */}
+			<rect x="90" y="38" width="8" height="4" fill="#EF4444" opacity="0.5" />
+
+			{/* "STOP" text in pixel art style (scaled 2x + enhanced) */}
 			{/* Letter S */}
-			<rect x="45" y="21" width="3" height="1" fill="#FFFFFF" />
-			<rect x="45" y="22" width="1" height="1" fill="#FFFFFF" />
-			<rect x="45" y="23" width="3" height="1" fill="#FFFFFF" />
-			<rect x="47" y="24" width="1" height="1" fill="#FFFFFF" />
-			<rect x="45" y="25" width="3" height="1" fill="#FFFFFF" />
+			<rect x="90" y="42" width="6" height="2" fill="#FFFFFF" />
+			<rect x="90" y="44" width="2" height="2" fill="#FFFFFF" />
+			<rect x="90" y="46" width="6" height="2" fill="#FFFFFF" />
+			<rect x="94" y="48" width="2" height="2" fill="#FFFFFF" />
+			<rect x="90" y="50" width="6" height="2" fill="#FFFFFF" />
 
 			{/* Letter T */}
-			<rect x="49" y="21" width="3" height="1" fill="#FFFFFF" />
-			<rect x="50" y="22" width="1" height="4" fill="#FFFFFF" />
+			<rect x="98" y="42" width="6" height="2" fill="#FFFFFF" />
+			<rect x="100" y="44" width="2" height="8" fill="#FFFFFF" />
 
 			{/* Letter O */}
-			<rect x="45" y="27" width="3" height="1" fill="#FFFFFF" />
-			<rect x="45" y="28" width="1" height="3" fill="#FFFFFF" />
-			<rect x="47" y="28" width="1" height="3" fill="#FFFFFF" />
-			<rect x="45" y="30" width="3" height="1" fill="#FFFFFF" />
+			<rect x="90" y="54" width="6" height="2" fill="#FFFFFF" />
+			<rect x="90" y="56" width="2" height="6" fill="#FFFFFF" />
+			<rect x="94" y="56" width="2" height="6" fill="#FFFFFF" />
+			<rect x="90" y="60" width="6" height="2" fill="#FFFFFF" />
 
 			{/* Letter P */}
-			<rect x="49" y="27" width="1" height="4" fill="#FFFFFF" />
-			<rect x="50" y="27" width="2" height="1" fill="#FFFFFF" />
-			<rect x="51" y="28" width="1" height="1" fill="#FFFFFF" />
-			<rect x="50" y="29" width="2" height="1" fill="#FFFFFF" />
+			<rect x="98" y="54" width="2" height="8" fill="#FFFFFF" />
+			<rect x="100" y="54" width="4" height="2" fill="#FFFFFF" />
+			<rect x="102" y="56" width="2" height="2" fill="#FFFFFF" />
+			<rect x="100" y="58" width="4" height="2" fill="#FFFFFF" />
 
-			{/* Sign post */}
-			<rect x="48" y="32" width="4" height="12" fill="#6B7280" />
-			<rect x="46" y="44" width="8" height="2" fill="#4B5563" />
+			{/* Sign post (scaled 2x + enhanced) */}
+			<rect x="96" y="64" width="8" height="24" fill="#6B7280" />
+			<rect x="92" y="88" width="16" height="4" fill="#4B5563" />
+
+			{/* NEW: Post shine and detail */}
+			<rect x="98" y="66" width="2" height="20" fill="#9CA3AF" opacity="0.4" />
+			<rect x="96" y="72" width="8" height="2" fill="#4B5563" opacity="0.3" />
+
+			{/* NEW: Ground shadow */}
+			<rect x="90" y="92" width="20" height="2" fill="#374151" opacity="0.3" />
+
+			{/* NEW: Boutonnière on lapel */}
+			<rect x="18" y="64" width="4" height="4" fill="#F472B6" />
+			<rect x="19" y="65" width="2" height="2" fill="#FBCFE8" />
+			<rect x="19" y="68" width="2" height="3" fill="#22C55E" />
 		</svg>
 	);
 }
