@@ -4,6 +4,29 @@
  *
  * Each group will receive ONE QR code for all members
  * The QR code should link to: https://yourdomain.com/?token={qrToken}
+ *
+ * ## NORMALIZED 'about' FIELD FORMAT
+ *
+ * The 'about' field uses a structured format for reliable parsing:
+ *
+ * ```
+ * [free text description]. Mesto: [city name]. Diéta: [dietary restriction].
+ * ```
+ *
+ * - **Mesto:** (optional) City name in nominative case (1. pád)
+ *   - Used for transport eligibility check
+ *   - Allowed cities: Bratislava, Pezinok, Senec, Nová Dedinka, Svätý Jur, Vinosady
+ *   - Cities NOT in allowed list won't be offered transport
+ *
+ * - **Diéta:** (optional) Dietary restrictions
+ *   - Examples: vegetarián, vegán, bezlepkové, bezlaktózové, alergia na orechy
+ *   - AI will personalize dietary question based on this info
+ *
+ * Examples:
+ * - "Mama ženícha. Mesto: Nová Dedinka."
+ * - "Kamarátka. Mesto: Bratislava. Diéta: vegetarián."
+ * - "Sestra nevesty. Diéta: bezlepkové, bezlaktózové."
+ * - "Priateľ zo školy." (no city = no transport offer, no dietary = generic question)
  */
 import type { NewGuest, NewGuestGroup } from "@/db";
 
@@ -22,7 +45,7 @@ export const guestGroupSeedData: GuestGroupSeed[] = [
 		},
 		guests: [
 			{
-				about: "Otec rodiny. Nemá rád chees cake. Je z Novej Dedinky",
+				about: "Otec rodiny, nemá rád cheesecake. Mesto: Nová Dedinka.",
 				email: "",
 				firstName: "Marek",
 				lastName: "Šelméci",
@@ -31,7 +54,7 @@ export const guestGroupSeedData: GuestGroupSeed[] = [
 			},
 			{
 				about:
-					"Mama rodiny. Preferuje zdravšie ale chutné jedlo. Je z Novej Dedinky",
+					"Mama rodiny, preferuje zdravšie ale chutné jedlo. Mesto: Nová Dedinka.",
 				email: "",
 				firstName: "Katka",
 				lastName: "Šelméciová",
@@ -39,7 +62,7 @@ export const guestGroupSeedData: GuestGroupSeed[] = [
 				relationship: "žena brata ženícha",
 			},
 			{
-				about: "Syn, 14 rokov. Objavuje nové chute. Je z Novej Dedinky",
+				about: "Syn, 14 rokov, objavuje nové chute. Mesto: Nová Dedinka.",
 				email: "",
 				firstName: "Marko",
 				lastName: "Šelméci",
@@ -57,7 +80,7 @@ export const guestGroupSeedData: GuestGroupSeed[] = [
 		guests: [
 			{
 				about:
-					"Mama ženícha. Má rada klasické slovenské jedlá. Je z Novej Dedinky",
+					"Mama ženícha, má rada klasické slovenské jedlá. Mesto: Nová Dedinka.",
 				email: "",
 				firstName: "Mamka",
 				lastName: "Šelmeciova",
@@ -75,7 +98,7 @@ export const guestGroupSeedData: GuestGroupSeed[] = [
 		guests: [
 			{
 				about:
-					"Krstný. Má zaujímave pohľady na svet a užíva si dôchodok. Je z Hamuliakova",
+					"Krstný, má zaujímavé pohľady na svet a užíva si dôchodok. Mesto: Kalinkovo.",
 				email: "",
 				firstName: "Krstný Roman",
 				lastName: "Jablonický",
@@ -83,7 +106,7 @@ export const guestGroupSeedData: GuestGroupSeed[] = [
 				relationship: "krstný ženicha",
 			},
 			{
-				about: "Alenka. Je z Hamuliakova.",
+				about: "Alenka. Mesto: Kalinkovo.",
 				email: "",
 				firstName: "Alenka",
 				lastName: "Kováčová",
@@ -100,7 +123,8 @@ export const guestGroupSeedData: GuestGroupSeed[] = [
 		},
 		guests: [
 			{
-				about: "Kamarát z posilovne. Má rad steak a cvičenie. Je z Bratislavy.",
+				about:
+					"Kamarát z posilňovne, má rád steak a cvičenie. Mesto: Bratislava.",
 				email: "",
 				firstName: "Braňo",
 				lastName: "Lanči",
@@ -108,7 +132,7 @@ export const guestGroupSeedData: GuestGroupSeed[] = [
 				relationship: "kamarát ženícha",
 			},
 			{
-				about: "Kika. Je z Bratislavy.",
+				about: "Kika. Mesto: Bratislava.",
 				email: "",
 				firstName: "Kika",
 				lastName: "",
@@ -126,7 +150,7 @@ export const guestGroupSeedData: GuestGroupSeed[] = [
 		guests: [
 			{
 				about:
-					"Kamarát z vysokej školy. Momentálne na diete, ale inak si rád pochutná na nezdravom. Je z Bratislavy.",
+					"Kamarát z vysokej školy, momentálne na diéte ale inak si rád pochutná na nezdravom. Mesto: Bratislava.",
 				email: "",
 				firstName: "Tomáš",
 				lastName: "Kučečka",
@@ -134,7 +158,7 @@ export const guestGroupSeedData: GuestGroupSeed[] = [
 				relationship: "kamarát ženicha",
 			},
 			{
-				about: "Žena Tomáša. Má rada zdravé jedlo. Je z Bratislavy.",
+				about: "Žena Tomáša, má rada zdravé jedlo. Mesto: Bratislava.",
 				email: "",
 				firstName: "Peťa",
 				lastName: "Kučečková",
@@ -152,27 +176,28 @@ export const guestGroupSeedData: GuestGroupSeed[] = [
 		},
 		guests: [
 			{
-				about: "Mama. Je z mesta Modra.",
+				about: "Mama nevesty. Mesto: Modra.",
 				email: "",
-				firstName: "Mama",
-				lastName: "",
-				phone: "",
-				relationship: "rodina nevesty",
-			},
-			{
-				about: "Otec – bezmliečne. Je z mesta Modra.",
-				email: "",
-				firstName: "Otec",
-				lastName: "",
+				firstName: "Mamina",
+				lastName: "Hrdličková",
 				phone: "",
 				relationship: "rodina nevesty",
 			},
 			{
 				about:
-					"Ľubka – bezpleková, bezmliečna, špeciálne menu (kuracie na prírodno, ryža/zemiaky, šalát). Je z mesta Modra.",
+					"Otec nevesty. Zbožnuje klobásky. Mesto: Modra. Diéta: bezlaktózové, bezmliečne.",
+				email: "",
+				firstName: "Otec",
+				lastName: "Hrdlička",
+				phone: "",
+				relationship: "rodina nevesty",
+			},
+			{
+				about:
+					"Sestra nevesty. Mesto: Modra. Diéta: bezlepkové, bezlaktózové, bezmliečne, špeciálne menu (kuracie na prírodno, ryža/zemiaky, šalát).",
 				email: "",
 				firstName: "Ľubka",
-				lastName: "",
+				lastName: "Hrdličková",
 				phone: "",
 				relationship: "rodina nevesty",
 			},
@@ -180,20 +205,21 @@ export const guestGroupSeedData: GuestGroupSeed[] = [
 	},
 	{
 		group: {
-			name: "Ujo Peťo a teta Miladka",
+			isFromModra: false,
+			name: "Ujo Peťko a teta Miladka",
 			qrToken: "6",
 		},
 		guests: [
 			{
-				about: "Ujo Peťo. Z Častej, treba sa pýtať na dopravu.",
+				about: "Ujo Peťko. Mesto: Častá.",
 				email: "",
-				firstName: "Ujo Peťo",
+				firstName: "Ujo Peťko",
 				lastName: "",
 				phone: "",
 				relationship: "rodina nevesty",
 			},
 			{
-				about: "Teta Miladka. Z Častej, treba sa pýtať na dopravu.",
+				about: "Teta Miladka. Mesto: Častá.",
 				email: "",
 				firstName: "Teta Miladka",
 				lastName: "",
@@ -204,12 +230,13 @@ export const guestGroupSeedData: GuestGroupSeed[] = [
 	},
 	{
 		group: {
+			isFromModra: false,
 			name: "Teta Anka a ujo Pišta",
 			qrToken: "16",
 		},
 		guests: [
 			{
-				about: "Teta Anka. Z Pezinka, treba sa spýtať na dopravu.",
+				about: "Teta Anka. Mesto: Pezinok.",
 				email: "",
 				firstName: "Teta Anka",
 				lastName: "",
@@ -217,7 +244,7 @@ export const guestGroupSeedData: GuestGroupSeed[] = [
 				relationship: "rodina nevesty",
 			},
 			{
-				about: "Ujo Pišta. Z Pezinka, treba sa spýtať na dopravu.",
+				about: "Ujo Pišta. Mesto: Pezinok.",
 				email: "",
 				firstName: "Ujo Pišta",
 				lastName: "",
@@ -234,8 +261,7 @@ export const guestGroupSeedData: GuestGroupSeed[] = [
 		},
 		guests: [
 			{
-				about:
-					"Zuzka – vegetarián. Z Modry, doprava ani ubytovanie nie je potrebná.",
+				about: "Zuzka. Mesto: Modra. Diéta: vegetarián.",
 				email: "",
 				firstName: "Zuzka",
 				lastName: "",
@@ -243,7 +269,7 @@ export const guestGroupSeedData: GuestGroupSeed[] = [
 				relationship: "priatelia nevesty",
 			},
 			{
-				about: "Baška. Z Modry, doprava ani ubytovanie nie je potrebná.",
+				about: "Baška. Mesto: Modra.",
 				email: "",
 				firstName: "Baška",
 				lastName: "",
@@ -260,7 +286,7 @@ export const guestGroupSeedData: GuestGroupSeed[] = [
 		},
 		guests: [
 			{
-				about: "Zuzka. Z Modry, doprava ani ubytovanie nie je potrebná.",
+				about: "Zuzka. Mesto: Modra.",
 				email: "",
 				firstName: "Zuzka",
 				lastName: "",
@@ -268,7 +294,7 @@ export const guestGroupSeedData: GuestGroupSeed[] = [
 				relationship: "priatelia nevesty",
 			},
 			{
-				about: "Miško. Z Modry, doprava ani ubytovanie nie je potrebná.",
+				about: "Miško. Mesto: Modra.",
 				email: "",
 				firstName: "Miško",
 				lastName: "",
@@ -279,20 +305,21 @@ export const guestGroupSeedData: GuestGroupSeed[] = [
 	},
 	{
 		group: {
-			name: "Bea a Matúš",
+			isFromModra: false,
+			name: "Beatka a Matúš",
 			qrToken: "5",
 		},
 		guests: [
 			{
-				about: "Bea. Z Bratislavy, spýtať sa na dopravu/ubytovanie v Modre.",
+				about: "Beatka. Mesto: Bratislava.",
 				email: "",
-				firstName: "Bea",
+				firstName: "Beatka",
 				lastName: "",
 				phone: "",
 				relationship: "priatelia nevesty",
 			},
 			{
-				about: "Matúš. Z Bratislavy, spýtať sa na dopravu/ubytovanie v Modre.",
+				about: "Matúš. Mesto: Bratislava.",
 				email: "",
 				firstName: "Matúš",
 				lastName: "",
@@ -303,12 +330,13 @@ export const guestGroupSeedData: GuestGroupSeed[] = [
 	},
 	{
 		group: {
+			isFromModra: false,
 			name: "Peťka a Vladko",
 			qrToken: "15",
 		},
 		guests: [
 			{
-				about: "Peťka. Z Preselian, odporučiť ubytovanie v Modre.",
+				about: "Peťka. Mesto: Preseľany.",
 				email: "",
 				firstName: "Peťka",
 				lastName: "",
@@ -316,7 +344,7 @@ export const guestGroupSeedData: GuestGroupSeed[] = [
 				relationship: "priatelia nevesty",
 			},
 			{
-				about: "Vladko. Z Preselian, odporučiť ubytovanie v Modre.",
+				about: "Vladko. Mesto: Preseľany.",
 				email: "",
 				firstName: "Vladko",
 				lastName: "",

@@ -22,22 +22,34 @@ export function getModelForTask(task: TaskType, _env: Env): LanguageModel {
 
 /**
  * Determine task type from conversation state
+ *
+ * Note: Task type is now less critical since tool selection is state-based.
+ * This is primarily used for model selection and logging.
  */
 export function determineTaskFromState(
 	conversationState: ConversationState,
 	rsvpComplete: boolean,
 ): TaskType {
-	return match(conversationState)
-		.with("identifying_individual", () => "identification" as const)
-		.with("group_welcome", () => "identification" as const) // Identifying group member
-		.with("confirming_attendance", () => "rsvp_collection" as const)
-		.with("collecting_rsvp", () => "rsvp_collection" as const)
-		.with("completed", "declined", () => "chat_general" as const)
-		.with("identification_failed", () => "information_provision" as const)
-		.with("identified", () =>
-			// If identified but RSVP not complete, collect RSVP
-			rsvpComplete ? ("chat_general" as const) : ("rsvp_collection" as const),
-		)
-		.with("initializing", () => "chat_general" as const)
-		.exhaustive();
+	return (
+		match(conversationState)
+			// Identification states
+			.with("identifying_individual", () => "identification" as const)
+			.with("group_welcome", () => "identification" as const)
+			// Attendance confirmation
+			.with("confirming_attendance", () => "rsvp_collection" as const)
+			// RSVP sub-states
+			.with("collecting_dietary", () => "rsvp_collection" as const)
+			.with("collecting_transport", () => "rsvp_collection" as const)
+			.with("collecting_accommodation", () => "rsvp_collection" as const)
+			.with("completing_rsvp", () => "rsvp_collection" as const)
+			// Post-RSVP states
+			.with("completed", "declined", () => "chat_general" as const)
+			.with("identification_failed", () => "information_provision" as const)
+			.with("identified", () =>
+				// If identified but RSVP not complete, collect RSVP
+				rsvpComplete ? ("chat_general" as const) : ("rsvp_collection" as const),
+			)
+			.with("initializing", () => "chat_general" as const)
+			.exhaustive()
+	);
 }

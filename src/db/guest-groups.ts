@@ -1,7 +1,6 @@
 import { relations, sql } from "drizzle-orm";
 import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 import { guestGroupResponses } from "@/db/guest-group-responses";
-import { guestResponses } from "./guest-responses";
 import { guests } from "./guests";
 
 /**

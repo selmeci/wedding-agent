@@ -24,11 +24,15 @@ import {
 	confirmIdentityTool,
 	executions,
 	getAccommodationInfoTool,
+	saveDietaryTool,
+	saveTransportTool,
 	updateRsvpTool,
 } from "@/tools";
 import type { Outputs } from "@/tools/types";
 import { cleanupMessages, processToolCalls } from "@/utils";
 import { sendEmailNotification } from "@/utils/email";
+// TODO: Re-enable when email notifications are ready
+// import { sendEmailNotification } from "@/utils/email";
 
 /**
  * Chat Agent implementation that handles real-time AI chat interactions
@@ -109,11 +113,12 @@ export class Chat extends AIChatAgent<Env, WeddingAgentState> {
 
 		const groupContext = await this.getGroupContext(this.state.groupId);
 
-		// Determine task type based on current state
+		// Determine task type based on current state (used for logging)
 		const taskType = determineTaskFromState(
 			this.state.conversationState,
 			this.state.rsvpComplete,
 		);
+		console.log("Task type:", taskType);
 
 		// Select appropriate model for task
 		//const model = fireworks(this.env)("accounts/fireworks/models/gpt-oss-120b");
@@ -124,18 +129,39 @@ export class Chat extends AIChatAgent<Env, WeddingAgentState> {
 		const system = buildSystemPrompt(this.state, groupContext);
 		console.log("System prompt:\n", system);
 
-		// Determine which tools to provide based on task
-		const tools = match(taskType)
-			.with("identification", () => ({
+		// Determine which tools to provide based on conversation state
+		// Using state-based tool gating to ensure proper RSVP collection flow
+		const tools = match(this.state.conversationState)
+			// Identification states
+			.with("group_welcome", "identifying_individual", () => ({
 				confirmIdentity: confirmIdentityTool,
 			}))
-			.with("rsvp_collection", () => ({
+			// Attendance confirmation
+			.with("identified", "confirming_attendance", () => ({
 				confirmAttendance: confirmAttendanceTool,
+			}))
+			// RSVP sub-states - each state has specific tool
+			.with("collecting_dietary", () => ({
+				saveDietary: saveDietaryTool,
+			}))
+			.with("collecting_transport", () => ({
+				saveTransport: saveTransportTool,
+				updateRsvp: updateRsvpTool, // Allow finalizing RSVP if transport leads directly to completion
+			}))
+			.with("collecting_accommodation", () => ({
 				getAccommodationInfo: getAccommodationInfoTool,
+				updateRsvp: updateRsvpTool, // Allow finalizing RSVP directly from this state
+			}))
+			.with("completing_rsvp", () => ({
 				updateRsvp: updateRsvpTool,
 			}))
-			.with("information_provision", "chat_general", () => ({
+			// Post-RSVP states - general chat
+			.with("completed", "declined", () => ({
 				changeAttendanceDecision: changeAttendanceDecisionTool,
+				getAccommodationInfo: getAccommodationInfoTool,
+			}))
+			// Edge cases
+			.with("initializing", "identification_failed", () => ({
 				getAccommodationInfo: getAccommodationInfoTool,
 			}))
 			.exhaustive();
@@ -213,6 +239,60 @@ export class Chat extends AIChatAgent<Env, WeddingAgentState> {
 											console.log(
 												"RSVP saved successfully. State:",
 												finalState.conversationState,
+											);
+										}
+									})
+									.with({ type: "save-dietary" }, async (output) => {
+										if (output.success) {
+											const currentRsvpData = this.state.rsvpData || {
+												attendCeremony: true,
+												dietaryRestrictions: null,
+												needsTransportAfter: null,
+												transportDestination: null,
+												willAttend: true,
+											};
+											this.setState({
+												...this.state,
+												conversationState: output.stateUpdate.conversationState,
+												rsvpData: {
+													...currentRsvpData,
+													attendCeremony: true,
+													dietaryRestrictions:
+														output.stateUpdate.rsvpData.dietaryRestrictions,
+													willAttend: true,
+												},
+											});
+
+											console.log(
+												"Dietary saved. State:",
+												output.stateUpdate.conversationState,
+											);
+										}
+									})
+									.with({ type: "save-transport" }, async (output) => {
+										if (output.success) {
+											const currentRsvpData = this.state.rsvpData || {
+												attendCeremony: true,
+												dietaryRestrictions: null,
+												needsTransportAfter: null,
+												transportDestination: null,
+												willAttend: true,
+											};
+											this.setState({
+												...this.state,
+												conversationState: output.stateUpdate.conversationState,
+												rsvpData: {
+													...currentRsvpData,
+													needsTransportAfter:
+														output.stateUpdate.rsvpData.needsTransportAfter,
+													transportDestination:
+														output.stateUpdate.rsvpData.transportDestination,
+												},
+											});
+
+											console.log(
+												"Transport saved. Next state:",
+												output.stateUpdate.conversationState,
 											);
 										}
 									})
@@ -311,6 +391,8 @@ export class Chat extends AIChatAgent<Env, WeddingAgentState> {
 	/**
 	 * Send email notification when RSVP reaches final state
 	 * Called automatically on state transition to 'completed' or 'declined'
+	 *
+	 * NOTE: Currently disabled. Uncomment implementation when email service is configured.
 	 */
 	private async sendEmailNotification(): Promise<void> {
 		const { groupId, guestId } = this.state;
@@ -350,14 +432,13 @@ export class Chat extends AIChatAgent<Env, WeddingAgentState> {
 				return;
 			}
 
-			const guestName = `${guest.firstName} ${guest.lastName}`;
+			const guestName = `${guest.firstName} ${guest.lastName}`.trim();
 
 			// Send email notification
-
 			const emailResult = await sendEmailNotification(this.env, {
 				attendeeCount: groupGuests.length,
 				dietaryRestrictions: rsvpResponse.dietaryRestrictions,
-				groupId,
+				groupId: groupId,
 				guestName,
 				needsAccommodation: rsvpResponse.needsAccommodation,
 				needsTransport: rsvpResponse.needsTransportAfter,
@@ -372,10 +453,10 @@ export class Chat extends AIChatAgent<Env, WeddingAgentState> {
 			} else {
 				console.warn("[Email Notification] Email failed:", emailResult.error);
 			}
-		} catch (error) {
+		} catch (error: unknown) {
 			console.error(
 				"[Email Notification] Error sending email:",
-				error instanceof Error ? error.message : error,
+				error instanceof Error ? error.message : String(error),
 			);
 			// Don't throw - email failure should not break the conversation
 		}

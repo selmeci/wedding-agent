@@ -186,6 +186,95 @@ export const ChangeAttendanceDecisionOutputSchema = z.discriminatedUnion(
 	],
 );
 
+// ===== RSVP SUB-STATE TOOLS =====
+
+// SaveDietary - Step 1
+export const SaveDietaryInputSchema = z.object({
+	dietaryRestrictions: z.string().nullable(),
+});
+
+export const SaveDietaryOutputSuccessSchema = z.object({
+	message: z.string(),
+	stateUpdate: z.object({
+		conversationState: ConversationStateSchema,
+		rsvpData: z.object({
+			dietaryRestrictions: z.string().nullable(),
+		}),
+	}),
+	success: z.literal(true),
+	type: z.literal("save-dietary"),
+});
+
+export const SaveDietaryOutputFailureSchema = z.object({
+	error: z.string(),
+	success: z.literal(false),
+	type: z.literal("save-dietary"),
+});
+
+export const SaveDietaryOutputSchema = z.discriminatedUnion("success", [
+	SaveDietaryOutputSuccessSchema,
+	SaveDietaryOutputFailureSchema,
+]);
+
+// SaveTransport - Step 2
+export const SaveTransportInputSchema = z.object({
+	needsTransportAfter: z.boolean(),
+	transportDestination: z.string().nullable(),
+});
+
+export const SaveTransportOutputSuccessSchema = z.object({
+	message: z.string(),
+	nextState: z.string(), // Can be 'collecting_accommodation' or 'completing_rsvp'
+	stateUpdate: z.object({
+		conversationState: ConversationStateSchema,
+		rsvpData: z.object({
+			needsTransportAfter: z.boolean(),
+			transportDestination: z.string().nullable(),
+		}),
+	}),
+	success: z.literal(true),
+	type: z.literal("save-transport"),
+});
+
+export const SaveTransportOutputFailureSchema = z.object({
+	error: z.string(),
+	success: z.literal(false),
+	type: z.literal("save-transport"),
+});
+
+export const SaveTransportOutputSchema = z.discriminatedUnion("success", [
+	SaveTransportOutputSuccessSchema,
+	SaveTransportOutputFailureSchema,
+]);
+
+// SaveAccommodation - Step 3 (conditional)
+export const SaveAccommodationInputSchema = z.object({
+	needsAccommodation: z.boolean(),
+});
+
+export const SaveAccommodationOutputSuccessSchema = z.object({
+	message: z.string(),
+	stateUpdate: z.object({
+		conversationState: ConversationStateSchema,
+		rsvpData: z.object({
+			needsAccommodation: z.boolean(),
+		}),
+	}),
+	success: z.literal(true),
+	type: z.literal("save-accommodation"),
+});
+
+export const SaveAccommodationOutputFailureSchema = z.object({
+	error: z.string(),
+	success: z.literal(false),
+	type: z.literal("save-accommodation"),
+});
+
+export const SaveAccommodationOutputSchema = z.discriminatedUnion("success", [
+	SaveAccommodationOutputSuccessSchema,
+	SaveAccommodationOutputFailureSchema,
+]);
+
 export const OutputsSchema = z.discriminatedUnion("type", [
 	ConfirmIdentityOutputSchema,
 	ConfirmAttendanceOutputSchema,
@@ -193,6 +282,9 @@ export const OutputsSchema = z.discriminatedUnion("type", [
 	IdentificationContextOutputSchema,
 	UpdateRsvpOutputSchema,
 	ChangeAttendanceDecisionOutputSchema,
+	SaveDietaryOutputSchema,
+	SaveTransportOutputSchema,
+	SaveAccommodationOutputSchema,
 ] as const);
 
 export type ConfirmIdentityInput = z.infer<typeof ConfirmIdentityInputSchema>;
@@ -227,6 +319,19 @@ export type ChangeAttendanceDecisionInput = z.infer<
 >;
 export type ChangeAttendanceDecisionOutput = z.infer<
 	typeof ChangeAttendanceDecisionOutputSchema
+>;
+
+export type SaveDietaryInput = z.infer<typeof SaveDietaryInputSchema>;
+export type SaveDietaryOutput = z.infer<typeof SaveDietaryOutputSchema>;
+
+export type SaveTransportInput = z.infer<typeof SaveTransportInputSchema>;
+export type SaveTransportOutput = z.infer<typeof SaveTransportOutputSchema>;
+
+export type SaveAccommodationInput = z.infer<
+	typeof SaveAccommodationInputSchema
+>;
+export type SaveAccommodationOutput = z.infer<
+	typeof SaveAccommodationOutputSchema
 >;
 
 export type Outputs = z.infer<typeof OutputsSchema>;

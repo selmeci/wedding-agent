@@ -3,6 +3,9 @@ import { confirmAttendanceTool } from "./confirmAttendance";
 import { confirmIdentityTool } from "./confirmIdentity";
 import { getAccommodationInfoTool } from "./getAccommodationInfo";
 import { getIdentificationContextTool } from "./getIdentificationContext";
+import { saveAccommodationTool } from "./saveAccommodation";
+import { saveDietaryTool } from "./saveDietary";
+import { saveTransportTool } from "./saveTransport";
 import { updateRsvpTool } from "./updateRsvp";
 
 export { changeAttendanceDecisionTool } from "./changeAttendanceDecision";
@@ -10,6 +13,9 @@ export { confirmAttendanceTool } from "./confirmAttendance";
 export { confirmIdentityTool } from "./confirmIdentity";
 export { getAccommodationInfoTool } from "./getAccommodationInfo";
 export { getIdentificationContextTool } from "./getIdentificationContext";
+export { saveAccommodationTool } from "./saveAccommodation";
+export { saveDietaryTool } from "./saveDietary";
+export { saveTransportTool } from "./saveTransport";
 export { updateRsvpTool } from "./updateRsvp";
 
 /**
@@ -25,5 +31,8 @@ export const tools = {
 	confirmIdentityTool,
 	getAccommodationInfoTool,
 	getIdentificationContextTool,
+	saveAccommodationTool,
+	saveDietaryTool,
+	saveTransportTool,
 	updateRsvpTool,
 };

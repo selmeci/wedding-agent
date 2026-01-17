@@ -118,14 +118,14 @@ export const changeAttendanceDecisionTool = tool<
 			.where(eq(guestGroupResponses.groupId, groupId));
 
 		console.log(
-			"Attendance decision changed successfully. Guest will now attend. State: declined → collecting_rsvp",
+			"Attendance decision changed successfully. Guest will now attend. State: declined → collecting_dietary",
 		);
 
 		return {
 			message:
-				"✓ Rozhodnutie zmenené. Hosť teraz príde! Pokračuj PRIAMO s personalizovanou diétnou otázkou (pozri collecting_rsvp prompt).",
+				"✓ Rozhodnutie zmenené. Hosť teraz príde! Pokračuj PRIAMO s personalizovanou diétnou otázkou.",
 			stateUpdate: {
-				conversationState: "collecting_rsvp",
+				conversationState: "collecting_dietary",
 				rsvpComplete: false,
 				rsvpData: {
 					willAttend: true,

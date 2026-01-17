@@ -7,7 +7,11 @@ export const ConversationStateSchema = z.enum([
 	"identifying_individual",
 	"identified",
 	"confirming_attendance", // After identification, waiting for yes/no to attendance question
-	"collecting_rsvp",
+	// RSVP collection sub-states (ordered flow)
+	"collecting_dietary", // Step 1: Ask about dietary restrictions
+	"collecting_transport", // Step 2: Ask about transport after celebration
+	"collecting_accommodation", // Step 3: Ask about accommodation (conditional)
+	"completing_rsvp", // Step 4: Finalize and save RSVP
 	"completed",
 	"declined", // Guest declined attendance
 	"identification_failed",
@@ -41,7 +45,6 @@ export interface WeddingAgentState {
 		willAttend: boolean;
 		attendCeremony: boolean | null;
 		dietaryRestrictions: string | null;
-		needsAccommodation: boolean | null;
 		needsTransportAfter: boolean | null;
 		transportDestination: string | null;
 	};

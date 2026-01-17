@@ -11,10 +11,15 @@ import {
 } from "@/tools/types";
 
 /**
- * Update RSVP Tool
+ * Update RSVP Tool - FINAL STEP
  *
- * Called by AI after collecting all required RSVP information from guest.
- * Stores the response in guest_group_responses table.
+ * Called by AI ONLY in completing_rsvp state after all RSVP data has been collected
+ * via saveDietary, saveTransport, and saveAccommodation tools.
+ *
+ * This tool finalizes the RSVP by:
+ * 1. Combining all collected data from agent state
+ * 2. Storing the complete response in guest_group_responses table
+ * 3. Transitioning to 'completed' state
  *
  * Business rules:
  * - attendCeremony MUST be true if willAttend is true
@@ -22,22 +27,26 @@ import {
  * - For groups: dietaryRestrictions formatted as "Name1 - restriction, Name2 - restriction"
  */
 export const updateRsvpTool = tool<UpdateRsvpInput, UpdateRsvpOutput>({
-	description: `Update RSVP response for the identified guest/group.
+	description: `Finalize and save complete RSVP response.
 
-  Collect these fields through natural conversation:
-  - willAttend: Did they confirm attendance?
-  - dietaryRestrictions: Any dietary needs? (check 'about' field in guest list for pre-filled info)
-  - needsTransportAfter: Do they want organized transport after celebration?
-  - transportDestination: If they want transport, set to their home city (extracted from 'about' field).
-  - needsAccommodation: Do they need accommodation info? (SKIP if from Modra OR wants transport)
+  IMPORTANT: Only call this tool in 'completing_rsvp' state!
 
-  Rules:
-  - attendCeremony is ALWAYS true if willAttend is true (guests cannot attend only reception)
-  - If willAttend is false, set all optional fields to null
-  - If needsTransportAfter is true, transportDestination MUST be provided
-  - If needsTransportAfter is false, transportDestination should be null
-  - For groups: format dietaryRestrictions as "Name1 - restriction, Name2 - restriction"
-  `,
+  This is the FINAL step after collecting all information via:
+  1. saveDietary (dietary restrictions)
+  2. saveTransport (transport needs)
+  3. saveAccommodation (accommodation needs - if applicable)
+
+  The tool will combine all collected data and save to database.
+
+  Input fields:
+  - willAttend: true (already confirmed via confirmAttendance)
+  - attendCeremony: true (always true when attending)
+  - dietaryRestrictions: From collected data
+  - needsTransportAfter: From collected data
+  - transportDestination: From collected data (or null)
+  - needsAccommodation: From collected data (or null if skipped)
+
+  After calling this tool, provide a friendly summary and info about the wedding website.`,
 
 	execute: async ({
 		willAttend,

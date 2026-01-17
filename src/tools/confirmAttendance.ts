@@ -85,7 +85,9 @@ export const confirmAttendanceTool = tool<
 		});
 
 		// Determine next state
-		const nextState = willAttend ? "collecting_rsvp" : "declined";
+		// If attending → start RSVP collection with dietary question
+		// If declining → go straight to declined state
+		const nextState = willAttend ? "collecting_dietary" : "declined";
 
 		return {
 			message: willAttend
