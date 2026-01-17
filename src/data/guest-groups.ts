@@ -353,4 +353,98 @@ export const guestGroupSeedData: GuestGroupSeed[] = [
 			},
 		],
 	},
+	// Test account
+	{
+		group: {
+			isFromModra: false,
+			name: "Testovacia Skupina 1",
+			qrToken: "test-1",
+		},
+		guests: [
+			{
+				about: "Testovací hosť 1. Mesto: Bratislava.",
+				email: "test1@example.com",
+				firstName: "Test",
+				lastName: "Jeden",
+				phone: "+421900111222",
+				relationship: "test",
+			},
+		],
+	},
+	{
+		group: {
+			isFromModra: true,
+			name: "Testovacia Skupina 2 (Modra)",
+			qrToken: "test-2",
+		},
+		guests: [
+			{
+				about: "Testovací hosť 2. Mesto: Modra. Diéta: vegetarián.",
+				email: "test2@example.com",
+				firstName: "Test",
+				lastName: "Dva",
+				phone: "+421900333444",
+				relationship: "test",
+			},
+		],
+	},
+	{
+		group: {
+			isFromModra: false,
+			name: "Testovacia Skupina 3 (Pár)",
+			qrToken: "test-3",
+		},
+		guests: [
+			{
+				about: "Testovací hosť 3a. Mesto: Senec.",
+				email: "test3a@example.com",
+				firstName: "Test",
+				lastName: "Tri-A",
+				phone: "",
+				relationship: "test",
+			},
+			{
+				about: "Testovací hosť 3b. Mesto: Senec. Diéta: bezlepkové.",
+				email: "test3b@example.com",
+				firstName: "Test",
+				lastName: "Tri-B",
+				phone: "",
+				relationship: "test",
+			},
+		],
+	},
+	{
+		group: {
+			isFromModra: false,
+			name: "Testovacia Skupina 4",
+			qrToken: "test-4",
+		},
+		guests: [
+			{
+				about: "Testovací hosť 4. Mesto: Pezinok.",
+				email: "test4@example.com",
+				firstName: "Test",
+				lastName: "Štyri",
+				phone: "",
+				relationship: "test",
+			},
+		],
+	},
+	{
+		group: {
+			isFromModra: true,
+			name: "Testovacia Skupina 5",
+			qrToken: "test-5",
+		},
+		guests: [
+			{
+				about: "Testovací hosť 5. Mesto: Nová Dedinka.",
+				email: "test5@example.com",
+				firstName: "Test",
+				lastName: "Päť",
+				phone: "",
+				relationship: "test",
+			},
+		],
+	},
 ];
