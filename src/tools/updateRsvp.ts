@@ -28,7 +28,7 @@ export const updateRsvpTool = tool<UpdateRsvpInput, UpdateRsvpOutput>({
   - willAttend: Did they confirm attendance?
   - dietaryRestrictions: Any dietary needs? (check 'about' field in guest list for pre-filled info)
   - needsTransportAfter: Do they want organized transport after celebration?
-  - transportDestination: If they want transport, where to? (e.g., "Bratislava", "Pezinok", "Senec"). Must be within ~25 min from Modra.
+  - transportDestination: If they want transport, set to their home city (extracted from 'about' field).
   - needsAccommodation: Do they need accommodation info? (SKIP if from Modra OR wants transport)
 
   Rules:
