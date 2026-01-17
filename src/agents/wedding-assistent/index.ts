@@ -1,3 +1,4 @@
+import { anthropic } from "@ai-sdk/anthropic";
 import type { Connection } from "agents";
 import { AIChatAgent } from "agents/ai-chat-agent";
 import {
@@ -15,10 +16,7 @@ import type {
 	GroupInfo,
 	WeddingAgentState,
 } from "@/agents/wedding-assistent/types";
-import {
-	determineTaskFromState,
-	getModelForTask,
-} from "@/agents/wedding-assistent/utils";
+import { determineTaskFromState } from "@/agents/wedding-assistent/utils";
 import { createDb, type Database } from "@/db";
 import {
 	changeAttendanceDecisionTool,
@@ -30,6 +28,7 @@ import {
 } from "@/tools";
 import type { Outputs } from "@/tools/types";
 import { cleanupMessages, processToolCalls } from "@/utils";
+import { sendEmailNotification } from "@/utils/email";
 
 /**
  * Chat Agent implementation that handles real-time AI chat interactions
@@ -44,6 +43,10 @@ export class Chat extends AIChatAgent<Env, WeddingAgentState> {
 		identificationAttempts: 0,
 		rsvpComplete: false,
 	};
+
+	getEnv() {
+		return this.env;
+	}
 
 	getDatabase(): Database {
 		if (!this.db) {
@@ -73,7 +76,15 @@ export class Chat extends AIChatAgent<Env, WeddingAgentState> {
 	 */
 	private getInitialGreeting(groupContext: GroupInfo): string {
 		// QR flow - group greeting (UC-01, UC-02)
-		// Greet all members by name and ask who's chatting
+		const isSingleGuest = groupContext.guests.length === 1;
+
+		if (isSingleGuest) {
+			// Single guest - skip "who's writing" and ask directly about attendance
+			// AI will auto-identify in first response
+			return `Ahoj ${groupContext.guestNames[0]}! 💕 Som tvoj osobný svadobný asistent. Pomôžem ti potvrdiť účasť na svadbe, zozbierať potrebné informácie pre hostinu a zodpovedať všetky otázky ohľadom nášho veľkého dňa. Vážime si, že nám venuješ čas! Môžem sa na teba tešiť 27. marca na sobáši aj hostine?`;
+		}
+
+		// Multiple guests - greet all and ask who's chatting
 		return `Ahoj ${groupContext.guestNames.join(", ")}! 💕 Som váš osobný svadobný asistent. Pomôžem vám potvrdiť účasť na svadbe, zozbierať potrebné informácie pre hostinu a zodpovedať všetky otázky ohľadom nášho veľkého dňa. Vážime si, že nám venujete čas! Kto z vás práve píše?`;
 	}
 
@@ -105,7 +116,9 @@ export class Chat extends AIChatAgent<Env, WeddingAgentState> {
 		);
 
 		// Select appropriate model for task
-		const model = getModelForTask(taskType, this.env);
+		//const model = fireworks(this.env)("accounts/fireworks/models/gpt-oss-120b");
+		//const model = getModelForTask(taskType, this.env);
+		const model = anthropic("claude-sonnet-4-5");
 
 		// Build context-aware system prompt
 		const system = buildSystemPrompt(this.state, groupContext);
@@ -147,6 +160,9 @@ export class Chat extends AIChatAgent<Env, WeddingAgentState> {
 					model,
 					// Wrap onFinish to process tool results and update agent state
 					onFinish: async (finishResult) => {
+						// Capture old state before processing tools
+						const oldState = this.state.conversationState;
+
 						// Process tool results for state updates
 						// Currently handles: confirmIdentity, confirmAttendance, updateRsvp
 						for (const step of finishResult.steps) {
@@ -222,6 +238,19 @@ export class Chat extends AIChatAgent<Env, WeddingAgentState> {
 							}
 						}
 
+						// Check for state transition to final states (completed or declined)
+						// Send email notification only on FIRST transition to final state
+						const newState = this.state.conversationState;
+						if (
+							oldState !== newState &&
+							(newState === "completed" || newState === "declined")
+						) {
+							console.log(
+								`[State Transition] ${oldState} → ${newState}. Sending email notification...`,
+							);
+							await this.sendEmailNotification();
+						}
+
 						// Call base callback
 						await (
 							onFinish as unknown as StreamTextOnFinishCallback<typeof tools>
@@ -276,6 +305,79 @@ export class Chat extends AIChatAgent<Env, WeddingAgentState> {
 				...this.state,
 				conversationState: "group_welcome",
 			});
+		}
+	}
+
+	/**
+	 * Send email notification when RSVP reaches final state
+	 * Called automatically on state transition to 'completed' or 'declined'
+	 */
+	private async sendEmailNotification(): Promise<void> {
+		const { groupId, guestId } = this.state;
+
+		if (!groupId || !guestId) {
+			console.error(
+				"[Email Notification] Cannot send email: missing groupId or guestId",
+			);
+			return;
+		}
+
+		try {
+			const db = this.getDatabase();
+
+			// Get guest information
+			const guest = await db.query.guests.findFirst({
+				where: (t, { eq }) => eq(t.id, guestId),
+			});
+
+			if (!guest) {
+				console.error("[Email Notification] Guest not found:", guestId);
+				return;
+			}
+
+			// Get all guests in group for attendee count
+			const groupGuests = await db.query.guests.findMany({
+				where: (t, { eq }) => eq(t.groupId, groupId),
+			});
+
+			// Get RSVP response from database
+			const rsvpResponse = await db.query.guestGroupResponses.findFirst({
+				where: (t, { eq }) => eq(t.groupId, groupId),
+			});
+
+			if (!rsvpResponse) {
+				console.error("[Email Notification] RSVP response not found:", groupId);
+				return;
+			}
+
+			const guestName = `${guest.firstName} ${guest.lastName}`;
+
+			// Send email notification
+
+			const emailResult = await sendEmailNotification(this.env, {
+				attendeeCount: groupGuests.length,
+				dietaryRestrictions: rsvpResponse.dietaryRestrictions,
+				groupId,
+				guestName,
+				needsAccommodation: rsvpResponse.needsAccommodation,
+				needsTransport: rsvpResponse.needsTransportAfter,
+				willAttend: rsvpResponse.willAttend ?? false,
+			});
+
+			if (emailResult.success) {
+				console.log(
+					"[Email Notification] Email sent successfully:",
+					emailResult.messageId,
+				);
+			} else {
+				console.warn("[Email Notification] Email failed:", emailResult.error);
+			}
+		} catch (error) {
+			console.error(
+				"[Email Notification] Error sending email:",
+				error instanceof Error ? error.message : error,
+			);
+			// Don't throw - email failure should not break the conversation
 		}
 	}
 
