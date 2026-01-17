@@ -11,6 +11,7 @@ import { guestGroups, guestGroupsRelations } from "./guest-groups";
 import { guestResponses } from "./guest-responses";
 import { guests, guestsRelations } from "./guests";
 import { photoUploads } from "./photo-uploads";
+import { audioRecordings } from "./audio-recordings";
 
 export * from "./accommodations";
 export * from "./chat-messages";
@@ -20,6 +21,7 @@ export * from "./guest-groups";
 export * from "./guest-responses";
 export * from "./guests";
 export * from "./photo-uploads";
+export * from "./audio-recordings";
 
 export const schema = {
 	accommodations,
@@ -33,6 +35,7 @@ export const schema = {
 	guests,
 	guestsRelations,
 	photoUploads,
+	audioRecordings,
 } as const;
 
 export type Schema = typeof schema;

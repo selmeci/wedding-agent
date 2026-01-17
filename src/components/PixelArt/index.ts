@@ -8,6 +8,8 @@ export { Groom } from "./Groom";
 export { GroomWithStop } from "./GroomWithStop";
 export { Heart } from "./Heart";
 export { LoveStoryTimeline } from "./LoveStoryTimeline";
+export { Microphone } from "./Microphone";
+export { SoundWave } from "./SoundWave";
 export { PhotoUploadAnimation } from "./PhotoUploadAnimation";
 export { Proposal } from "./Proposal";
 export { WeddingCouple } from "./WeddingCouple";

@@ -6,6 +6,7 @@ import { accommodationSeedData } from "@/data/accommodations";
 import { guestGroupSeedData } from "@/data/guest-groups";
 import {
 	accommodations,
+	audioRecordings,
 	chatMessages,
 	chatSessions,
 	createDb,
@@ -39,6 +40,9 @@ app.post("/api/seed", async (c) => {
 		console.log("🗑️  Clearing D1 tables...");
 
 		// Delete in order: child tables first, then parent tables
+		await db.delete(audioRecordings); // references guest_groups
+		console.log("  - audio_recordings cleared");
+
 		await db.delete(photoUploads); // references guests
 		console.log("  - photo_uploads cleared");
 
@@ -566,6 +570,249 @@ app.delete("/api/photos/:id", async (c) => {
 			{
 				details: error instanceof Error ? error.message : String(error),
 				error: "Failed to delete photo",
+			},
+			500,
+		);
+	}
+});
+
+// Audio recording API
+// POST /api/audio - Upload audio recording
+app.post("/api/audio", async (c) => {
+	try {
+		// Get QR token from header for auth
+		const qrToken = c.req.header("x-qr-token");
+		if (!qrToken) {
+			return c.json({ error: "Missing QR token" }, 401);
+		}
+
+		const db = createDb(c.env.DB);
+
+		// Validate QR token and get group
+		const group = await db.query.guestGroups.findFirst({
+			where: (t, { eq }) => eq(t.qrToken, qrToken),
+		});
+
+		if (!group) {
+			return c.json({ error: "Invalid QR token" }, 403);
+		}
+
+		// Parse multipart form data
+		const formData = await c.req.formData();
+		const file = formData.get("file") as File | null;
+		const durationStr = formData.get("duration") as string | null;
+
+		if (!file) {
+			return c.json({ error: "No file provided" }, 400);
+		}
+
+		// Validate file type (audio formats supported by MediaRecorder)
+		const allowedTypes = [
+			"audio/mp4",
+			"audio/webm",
+			"audio/ogg",
+			"audio/mpeg",
+			"audio/wav",
+		];
+		if (!allowedTypes.includes(file.type)) {
+			return c.json({ error: "Invalid audio type" }, 400);
+		}
+
+		// Validate file size (max 10MB for voice messages)
+		const maxSize = 10 * 1024 * 1024; // 10MB
+		if (file.size > maxSize) {
+			return c.json({ error: "File too large (max 10MB)" }, 400);
+		}
+
+		// Parse duration if provided
+		const duration = durationStr ? Number.parseInt(durationStr, 10) : null;
+
+		// Generate audio ID and R2 key
+		const audioId = crypto.randomUUID();
+		const extensionMap: Record<string, string> = {
+			"audio/mp4": "m4a",
+			"audio/mpeg": "mp3",
+			"audio/ogg": "ogg",
+			"audio/wav": "wav",
+			"audio/webm": "webm",
+		};
+		const fileExtension = extensionMap[file.type] || "audio";
+		const r2Key = `groups/${group.id}/audio/${audioId}.${fileExtension}`;
+
+		// Upload to R2
+		await c.env.BUCKET.put(r2Key, file.stream(), {
+			httpMetadata: {
+				contentType: file.type,
+			},
+		});
+
+		// Save metadata to D1
+		await db.insert(audioRecordings).values({
+			duration,
+			fileName: file.name || `recording.${fileExtension}`,
+			fileSize: file.size,
+			groupId: group.id,
+			id: audioId,
+			mimeType: file.type,
+			r2Key,
+		});
+
+		return c.json({
+			duration,
+			fileName: file.name || `recording.${fileExtension}`,
+			id: audioId,
+			uploadedAt: new Date().toISOString(),
+		});
+	} catch (error) {
+		console.error("Audio upload error:", error);
+		return c.json(
+			{
+				details: error instanceof Error ? error.message : String(error),
+				error: "Failed to upload audio",
+			},
+			500,
+		);
+	}
+});
+
+// GET /api/audio - List audio recordings for group
+app.get("/api/audio", async (c) => {
+	try {
+		// Get QR token from header for auth
+		const qrToken = c.req.header("x-qr-token");
+		if (!qrToken) {
+			return c.json({ error: "Missing QR token" }, 401);
+		}
+
+		const db = createDb(c.env.DB);
+
+		// Validate QR token and get group
+		const group = await db.query.guestGroups.findFirst({
+			where: (t, { eq }) => eq(t.qrToken, qrToken),
+		});
+
+		if (!group) {
+			return c.json({ error: "Invalid QR token" }, 403);
+		}
+
+		// Get all audio recordings for this group
+		const recordings = await db.query.audioRecordings.findMany({
+			orderBy: (t, { desc }) => [desc(t.uploadedAt)],
+			where: (t, { eq }) => eq(t.groupId, group.id),
+		});
+
+		// Return recordings with stream URLs
+		const recordingsWithUrls = recordings.map((recording) => ({
+			duration: recording.duration,
+			fileName: recording.fileName,
+			id: recording.id,
+			mimeType: recording.mimeType,
+			streamUrl: `/api/audio/${recording.id}`,
+			uploadedAt: recording.uploadedAt,
+		}));
+
+		return c.json({ recordings: recordingsWithUrls });
+	} catch (error) {
+		console.error("Audio list error:", error);
+		return c.json(
+			{
+				details: error instanceof Error ? error.message : String(error),
+				error: "Failed to list audio recordings",
+			},
+			500,
+		);
+	}
+});
+
+// GET /api/audio/:id - Stream audio file
+app.get("/api/audio/:id", async (c) => {
+	try {
+		const audioId = c.req.param("id");
+		const db = createDb(c.env.DB);
+
+		// Get audio metadata
+		const recording = await db.query.audioRecordings.findFirst({
+			where: (t, { eq }) => eq(t.id, audioId),
+		});
+
+		if (!recording) {
+			return c.json({ error: "Audio recording not found" }, 404);
+		}
+
+		// Get object from R2
+		const object = await c.env.BUCKET.get(recording.r2Key);
+		if (!object) {
+			return c.json({ error: "Audio file not found in storage" }, 404);
+		}
+
+		// Return audio stream
+		return new Response(object.body, {
+			headers: {
+				"Cache-Control": "public, max-age=31536000",
+				"Content-Disposition": `inline; filename="${recording.fileName}"`,
+				"Content-Type": recording.mimeType,
+			},
+		});
+	} catch (error) {
+		console.error("Audio stream error:", error);
+		return c.json(
+			{
+				details: error instanceof Error ? error.message : String(error),
+				error: "Failed to stream audio",
+			},
+			500,
+		);
+	}
+});
+
+// DELETE /api/audio/:id - Delete audio recording
+app.delete("/api/audio/:id", async (c) => {
+	try {
+		// Get QR token from header for auth
+		const qrToken = c.req.header("x-qr-token");
+		if (!qrToken) {
+			return c.json({ error: "Missing QR token" }, 401);
+		}
+
+		const audioId = c.req.param("id");
+		const db = createDb(c.env.DB);
+
+		// Validate QR token and get group
+		const group = await db.query.guestGroups.findFirst({
+			where: (t, { eq }) => eq(t.qrToken, qrToken),
+		});
+
+		if (!group) {
+			return c.json({ error: "Invalid QR token" }, 403);
+		}
+
+		// Get audio metadata
+		const recording = await db.query.audioRecordings.findFirst({
+			where: (t, { eq }) => eq(t.id, audioId),
+		});
+
+		if (!recording) {
+			return c.json({ error: "Audio recording not found" }, 404);
+		}
+
+		// Verify recording belongs to this group
+		if (recording.groupId !== group.id) {
+			return c.json({ error: "Cannot delete audio from another group" }, 403);
+		}
+
+		// Delete from R2
+		await c.env.BUCKET.delete(recording.r2Key);
+
+		// Delete from D1
+		await db.delete(audioRecordings).where(eq(audioRecordings.id, audioId));
+
+		return c.json({ success: true });
+	} catch (error) {
+		console.error("Audio delete error:", error);
+		return c.json(
+			{
+				details: error instanceof Error ? error.message : String(error),
+				error: "Failed to delete audio",
 			},
 			500,
 		);

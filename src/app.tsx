@@ -19,6 +19,7 @@ import { Button } from "@/components/button/Button";
 import { Countdown } from "@/components/Countdown/Countdown";
 import { Header } from "@/components/Header";
 import { MemoizedMarkdown } from "@/components/memoized-markdown";
+import { AudioRecorder } from "@/components/AudioRecorder";
 import { PhotoUpload } from "@/components/PhotoUpload";
 import { GiftBox, Heart, LoveStoryTimeline } from "@/components/PixelArt";
 import { RsvpSummary } from "@/components/RsvpSummary";
@@ -74,10 +75,10 @@ export default function Chat() {
 	const weddingDate = new Date("2026-03-27T14:30:00Z");
 	const isAfterWedding = new Date() > weddingDate;
 
-	// State for tab switcher (chat vs timeline vs summary vs photos)
+	// State for tab switcher (chat vs timeline vs summary vs photos vs audio)
 	// Default to photos tab after wedding, chat before
 	const [activeTab, setActiveTab] = useState<
-		"chat" | "timeline" | "summary" | "photos"
+		"chat" | "timeline" | "summary" | "photos" | "audio"
 	>(isAfterWedding ? "photos" : "chat");
 	const [isTimelineTabNew, setIsTimelineTabNew] = useState(false);
 
@@ -387,6 +388,22 @@ export default function Chat() {
 											</button>
 										)}
 
+										{/* Audio Tab - only if completed */}
+										{agentState?.conversationState === "completed" && (
+											<button
+												onClick={() => setActiveTab("audio")}
+												type="button"
+												className={`px-3 sm:px-4 py-1.5 sm:py-2 min-h-[44px] rounded-full text-sm font-medium transition-all ${
+													activeTab === "audio"
+														? "bg-white text-pink-600 shadow-md"
+														: "text-white hover:bg-white/10"
+												}`}
+											>
+												<span className="hidden sm:inline">Audio</span>
+												<span className="sm:hidden">🎤</span>
+											</button>
+										)}
+
 										{/* Photos Tab - last position before wedding if completed */}
 										{!isAfterWedding &&
 											agentState?.conversationState === "completed" && (
@@ -686,6 +703,11 @@ export default function Chat() {
 									agentState={agentState}
 									onEditRsvp={() => setActiveTab("chat")}
 								/>
+							</div>
+						) : activeTab === "audio" ? (
+							/* Audio Tab Content */
+							<div className="flex-1 min-h-0 overflow-y-auto bg-gradient-to-br from-pink-50 via-white to-pink-100">
+								<AudioRecorder qrToken={qrToken} />
 							</div>
 						) : (
 							/* Photos Tab Content */
