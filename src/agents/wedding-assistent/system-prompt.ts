@@ -252,8 +252,22 @@ function buildDietaryQuestionLogic(
 /**
  * Final summary template
  */
-function buildFinalSummaryTemplate(isGroup: boolean): string {
+function buildFinalSummaryTemplate(
+	isGroup: boolean,
+	includeTransportNote = false,
+): string {
 	const names = isGroup ? "[member names]" : "";
+
+	const transportNote = includeTransportNote
+		? `
+---
+
+**POZNÁMKA K ODVOZU** 🚗
+
+Zatiaľ nevieme potvrdiť, či sa odvoz podarí zorganizovať. Záleží od počtu záujemcov. Ak bude dostatok ľudí, určite sa pokúsime niečo vybaviť a dáme ${isGroup ? "vám" : "ti"} vedieť!
+`
+		: "";
+
 	return `
 **Final Summary Template (USE MARKDOWN HERE):**
 
@@ -263,8 +277,8 @@ function buildFinalSummaryTemplate(isGroup: boolean): string {
 
 **ZHRNUTIE RSVP** ✅
 
-Poznačil som si že ${isGroup ? `**${names}** prídu` : "**prídeš**"} na sobáš aj hostinu[, s diétnymi požiadavkami: xyz].
-
+Poznačil som si že ${isGroup ? `**${names}** prídu` : "**prídeš**"} na sobáš aj hostinu[, s diétnymi požiadavkami: xyz][, so záujmom o odvoz do XY].
+${transportNote}
 ---
 
 **DETAILY SVADBY** 💒
@@ -841,7 +855,7 @@ ${identifiedGuest?.about ? `**Info:** ${identifiedGuest.about}` : ""}`
 
 ## FINAL SUMMARY TEMPLATE (USE MARKDOWN - FOLLOW EXACTLY)
 
-${buildFinalSummaryTemplate(isGroup)}
+${buildFinalSummaryTemplate(isGroup, rsvpData.needsTransportAfter === true)}
 
 ## WHAT TO SAY ABOUT RESPONSES
 
