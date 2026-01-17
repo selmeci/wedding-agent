@@ -607,15 +607,25 @@ app.post("/api/audio", async (c) => {
 		}
 
 		// Validate file type (audio formats supported by MediaRecorder)
-		const allowedTypes = [
+		// Using startsWith to handle codec parameters like "audio/webm;codecs=opus"
+		const allowedBaseTypes = [
 			"audio/mp4",
 			"audio/webm",
 			"audio/ogg",
 			"audio/mpeg",
 			"audio/wav",
+			"audio/aac",
+			"audio/3gpp",
+			"audio/3gpp2",
+			"audio/x-m4a",
 		];
-		if (!allowedTypes.includes(file.type)) {
-			return c.json({ error: "Invalid audio type" }, 400);
+		const isValidType = allowedBaseTypes.some(
+			(baseType) =>
+				file.type === baseType || file.type.startsWith(`${baseType};`),
+		);
+		if (!isValidType) {
+			console.log("Rejected audio type:", file.type);
+			return c.json({ error: `Invalid audio type: ${file.type}` }, 400);
 		}
 
 		// Validate file size (max 10MB for voice messages)
@@ -635,8 +645,14 @@ app.post("/api/audio", async (c) => {
 			"audio/ogg": "ogg",
 			"audio/wav": "wav",
 			"audio/webm": "webm",
+			"audio/aac": "aac",
+			"audio/3gpp": "3gp",
+			"audio/3gpp2": "3g2",
+			"audio/x-m4a": "m4a",
 		};
-		const fileExtension = extensionMap[file.type] || "audio";
+		// Extract base MIME type without codec parameters (e.g., "audio/webm;codecs=opus" -> "audio/webm")
+		const baseMimeType = file.type.split(";")[0];
+		const fileExtension = extensionMap[baseMimeType] || "audio";
 		const r2Key = `groups/${group.id}/audio/${audioId}.${fileExtension}`;
 
 		// Upload to R2
