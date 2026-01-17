@@ -53,6 +53,10 @@
   ],
   "observability": {
     "enabled": true
+  },
+  "vars": {
+    "BREVO_SENDER_EMAIL": "noreply@ivonka-roman-forever.love",
+    "BREVO_SENDER_NAME": "Wedding RSVP Bot"
   }
   /**
    * Smart Placement
