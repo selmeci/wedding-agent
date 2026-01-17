@@ -13,142 +13,142 @@ export interface GuestGroupSeed {
 }
 
 export const guestGroupSeedData: GuestGroupSeed[] = [
+	// Roman
 	{
 		group: {
-			name: "Rodina Novákovcov",
-			qrToken: "group-novak-family-001",
+			isFromModra: false,
+			name: "Rodinka Šelméciových",
+			qrToken: "2",
 		},
 		guests: [
 			{
-				about: "Otec rodiny. Rád cestuje a fotografuje.",
-				email: "marek.novak@example.com",
+				about: "Otec rodiny. Nemá rád chees cake. Je z Novej Dedinky",
+				email: "",
 				firstName: "Marek",
-				lastName: "Novák",
-				phone: "+421901111111",
-				relationship: "rodina nevesty",
+				lastName: "Šelméci",
+				phone: "",
+				relationship: "brat ženícha",
 			},
 			{
-				about: "Mama rodiny. Učiteľka, vegetariánka.",
-				email: "katka.novakova@example.com",
+				about:
+					"Mama rodiny. Preferuje zdravšie ale chutné jedlo. Je z Novej Dedinky",
+				email: "",
 				firstName: "Katka",
-				lastName: "Nováková",
-				phone: "+421901111112",
-				relationship: "rodina nevesty",
+				lastName: "Šelméciová",
+				phone: "",
+				relationship: "žena brata ženícha",
 			},
 			{
-				about: "Syn, 5 rokov. Má rád dinosaury.",
-				email: "marek.novak@example.com", // Same as parent
+				about: "Syn, 14 rokov. Objavuje nové chute. Je z Novej Dedinky",
+				email: "",
 				firstName: "Marko",
-				lastName: "Novák",
-				phone: "+421901111111", // Same as parent
-				relationship: "rodina nevesty",
+				lastName: "Šelméci",
+				phone: "",
+				relationship: "syn brata ženícha",
 			},
 		],
 	},
 	{
 		group: {
-			name: "Peter Kováč a hosť",
-			qrToken: "group-kovac-plus1-002",
-		},
-		guests: [
-			{
-				about: "Kamarát zo strednej školy. Pracuje v IT.",
-				email: "peter.kovac@example.com",
-				firstName: "Peter",
-				lastName: "Kováč",
-				phone: "+421902222222",
-				relationship: "priatelia ženicha",
-			},
-			{
-				about: "Partnerka Petra.",
-				email: "lucia.kovacova@example.com",
-				firstName: "Lucia",
-				lastName: "Kováčová",
-				phone: "+421902222223",
-				relationship: "priatelia ženicha",
-			},
-		],
-	},
-	{
-		group: {
-			name: "Rodina Horvátovcov",
-			qrToken: "group-horvat-family-003",
-		},
-		guests: [
-			{
-				about: "Strýko ženicha. Volá sa Tomi. Má rád hudbu.",
-				email: "tomas.horvath@example.com",
-				firstName: "Tomáš",
-				lastName: "Horváth",
-				phone: "+421903333333",
-				relationship: "rodina ženicha",
-			},
-			{
-				about: "Teta ženicha. Prezývka Andrejka. Lekárka.",
-				email: "andrea.horvathova@example.com",
-				firstName: "Andrea",
-				lastName: "Horváthová",
-				phone: "+421903333334",
-				relationship: "rodina ženicha",
-			},
-			{
-				about: "Dcéra, 8 rokov. Hrá na klavír.",
-				email: "tomas.horvath@example.com", // Same as parent
-				firstName: "Sofia",
-				lastName: "Horváthová",
-				phone: "+421903333333", // Same as parent
-				relationship: "rodina ženicha",
-			},
-			{
-				about: "Syn, 3 roky. Má rád autíčka.",
-				email: "tomas.horvath@example.com", // Same as parent
-				firstName: "Filip",
-				lastName: "Horváth",
-				phone: "+421903333333", // Same as parent
-				relationship: "rodina ženicha",
-			},
-		],
-	},
-
-	// Single-member groups (individual guests)
-	{
-		group: {
-			name: "Mária Nováková",
-			qrToken: "group-maria-novakova-004",
+			isFromModra: false,
+			name: "Mamka Ivetka",
+			qrToken: "13",
 		},
 		guests: [
 			{
 				about:
-					"Teta nevesty. Prezývka Majka. Vegetariánka. Učiteľka matematiky.",
-				email: "maria.novakova@example.com",
-				firstName: "Mária",
-				lastName: "Nováková",
-				phone: "+421904444444",
-				relationship: "rodina nevesty",
+					"Mama ženícha. Má rada klasické slovenské jedlá. Je z Novej Dedinky",
+				email: "",
+				firstName: "Mamka",
+				lastName: "Šelmeciova",
+				phone: "",
+				relationship: "mama ženícha",
 			},
 		],
 	},
 	{
 		group: {
-			name: "Ján Kovács",
-			qrToken: "group-jan-kovacs-005",
+			isFromModra: false,
+			name: "Krstný Roman a Alena",
+			qrToken: "3",
 		},
 		guests: [
 			{
-				about: "Strýko ženicha. Volá sa Janko. Má rád futbal.",
-				email: "jan.kovacs@example.com",
-				firstName: "Ján",
-				lastName: "Kovács",
-				phone: "+421905555555",
-				relationship: "rodina ženicha",
+				about:
+					"Krstný. Má zaujímave pohľady na svet a užíva si dôchodok. Je z Hamuliakova",
+				email: "",
+				firstName: "Krstný Roman",
+				lastName: "Jablonický",
+				phone: "",
+				relationship: "krstný ženicha",
+			},
+			{
+				about: "Alenka. Je z Hamuliakova.",
+				email: "",
+				firstName: "Alenka",
+				lastName: "Kováčová",
+				phone: "",
+				relationship: "priatelia krstného ženicha",
 			},
 		],
 	},
+	{
+		group: {
+			isFromModra: false,
+			name: "Braňo a Kika",
+			qrToken: "14",
+		},
+		guests: [
+			{
+				about: "Kamarát z posilovne. Má rad steak a cvičenie. Je z Bratislavy.",
+				email: "",
+				firstName: "Braňo",
+				lastName: "Lanči",
+				phone: "",
+				relationship: "kamarát ženícha",
+			},
+			{
+				about: "Kika. Je z Bratislavy.",
+				email: "",
+				firstName: "Kika",
+				lastName: "",
+				phone: "",
+				relationship: "známa ženicha",
+			},
+		],
+	},
+	{
+		group: {
+			isFromModra: false,
+			name: "Kučečkovci",
+			qrToken: "4",
+		},
+		guests: [
+			{
+				about:
+					"Kamarát z vysokej školy. Momentálne na diete, ale inak si rád pochutná na nezdravom. Je z Bratislavy.",
+				email: "",
+				firstName: "Tomáš",
+				lastName: "Kučečka",
+				phone: "",
+				relationship: "kamarát ženicha",
+			},
+			{
+				about: "Žena Tomáša. Má rada zdravé jedlo. Je z Bratislavy.",
+				email: "",
+				firstName: "Peťa",
+				lastName: "Kučečková",
+				phone: "",
+				relationship: "kamarát ženicha",
+			},
+		],
+	},
+	// Ivonka
 	{
 		group: {
 			isFromModra: true,
 			name: "Mama, otec, Ľubka",
-			qrToken: "group-mama-otec-lubka-006",
+			qrToken: "7",
 		},
 		guests: [
 			{
@@ -181,13 +181,13 @@ export const guestGroupSeedData: GuestGroupSeed[] = [
 	{
 		group: {
 			name: "Ujo Peťo a teta Miladka",
-			qrToken: "group-peto-miladka-007",
+			qrToken: "6",
 		},
 		guests: [
 			{
 				about: "Ujo Peťo. Z Častej, treba sa pýtať na dopravu.",
 				email: "",
-				firstName: "Peťo",
+				firstName: "Ujo Peťo",
 				lastName: "",
 				phone: "",
 				relationship: "rodina nevesty",
@@ -195,7 +195,7 @@ export const guestGroupSeedData: GuestGroupSeed[] = [
 			{
 				about: "Teta Miladka. Z Častej, treba sa pýtať na dopravu.",
 				email: "",
-				firstName: "Miladka",
+				firstName: "Teta Miladka",
 				lastName: "",
 				phone: "",
 				relationship: "rodina nevesty",
@@ -205,7 +205,7 @@ export const guestGroupSeedData: GuestGroupSeed[] = [
 	{
 		group: {
 			name: "Teta Anka a ujo Pišta",
-			qrToken: "group-anka-pista-008",
+			qrToken: "16",
 		},
 		guests: [
 			{
@@ -230,7 +230,7 @@ export const guestGroupSeedData: GuestGroupSeed[] = [
 		group: {
 			isFromModra: true,
 			name: "Zuzka a Baška",
-			qrToken: "group-zuzka-baska-009",
+			qrToken: "17",
 		},
 		guests: [
 			{
@@ -256,7 +256,7 @@ export const guestGroupSeedData: GuestGroupSeed[] = [
 		group: {
 			isFromModra: true,
 			name: "Zuzka a Miško",
-			qrToken: "group-zuzka-misko-010",
+			qrToken: "18",
 		},
 		guests: [
 			{
@@ -280,7 +280,7 @@ export const guestGroupSeedData: GuestGroupSeed[] = [
 	{
 		group: {
 			name: "Bea a Matúš",
-			qrToken: "group-bea-matus-011",
+			qrToken: "5",
 		},
 		guests: [
 			{
@@ -304,7 +304,7 @@ export const guestGroupSeedData: GuestGroupSeed[] = [
 	{
 		group: {
 			name: "Peťka a Vladko",
-			qrToken: "group-petka-vladko-012",
+			qrToken: "15",
 		},
 		guests: [
 			{
