@@ -167,11 +167,13 @@ export function RsvpSummary({ agentState, onEditRsvp }: RsvpSummaryProps) {
 								Ku kyticiam: Radosť nám spravíte aj jednou ružičkou. 🌹
 							</div>
 							<div className="text-sm text-gray-700 leading-relaxed">
-								K darom: Svadba nie je o trápení, čo priniesť k stolu. Najväčším
-								darom pre nás bude, že strávite tento deň s nami. 💝
+								K darom: Najväčším darom pre nás je vaša prítomnosť a spoločne
+								strávený čas. Ak by ste nám chceli niečím prispieť, finančný
+								príspevok privítame. 💝
 							</div>
 							<div className="text-xs text-gray-500 mt-2 italic">
-								Finančný príspevok je vítaný, hmotné dary nie sú potrebné.
+								Hmotné dary nie sú potrebné. Obálku môžete odovzdať pri vstupe
+								alebo počas hostiny.
 							</div>
 						</div>
 					</div>
