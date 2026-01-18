@@ -156,8 +156,13 @@ export class Chat extends AIChatAgent<Env, WeddingAgentState> {
 			.with("completing_rsvp", () => ({
 				updateRsvp: updateRsvpTool,
 			}))
-			// Post-RSVP states - general chat
-			.with("completed", "declined", () => ({
+			// Post-RSVP states - general chat + RSVP editing
+			.with("completed", () => ({
+				changeAttendanceDecision: changeAttendanceDecisionTool,
+				getAccommodationInfo: getAccommodationInfoTool,
+				updateRsvp: updateRsvpTool, // For editing existing RSVP
+			}))
+			.with("declined", () => ({
 				changeAttendanceDecision: changeAttendanceDecisionTool,
 				getAccommodationInfo: getAccommodationInfoTool,
 			}))
@@ -248,6 +253,7 @@ export class Chat extends AIChatAgent<Env, WeddingAgentState> {
 											const currentRsvpData = this.state.rsvpData || {
 												attendCeremony: true,
 												dietaryRestrictions: null,
+												needsAccommodation: null,
 												needsTransportAfter: null,
 												transportDestination: null,
 												willAttend: true,
@@ -275,6 +281,7 @@ export class Chat extends AIChatAgent<Env, WeddingAgentState> {
 											const currentRsvpData = this.state.rsvpData || {
 												attendCeremony: true,
 												dietaryRestrictions: null,
+												needsAccommodation: null,
 												needsTransportAfter: null,
 												transportDestination: null,
 												willAttend: true,

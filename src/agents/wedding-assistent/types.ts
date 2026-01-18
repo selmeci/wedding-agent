@@ -47,6 +47,7 @@ export interface WeddingAgentState {
 		dietaryRestrictions: string | null;
 		needsTransportAfter: boolean | null;
 		transportDestination: string | null;
+		needsAccommodation: boolean | null;
 	};
 }
 

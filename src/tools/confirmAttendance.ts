@@ -53,23 +53,49 @@ export const confirmAttendanceTool = tool<
 		const db = agent.getDatabase();
 		const { groupId, guestId: stateGuestId } = agent.state;
 
-		// Use provided guestId or fall back to state (for single-guest flow)
-		const guestId = inputGuestId || stateGuestId;
-
-		if (!groupId || !guestId) {
-			console.log("Guest must be identified before confirming attendance");
+		if (!groupId) {
+			console.log("Group must be set before confirming attendance");
 			return {
-				error: "Guest must be identified before confirming attendance",
+				error: "Group must be set before confirming attendance",
+				success: false,
+				type: "confirm-attendance",
+			};
+		}
+
+		// Use provided guestId or fall back to state
+		let guestId = inputGuestId || stateGuestId;
+
+		// If no guestId available, use first group member as fallback for respondedBy
+		// This allows RSVP to proceed even without explicit identification
+		if (!guestId) {
+			const group = await db.query.guestGroups.findFirst({
+				where: (t, { eq }) => eq(t.id, groupId),
+				with: { guests: true },
+			});
+			if (group?.guests?.[0]) {
+				guestId = group.guests[0].id;
+				console.log(
+					"No guestId provided, using first group member as fallback:",
+					guestId,
+				);
+			}
+		}
+
+		if (!guestId) {
+			console.log("Could not determine respondedBy - no guests in group");
+			return {
+				error: "Could not determine respondedBy - no guests in group",
 				success: false,
 				type: "confirm-attendance",
 			};
 		}
 
 		// Update agent state with guestId if it was passed directly (single-guest flow)
-		if (inputGuestId && !stateGuestId) {
+		// or if we used fallback (multi-guest without identification)
+		if (guestId && !stateGuestId) {
 			agent.setState({
 				...agent.state,
-				guestId: inputGuestId,
+				guestId,
 			});
 		}
 
@@ -105,8 +131,8 @@ export const confirmAttendanceTool = tool<
 
 		return {
 			message: willAttend
-				? "✓ Účasť potvrdená. Povedz useru potvrdenie a UKONČI odpoveď. V ďalšej konverzácii začneš zbierať RSVP údaje."
-				: "✓ Účasť odmietnutá. RSVP je kompletné.",
+				? "✓ Účasť potvrdená. POKRAČUJ v tej istej odpovedi: potvrď účasť a HNEĎ polož otázku o diétnych obmedzeniach!"
+				: "✓ Účasť odmietnutá. RSVP je kompletné. Poďakuj a rozlúč sa.",
 			stateUpdate: {
 				conversationState: nextState,
 				rsvpData: {
