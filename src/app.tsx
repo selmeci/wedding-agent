@@ -70,6 +70,10 @@ export default function Chat() {
 	const qrToken = searchParams.get("qrToken") || "";
 	const isDebugMode = searchParams.get("debug") === "true";
 	const mode = searchParams.get("mode") || "chat"; // "chat" or "report"
+	const adminSecret = searchParams.get("adminSecret");
+
+	// Admin mode state - allows accessing all tabs without completing RSVP
+	const [isAdminMode, setIsAdminMode] = useState(false);
 
 	// Check if wedding has already happened
 	const weddingDate = new Date("2026-03-27T14:30:00Z");
@@ -96,6 +100,20 @@ export default function Chat() {
 			setAgentState(newState);
 		},
 	});
+
+	// Validate admin secret on mount
+	useEffect(() => {
+		if (adminSecret) {
+			fetch(`/api/admin/verify?adminSecret=${encodeURIComponent(adminSecret)}`)
+				.then((res) => res.json() as Promise<{ valid: boolean }>)
+				.then((data) => {
+					if (data.valid) {
+						setIsAdminMode(true);
+					}
+				})
+				.catch(() => setIsAdminMode(false));
+		}
+	}, [adminSecret]);
 
 	const [agentInput, setAgentInput] = useState("");
 	const handleAgentInputChange = (
@@ -309,7 +327,8 @@ export default function Chat() {
 									<div className="flex gap-1 bg-white/10 rounded-full p-1">
 										{/* Photos Tab - FIRST after wedding if completed */}
 										{isAfterWedding &&
-											agentState?.conversationState === "completed" && (
+											(isAdminMode ||
+												agentState?.conversationState === "completed") && (
 												<button
 													onClick={() => setActiveTab("photos")}
 													type="button"
@@ -341,7 +360,8 @@ export default function Chat() {
 										</button>
 
 										{/* Timeline Tab - only if completed */}
-										{agentState?.conversationState === "completed" && (
+										{(isAdminMode ||
+											agentState?.conversationState === "completed") && (
 											<button
 												onClick={() => {
 													setActiveTab("timeline");
@@ -373,7 +393,8 @@ export default function Chat() {
 										)}
 
 										{/* Summary Tab - only if completed */}
-										{agentState?.conversationState === "completed" && (
+										{(isAdminMode ||
+											agentState?.conversationState === "completed") && (
 											<button
 												onClick={() => setActiveTab("summary")}
 												type="button"
@@ -389,7 +410,8 @@ export default function Chat() {
 										)}
 
 										{/* Audio Tab - only if completed */}
-										{agentState?.conversationState === "completed" && (
+										{(isAdminMode ||
+											agentState?.conversationState === "completed") && (
 											<button
 												onClick={() => setActiveTab("audio")}
 												type="button"
@@ -406,7 +428,8 @@ export default function Chat() {
 
 										{/* Photos Tab - last position before wedding if completed */}
 										{!isAfterWedding &&
-											agentState?.conversationState === "completed" && (
+											(isAdminMode ||
+												agentState?.conversationState === "completed") && (
 												<button
 													onClick={() => setActiveTab("photos")}
 													type="button"
@@ -714,6 +737,8 @@ export default function Chat() {
 							<PhotoUpload
 								qrToken={qrToken}
 								guestId={agentState?.guestId ?? null}
+								isAdminMode={isAdminMode}
+								adminSecret={adminSecret}
 							/>
 						)}
 					</div>

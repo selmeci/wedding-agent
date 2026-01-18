@@ -250,8 +250,38 @@ export function AudioRecorder({ qrToken }: AudioRecorderProps) {
 					</p>
 				)}
 
+				{/* Upload Progress Animation */}
+				{isUploading && (
+					<div className="w-full max-w-sm rounded-xl border border-pink-200 bg-gradient-to-br from-pink-50 via-white to-purple-50 p-6 shadow-md">
+						<div className="flex flex-col items-center gap-4">
+							{/* Animated microphone */}
+							<div className="relative">
+								<div className="absolute inset-0 animate-ping rounded-full bg-pink-300 opacity-30" />
+								<div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-pink-100">
+									<Microphone className="h-8 w-8" animated />
+								</div>
+							</div>
+
+							{/* Progress text */}
+							<div className="text-center">
+								<p className="text-lg font-medium text-pink-600">
+									Nahrávam na server...
+								</p>
+								<p className="mt-1 text-sm text-gray-500">
+									Prosím počkaj, odosielam tvoj hlasový pozdrav
+								</p>
+							</div>
+
+							{/* Progress bar (indeterminate) */}
+							<div className="w-full h-2 bg-pink-100 rounded-full overflow-hidden">
+								<div className="h-full bg-pink-500 rounded-full animate-pulse w-2/3" />
+							</div>
+						</div>
+					</div>
+				)}
+
 				{/* Preview after recording */}
-				{audioBlob && audioUrl && !isRecording && (
+				{audioBlob && audioUrl && !isRecording && !isUploading && (
 					<div className="flex w-full max-w-sm flex-col gap-3 rounded-xl border border-pink-200 bg-white p-4 shadow-md">
 						<p className="text-center text-sm font-medium text-gray-700">
 							Náhľad nahrávky ({formatTime(recordingTime)})
@@ -279,7 +309,7 @@ export function AudioRecorder({ qrToken }: AudioRecorderProps) {
 								disabled={isUploading}
 								className="flex-1 rounded-full bg-pink-500 py-2.5 px-4 font-medium text-white shadow-md hover:bg-pink-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
 							>
-								{isUploading ? "Nahrávam..." : "Uložiť"}
+								Uložiť
 							</button>
 						</div>
 					</div>

@@ -299,16 +299,32 @@ app.post("/api/photos", async (c) => {
 			return c.json({ error: "Invalid QR token" }, 403);
 		}
 
+		// Check for admin mode
+		const adminSecret = c.req.header("x-admin-secret");
+		const isAdmin = adminSecret === c.env.SECRET;
+
 		// Get guestId from header
-		const guestId = c.req.header("x-guest-id");
-		if (!guestId) {
+		let guestId = c.req.header("x-guest-id");
+
+		if (!guestId && !isAdmin) {
 			return c.json({ error: "Missing guest ID" }, 400);
 		}
 
-		// Validate guest belongs to group
-		const guestBelongsToGroup = group.guests.some((g) => g.id === guestId);
-		if (!guestBelongsToGroup) {
-			return c.json({ error: "Guest does not belong to group" }, 403);
+		// For admin mode without guestId, use first guest from group
+		if (!guestId && isAdmin && group.guests.length > 0) {
+			guestId = group.guests[0].id;
+		}
+
+		if (!guestId) {
+			return c.json({ error: "No guest available in group" }, 400);
+		}
+
+		// Validate guest belongs to group (skip for admin)
+		if (!isAdmin) {
+			const guestBelongsToGroup = group.guests.some((g) => g.id === guestId);
+			if (!guestBelongsToGroup) {
+				return c.json({ error: "Guest does not belong to group" }, 403);
+			}
 		}
 
 		// Parse multipart form data
@@ -833,6 +849,18 @@ app.delete("/api/audio/:id", async (c) => {
 			500,
 		);
 	}
+});
+
+// Admin mode validation endpoint
+app.get("/api/admin/verify", async (c) => {
+	const adminSecret = c.req.query("adminSecret");
+	const expectedSecret = c.env.SECRET;
+
+	if (!adminSecret || adminSecret !== expectedSecret) {
+		return c.json({ valid: false }, 401);
+	}
+
+	return c.json({ valid: true });
 });
 
 // Serve static assets and handle SPA routing

@@ -13,9 +13,16 @@ interface Photo {
 interface PhotoUploadProps {
 	qrToken: string;
 	guestId: string | null;
+	isAdminMode?: boolean;
+	adminSecret?: string | null;
 }
 
-export function PhotoUpload({ qrToken, guestId }: PhotoUploadProps) {
+export function PhotoUpload({
+	qrToken,
+	guestId,
+	isAdminMode,
+	adminSecret,
+}: PhotoUploadProps) {
 	const [photos, setPhotos] = useState<Photo[]>([]);
 	const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
 	const [showWifiWarning, setShowWifiWarning] = useState(true);
@@ -63,7 +70,7 @@ export function PhotoUpload({ qrToken, guestId }: PhotoUploadProps) {
 			const files = e.target.files;
 			if (!files || files.length === 0) return;
 
-			if (!guestId) {
+			if (!guestId && !isAdminMode) {
 				alert("Musíš byť identifikovaný pred nahrávaním fotiek");
 				return;
 			}
@@ -80,12 +87,18 @@ export function PhotoUpload({ qrToken, guestId }: PhotoUploadProps) {
 					formData.append("file", file);
 
 					// Upload to API
+					const headers: Record<string, string> = {
+						"x-qr-token": qrToken,
+					};
+					if (guestId) {
+						headers["x-guest-id"] = guestId;
+					}
+					if (adminSecret) {
+						headers["x-admin-secret"] = adminSecret;
+					}
 					const response = await fetch("/api/photos", {
 						body: formData,
-						headers: {
-							"x-guest-id": guestId,
-							"x-qr-token": qrToken,
-						},
+						headers,
 						method: "POST",
 					});
 
@@ -128,7 +141,7 @@ export function PhotoUpload({ qrToken, guestId }: PhotoUploadProps) {
 				fileInputRef.current.value = "";
 			}
 		},
-		[qrToken, guestId],
+		[qrToken, guestId, isAdminMode, adminSecret],
 	);
 
 	const openDeleteModal = useCallback((photoId: string) => {
