@@ -208,11 +208,39 @@ export function BabyCrawling({ className = "" }: { className?: string }) {
 			<g opacity="0.7">
 				{/* Curiosity sparkles near reaching hand */}
 				<rect x="98" y="104" width="4" height="4" fill="#FCD34D" />
-				<rect x="100" y="102" width="2" height="2" fill="#FFFFFF" opacity="0.8" />
-				<rect x="100" y="108" width="2" height="2" fill="#FFFFFF" opacity="0.6" />
+				<rect
+					x="100"
+					y="102"
+					width="2"
+					height="2"
+					fill="#FFFFFF"
+					opacity="0.8"
+				/>
+				<rect
+					x="100"
+					y="108"
+					width="2"
+					height="2"
+					fill="#FFFFFF"
+					opacity="0.6"
+				/>
 
-				<rect x="104" y="112" width="2" height="2" fill="#FCD34D" opacity="0.6" />
-				<rect x="106" y="108" width="2" height="2" fill="#FFFFFF" opacity="0.5" />
+				<rect
+					x="104"
+					y="112"
+					width="2"
+					height="2"
+					fill="#FCD34D"
+					opacity="0.6"
+				/>
+				<rect
+					x="106"
+					y="108"
+					width="2"
+					height="2"
+					fill="#FFFFFF"
+					opacity="0.5"
+				/>
 			</g>
 
 			{/* ENHANCED: Eye sparkle highlights */}

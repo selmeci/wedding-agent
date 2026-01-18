@@ -225,7 +225,14 @@ export function WeddingCouple({ className = "" }: { className?: string }) {
 
 			{/* Veil (scaled 2x) */}
 			<rect x="88" y="28" width="28" height="4" fill="#FFFFFF" opacity="0.7" />
-			<rect x="112" y="32" width="16" height="60" fill="#FFFFFF" opacity="0.4" />
+			<rect
+				x="112"
+				y="32"
+				width="16"
+				height="60"
+				fill="#FFFFFF"
+				opacity="0.4"
+			/>
 
 			{/* NEW: Veil sparkles */}
 			<rect x="116" y="40" width="2" height="2" fill="#FFFFFF" opacity="0.8" />
@@ -284,8 +291,22 @@ export function WeddingCouple({ className = "" }: { className?: string }) {
 			{/* ENHANCED: Dress sparkles on bride */}
 			<g opacity="0.8">
 				<rect x="92" y="96" width="2" height="2" fill="#FFFFFF" />
-				<rect x="102" y="108" width="2" height="2" fill="#FFFFFF" opacity="0.7" />
-				<rect x="86" y="114" width="2" height="2" fill="#FFFFFF" opacity="0.6" />
+				<rect
+					x="102"
+					y="108"
+					width="2"
+					height="2"
+					fill="#FFFFFF"
+					opacity="0.7"
+				/>
+				<rect
+					x="86"
+					y="114"
+					width="2"
+					height="2"
+					fill="#FFFFFF"
+					opacity="0.6"
+				/>
 			</g>
 
 			{/* ENHANCED: Suit highlight on groom */}

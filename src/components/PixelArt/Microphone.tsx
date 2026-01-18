@@ -93,16 +93,72 @@ export function Microphone({
 			{/* NEW: Additional highlights for 3D effect */}
 			<rect x="52" y="28" width="4" height="4" fill="#FFF5F7" />
 			<rect x="52" y="36" width="4" height="4" fill="#FFDDE5" />
-			<rect x="56" y="44" width="8" height="4" fill={highlightColor} opacity="0.6" />
+			<rect
+				x="56"
+				y="44"
+				width="8"
+				height="4"
+				fill={highlightColor}
+				opacity="0.6"
+			/>
 
 			{/* NEW: Mesh/grill pattern on mic head */}
-			<rect x="52" y="28" width="4" height="4" fill={tertiaryColor} opacity="0.3" />
-			<rect x="60" y="28" width="4" height="4" fill={tertiaryColor} opacity="0.3" />
-			<rect x="68" y="28" width="4" height="4" fill={tertiaryColor} opacity="0.3" />
-			<rect x="76" y="28" width="4" height="4" fill={tertiaryColor} opacity="0.3" />
-			<rect x="56" y="36" width="4" height="4" fill={tertiaryColor} opacity="0.3" />
-			<rect x="64" y="36" width="4" height="4" fill={tertiaryColor} opacity="0.3" />
-			<rect x="72" y="36" width="4" height="4" fill={tertiaryColor} opacity="0.3" />
+			<rect
+				x="52"
+				y="28"
+				width="4"
+				height="4"
+				fill={tertiaryColor}
+				opacity="0.3"
+			/>
+			<rect
+				x="60"
+				y="28"
+				width="4"
+				height="4"
+				fill={tertiaryColor}
+				opacity="0.3"
+			/>
+			<rect
+				x="68"
+				y="28"
+				width="4"
+				height="4"
+				fill={tertiaryColor}
+				opacity="0.3"
+			/>
+			<rect
+				x="76"
+				y="28"
+				width="4"
+				height="4"
+				fill={tertiaryColor}
+				opacity="0.3"
+			/>
+			<rect
+				x="56"
+				y="36"
+				width="4"
+				height="4"
+				fill={tertiaryColor}
+				opacity="0.3"
+			/>
+			<rect
+				x="64"
+				y="36"
+				width="4"
+				height="4"
+				fill={tertiaryColor}
+				opacity="0.3"
+			/>
+			<rect
+				x="72"
+				y="36"
+				width="4"
+				height="4"
+				fill={tertiaryColor}
+				opacity="0.3"
+			/>
 
 			{/* Sound waves when recording (scaled 4x + enhanced) */}
 			{recording && (
@@ -140,7 +196,14 @@ export function Microphone({
 			<rect x="50" y="28" width="2" height="28" fill="#FFFFFF" opacity="0.25" />
 
 			{/* ENHANCED: Base reflection */}
-			<rect x="44" y="92" width="8" height="2" fill={highlightColor} opacity="0.4" />
+			<rect
+				x="44"
+				y="92"
+				width="8"
+				height="2"
+				fill={highlightColor}
+				opacity="0.4"
+			/>
 
 			{/* ENHANCED: Recording indicator light */}
 			{recording && (

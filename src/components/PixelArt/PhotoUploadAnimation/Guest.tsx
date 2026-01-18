@@ -31,8 +31,22 @@ export function Guest({ className = "", isThrowing = false }: GuestProps) {
 				<rect x="40" y="40" width="48" height="24" fill="#FDBCB4" />
 
 				{/* NEW: Face shading */}
-				<rect x="40" y="40" width="4" height="20" fill="#E8A99A" opacity="0.4" />
-				<rect x="84" y="40" width="4" height="20" fill="#E8A99A" opacity="0.4" />
+				<rect
+					x="40"
+					y="40"
+					width="4"
+					height="20"
+					fill="#E8A99A"
+					opacity="0.4"
+				/>
+				<rect
+					x="84"
+					y="40"
+					width="4"
+					height="20"
+					fill="#E8A99A"
+					opacity="0.4"
+				/>
 
 				{/* Eyes (scaled 2x + enhanced) */}
 				<rect x="48" y="44" width="8" height="8" fill="#2C2C2C" />
@@ -97,7 +111,14 @@ export function Guest({ className = "", isThrowing = false }: GuestProps) {
 					<rect x="32" y="104" width="8" height="8" fill="#F49E8D" />
 
 					{/* NEW: Left arm shading */}
-					<rect x="34" y="82" width="4" height="20" fill="#E8A99A" opacity="0.4" />
+					<rect
+						x="34"
+						y="82"
+						width="4"
+						height="20"
+						fill="#E8A99A"
+						opacity="0.4"
+					/>
 					<rect x="34" y="106" width="4" height="4" fill="#E08E7D" />
 
 					{/* Right arm - up (throwing) */}
@@ -106,7 +127,14 @@ export function Guest({ className = "", isThrowing = false }: GuestProps) {
 					<rect x="96" y="32" width="8" height="8" fill="#F49E8D" />
 
 					{/* NEW: Right arm shading */}
-					<rect x="90" y="50" width="4" height="12" fill="#E8A99A" opacity="0.4" />
+					<rect
+						x="90"
+						y="50"
+						width="4"
+						height="12"
+						fill="#E8A99A"
+						opacity="0.4"
+					/>
 					<rect x="98" y="34" width="4" height="4" fill="#E08E7D" />
 
 					{/* Camera in raised hand (scaled 2x + enhanced) */}
@@ -116,7 +144,14 @@ export function Guest({ className = "", isThrowing = false }: GuestProps) {
 					{/* NEW: Camera details */}
 					<rect x="98" y="26" width="4" height="4" fill="#3C3C3C" />
 					<rect x="110" y="26" width="2" height="6" fill="#404040" />
-					<rect x="105" y="29" width="2" height="2" fill="#FFFFFF" opacity="0.5" />
+					<rect
+						x="105"
+						y="29"
+						width="2"
+						height="2"
+						fill="#FFFFFF"
+						opacity="0.5"
+					/>
 				</g>
 			) : (
 				// Ready pose - camera at chest
@@ -126,14 +161,28 @@ export function Guest({ className = "", isThrowing = false }: GuestProps) {
 					<rect x="32" y="96" width="8" height="8" fill="#F49E8D" />
 
 					{/* NEW: Left arm shading */}
-					<rect x="34" y="82" width="4" height="12" fill="#E8A99A" opacity="0.4" />
+					<rect
+						x="34"
+						y="82"
+						width="4"
+						height="12"
+						fill="#E8A99A"
+						opacity="0.4"
+					/>
 
 					{/* Right arm */}
 					<rect x="88" y="80" width="8" height="16" fill="#FDBCB4" />
 					<rect x="88" y="96" width="8" height="8" fill="#F49E8D" />
 
 					{/* NEW: Right arm shading */}
-					<rect x="90" y="82" width="4" height="12" fill="#E8A99A" opacity="0.4" />
+					<rect
+						x="90"
+						y="82"
+						width="4"
+						height="12"
+						fill="#E8A99A"
+						opacity="0.4"
+					/>
 
 					{/* Camera at chest - black body (scaled 2x + enhanced) */}
 					<rect x="52" y="88" width="24" height="16" fill="#2C2C2C" />
@@ -176,16 +225,44 @@ export function Guest({ className = "", isThrowing = false }: GuestProps) {
 				<rect x="80" y="112" width="4" height="8" fill="#6B5437" />
 
 				{/* NEW: Pants crease */}
-				<rect x="50" y="106" width="2" height="14" fill="#7B5F37" opacity="0.5" />
-				<rect x="76" y="106" width="2" height="14" fill="#7B5F37" opacity="0.5" />
+				<rect
+					x="50"
+					y="106"
+					width="2"
+					height="14"
+					fill="#7B5F37"
+					opacity="0.5"
+				/>
+				<rect
+					x="76"
+					y="106"
+					width="2"
+					height="14"
+					fill="#7B5F37"
+					opacity="0.5"
+				/>
 
 				{/* Shoes - dark (scaled 2x + enhanced) */}
 				<rect x="40" y="120" width="20" height="8" fill="#2C2C2C" />
 				<rect x="68" y="120" width="20" height="8" fill="#2C2C2C" />
 
 				{/* NEW: Shoe detail */}
-				<rect x="44" y="122" width="4" height="4" fill="#3C3C3C" opacity="0.5" />
-				<rect x="72" y="122" width="4" height="4" fill="#3C3C3C" opacity="0.5" />
+				<rect
+					x="44"
+					y="122"
+					width="4"
+					height="4"
+					fill="#3C3C3C"
+					opacity="0.5"
+				/>
+				<rect
+					x="72"
+					y="122"
+					width="4"
+					height="4"
+					fill="#3C3C3C"
+					opacity="0.5"
+				/>
 			</g>
 		</svg>
 	);

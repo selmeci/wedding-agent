@@ -37,14 +37,29 @@ export function FlyingPhoto({ isFlying, onAnimationEnd }: FlyingPhotoProps) {
 				/>
 
 				{/* NEW: Frame depth */}
-				<rect x="12" y="12" width="104" height="104" fill="none" stroke="#F0F0F0" strokeWidth="2" />
+				<rect
+					x="12"
+					y="12"
+					width="104"
+					height="104"
+					fill="none"
+					stroke="#F0F0F0"
+					strokeWidth="2"
+				/>
 
 				{/* Photo area - pink gradient (scaled 4x + enhanced) */}
 				<rect x="24" y="24" width="80" height="64" fill="#FFB5D5" />
 				<rect x="32" y="32" width="64" height="48" fill="#FF6B9D" />
 
 				{/* NEW: Photo gradient layers */}
-				<rect x="36" y="36" width="56" height="40" fill="#FF7DAD" opacity="0.5" />
+				<rect
+					x="36"
+					y="36"
+					width="56"
+					height="40"
+					fill="#FF7DAD"
+					opacity="0.5"
+				/>
 
 				{/* Simple image icon (scaled 4x + enhanced) */}
 				<g opacity="0.8">
@@ -68,14 +83,42 @@ export function FlyingPhoto({ isFlying, onAnimationEnd }: FlyingPhotoProps) {
 				<rect x="24" y="88" width="80" height="24" fill="#FFFFFF" />
 
 				{/* NEW: Polaroid text line */}
-				<rect x="40" y="96" width="48" height="4" fill="#E8E8E8" opacity="0.5" />
-				<rect x="48" y="104" width="32" height="4" fill="#E8E8E8" opacity="0.3" />
+				<rect
+					x="40"
+					y="96"
+					width="48"
+					height="4"
+					fill="#E8E8E8"
+					opacity="0.5"
+				/>
+				<rect
+					x="48"
+					y="104"
+					width="32"
+					height="4"
+					fill="#E8E8E8"
+					opacity="0.3"
+				/>
 
 				{/* Shadow (scaled 4x) */}
-				<rect x="16" y="112" width="96" height="8" fill="#000000" opacity="0.1" />
+				<rect
+					x="16"
+					y="112"
+					width="96"
+					height="8"
+					fill="#000000"
+					opacity="0.1"
+				/>
 
 				{/* NEW: Shadow gradient */}
-				<rect x="20" y="114" width="88" height="4" fill="#000000" opacity="0.05" />
+				<rect
+					x="20"
+					y="114"
+					width="88"
+					height="4"
+					fill="#000000"
+					opacity="0.05"
+				/>
 
 				{/* Sparkle effect (scaled 4x + enhanced) */}
 				<g opacity="0.9">
@@ -91,11 +134,39 @@ export function FlyingPhoto({ isFlying, onAnimationEnd }: FlyingPhotoProps) {
 
 				{/* NEW: Cross-shaped sparkles */}
 				<g opacity="0.7">
-					<rect x="10" y="34" width="4" height="12" fill="#FFFFFF" opacity="0.5" />
-					<rect x="6" y="38" width="12" height="4" fill="#FFFFFF" opacity="0.5" />
+					<rect
+						x="10"
+						y="34"
+						width="4"
+						height="12"
+						fill="#FFFFFF"
+						opacity="0.5"
+					/>
+					<rect
+						x="6"
+						y="38"
+						width="12"
+						height="4"
+						fill="#FFFFFF"
+						opacity="0.5"
+					/>
 
-					<rect x="114" y="50" width="4" height="12" fill="#FFFFFF" opacity="0.5" />
-					<rect x="110" y="54" width="12" height="4" fill="#FFFFFF" opacity="0.5" />
+					<rect
+						x="114"
+						y="50"
+						width="4"
+						height="12"
+						fill="#FFFFFF"
+						opacity="0.5"
+					/>
+					<rect
+						x="110"
+						y="54"
+						width="12"
+						height="4"
+						fill="#FFFFFF"
+						opacity="0.5"
+					/>
 				</g>
 
 				{/* NEW: Floating hearts */}

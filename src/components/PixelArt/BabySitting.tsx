@@ -272,7 +272,14 @@ export function BabySitting({ className = "" }: { className?: string }) {
 				<rect x="30" y="56" width="2" height="2" fill="#FFFFFF" opacity="0.6" />
 
 				<rect x="100" y="60" width="4" height="4" fill="#FBCFE8" />
-				<rect x="102" y="58" width="2" height="2" fill="#FFFFFF" opacity="0.8" />
+				<rect
+					x="102"
+					y="58"
+					width="2"
+					height="2"
+					fill="#FFFFFF"
+					opacity="0.8"
+				/>
 
 				{/* Tiny hearts */}
 				<rect x="22" y="72" width="2" height="2" fill="#FF9BB0" />

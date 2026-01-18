@@ -31,8 +31,22 @@ export function Groom({ className = "", isCatching = false }: GroomProps) {
 				<rect x="40" y="40" width="48" height="24" fill="#FDBCB4" />
 
 				{/* NEW: Face shading */}
-				<rect x="40" y="40" width="4" height="20" fill="#E8A99A" opacity="0.4" />
-				<rect x="84" y="40" width="4" height="20" fill="#E8A99A" opacity="0.4" />
+				<rect
+					x="40"
+					y="40"
+					width="4"
+					height="20"
+					fill="#E8A99A"
+					opacity="0.4"
+				/>
+				<rect
+					x="84"
+					y="40"
+					width="4"
+					height="20"
+					fill="#E8A99A"
+					opacity="0.4"
+				/>
 
 				{/* Eyes (scaled 2x + enhanced) */}
 				<rect x="48" y="44" width="8" height="8" fill="#2C2C2C" />
@@ -127,7 +141,14 @@ export function Groom({ className = "", isCatching = false }: GroomProps) {
 					<rect x="24" y="48" width="8" height="8" fill="#F49E8D" />
 
 					{/* NEW: Arm shading */}
-					<rect x="34" y="66" width="4" height="12" fill="#E8A99A" opacity="0.4" />
+					<rect
+						x="34"
+						y="66"
+						width="4"
+						height="12"
+						fill="#E8A99A"
+						opacity="0.4"
+					/>
 
 					{/* Right arm up */}
 					<rect x="88" y="64" width="8" height="16" fill="#FDBCB4" />
@@ -135,7 +156,14 @@ export function Groom({ className = "", isCatching = false }: GroomProps) {
 					<rect x="96" y="48" width="8" height="8" fill="#F49E8D" />
 
 					{/* NEW: Arm shading */}
-					<rect x="90" y="66" width="4" height="12" fill="#E8A99A" opacity="0.4" />
+					<rect
+						x="90"
+						y="66"
+						width="4"
+						height="12"
+						fill="#E8A99A"
+						opacity="0.4"
+					/>
 
 					{/* Small bouquet/flowers between hands (scaled 2x + enhanced) */}
 					<rect x="52" y="40" width="24" height="16" fill="#FF6B9D" />
@@ -165,7 +193,14 @@ export function Groom({ className = "", isCatching = false }: GroomProps) {
 					<rect x="32" y="96" width="8" height="8" fill="#FDBCB4" />
 
 					{/* NEW: Sleeve detail */}
-					<rect x="34" y="82" width="4" height="12" fill="#0D0D0D" opacity="0.3" />
+					<rect
+						x="34"
+						y="82"
+						width="4"
+						height="12"
+						fill="#0D0D0D"
+						opacity="0.3"
+					/>
 					<rect x="34" y="98" width="4" height="4" fill="#E8A99A" />
 
 					{/* Right arm */}
@@ -173,7 +208,14 @@ export function Groom({ className = "", isCatching = false }: GroomProps) {
 					<rect x="88" y="96" width="8" height="8" fill="#FDBCB4" />
 
 					{/* NEW: Sleeve detail */}
-					<rect x="90" y="82" width="4" height="12" fill="#0D0D0D" opacity="0.3" />
+					<rect
+						x="90"
+						y="82"
+						width="4"
+						height="12"
+						fill="#0D0D0D"
+						opacity="0.3"
+					/>
 					<rect x="90" y="98" width="4" height="4" fill="#E8A99A" />
 				</g>
 			)}
@@ -184,18 +226,60 @@ export function Groom({ className = "", isCatching = false }: GroomProps) {
 				<rect x="68" y="104" width="16" height="16" fill="#1A1A1A" />
 
 				{/* NEW: Trouser crease */}
-				<rect x="50" y="106" width="2" height="14" fill="#0D0D0D" opacity="0.4" />
-				<rect x="76" y="106" width="2" height="14" fill="#0D0D0D" opacity="0.4" />
+				<rect
+					x="50"
+					y="106"
+					width="2"
+					height="14"
+					fill="#0D0D0D"
+					opacity="0.4"
+				/>
+				<rect
+					x="76"
+					y="106"
+					width="2"
+					height="14"
+					fill="#0D0D0D"
+					opacity="0.4"
+				/>
 
 				{/* Shoes - shiny black (scaled 2x + enhanced) */}
 				<rect x="40" y="120" width="20" height="8" fill="#0D0D0D" />
 				<rect x="68" y="120" width="20" height="8" fill="#0D0D0D" />
-				<rect x="44" y="120" width="4" height="4" fill="#404040" opacity="0.6" />
-				<rect x="72" y="120" width="4" height="4" fill="#404040" opacity="0.6" />
+				<rect
+					x="44"
+					y="120"
+					width="4"
+					height="4"
+					fill="#404040"
+					opacity="0.6"
+				/>
+				<rect
+					x="72"
+					y="120"
+					width="4"
+					height="4"
+					fill="#404040"
+					opacity="0.6"
+				/>
 
 				{/* NEW: Shoe shine */}
-				<rect x="46" y="122" width="2" height="2" fill="#505050" opacity="0.5" />
-				<rect x="74" y="122" width="2" height="2" fill="#505050" opacity="0.5" />
+				<rect
+					x="46"
+					y="122"
+					width="2"
+					height="2"
+					fill="#505050"
+					opacity="0.5"
+				/>
+				<rect
+					x="74"
+					y="122"
+					width="2"
+					height="2"
+					fill="#505050"
+					opacity="0.5"
+				/>
 			</g>
 		</svg>
 	);

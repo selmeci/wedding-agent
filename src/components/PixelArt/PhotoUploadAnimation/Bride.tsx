@@ -78,8 +78,22 @@ export function Bride({ className = "", isCatching = false }: BrideProps) {
 				<rect x="40" y="44" width="48" height="24" fill="#FDBCB4" />
 
 				{/* NEW: Face shading */}
-				<rect x="40" y="44" width="4" height="20" fill="#E8A99A" opacity="0.4" />
-				<rect x="84" y="44" width="4" height="20" fill="#E8A99A" opacity="0.4" />
+				<rect
+					x="40"
+					y="44"
+					width="4"
+					height="20"
+					fill="#E8A99A"
+					opacity="0.4"
+				/>
+				<rect
+					x="84"
+					y="44"
+					width="4"
+					height="20"
+					fill="#E8A99A"
+					opacity="0.4"
+				/>
 
 				{/* Eyes (scaled 2x + enhanced) */}
 				<rect x="48" y="48" width="8" height="8" fill="#2C2C2C" />
@@ -195,7 +209,14 @@ export function Bride({ className = "", isCatching = false }: BrideProps) {
 					<rect x="20" y="52" width="8" height="8" fill="#F49E8D" />
 
 					{/* NEW: Arm shading */}
-					<rect x="34" y="70" width="4" height="12" fill="#E8A99A" opacity="0.4" />
+					<rect
+						x="34"
+						y="70"
+						width="4"
+						height="12"
+						fill="#E8A99A"
+						opacity="0.4"
+					/>
 
 					{/* Right arm up */}
 					<rect x="84" y="68" width="12" height="16" fill="#FDBCB4" />
@@ -203,7 +224,14 @@ export function Bride({ className = "", isCatching = false }: BrideProps) {
 					<rect x="100" y="52" width="8" height="8" fill="#F49E8D" />
 
 					{/* NEW: Arm shading */}
-					<rect x="90" y="70" width="4" height="12" fill="#E8A99A" opacity="0.4" />
+					<rect
+						x="90"
+						y="70"
+						width="4"
+						height="12"
+						fill="#E8A99A"
+						opacity="0.4"
+					/>
 
 					{/* Bouquet - pink roses (scaled 2x + enhanced) */}
 					<rect x="48" y="44" width="32" height="20" fill="#FF6B9D" />

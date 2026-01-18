@@ -144,10 +144,24 @@ export function BrokenHeart({ className = "" }: BrokenHeartProps) {
 				<rect x="32" y="104" width="8" height="8" fill="#5DADE2" />
 				<rect x="40" y="104" width="8" height="8" fill="#85C1E9" />
 				<rect x="40" y="112" width="8" height="8" fill="#85C1E9" />
-				<rect x="36" y="100" width="4" height="4" fill="#FFFFFF" opacity="0.7" />
+				<rect
+					x="36"
+					y="100"
+					width="4"
+					height="4"
+					fill="#FFFFFF"
+					opacity="0.7"
+				/>
 
 				{/* NEW: Left teardrop depth */}
-				<rect x="34" y="106" width="4" height="6" fill="#3498DB" opacity="0.5" />
+				<rect
+					x="34"
+					y="106"
+					width="4"
+					height="6"
+					fill="#3498DB"
+					opacity="0.5"
+				/>
 
 				{/* Left small tear splash */}
 				<rect x="24" y="112" width="4" height="4" fill="#AED6F1" />
@@ -162,10 +176,24 @@ export function BrokenHeart({ className = "" }: BrokenHeartProps) {
 				<rect x="80" y="112" width="8" height="8" fill="#5DADE2" />
 				<rect x="72" y="112" width="8" height="8" fill="#85C1E9" />
 				<rect x="72" y="120" width="8" height="8" fill="#85C1E9" />
-				<rect x="84" y="108" width="4" height="4" fill="#FFFFFF" opacity="0.7" />
+				<rect
+					x="84"
+					y="108"
+					width="4"
+					height="4"
+					fill="#FFFFFF"
+					opacity="0.7"
+				/>
 
 				{/* NEW: Right teardrop depth */}
-				<rect x="82" y="114" width="4" height="6" fill="#3498DB" opacity="0.5" />
+				<rect
+					x="82"
+					y="114"
+					width="4"
+					height="6"
+					fill="#3498DB"
+					opacity="0.5"
+				/>
 
 				{/* Right small tear splash */}
 				<rect x="88" y="120" width="4" height="4" fill="#AED6F1" />
@@ -191,7 +219,14 @@ export function BrokenHeart({ className = "" }: BrokenHeartProps) {
 				<rect x="48" y="20" width="2" height="2" fill="#FFFFFF" opacity="0.6" />
 				<rect x="84" y="28" width="2" height="2" fill="#FFFFFF" opacity="0.6" />
 				<rect x="36" y="60" width="2" height="2" fill="#FFFFFF" opacity="0.5" />
-				<rect x="100" y="44" width="2" height="2" fill="#FFFFFF" opacity="0.5" />
+				<rect
+					x="100"
+					y="44"
+					width="2"
+					height="2"
+					fill="#FFFFFF"
+					opacity="0.5"
+				/>
 
 				{/* NEW: Cross-shaped sparkles */}
 				<rect x="54" y="22" width="2" height="6" fill="#FFFFFF" opacity="0.4" />

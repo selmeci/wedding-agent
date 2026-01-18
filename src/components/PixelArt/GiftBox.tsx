@@ -189,14 +189,35 @@ export function GiftBox({ className = "", animated = false }: GiftBoxProps) {
 				{/* Top sparkle near bow (4-point star) */}
 				<rect x="44" y="14" width="4" height="4" fill="#FFFFFF" />
 				<rect x="42" y="16" width="2" height="8" fill="#FFFFFF" opacity="0.6" />
-				<rect x="38" y="18" width="10" height="2" fill="#FFFFFF" opacity="0.6" />
+				<rect
+					x="38"
+					y="18"
+					width="10"
+					height="2"
+					fill="#FFFFFF"
+					opacity="0.6"
+				/>
 				<rect x="44" y="12" width="2" height="2" fill="#FFFFFF" opacity="0.4" />
 				<rect x="44" y="22" width="2" height="2" fill="#FFFFFF" opacity="0.4" />
 
 				{/* Right side sparkle */}
 				<rect x="106" y="58" width="4" height="4" fill="#FFFFFF" />
-				<rect x="108" y="56" width="2" height="8" fill="#FFFFFF" opacity="0.5" />
-				<rect x="104" y="60" width="8" height="2" fill="#FFFFFF" opacity="0.5" />
+				<rect
+					x="108"
+					y="56"
+					width="2"
+					height="8"
+					fill="#FFFFFF"
+					opacity="0.5"
+				/>
+				<rect
+					x="104"
+					y="60"
+					width="8"
+					height="2"
+					fill="#FFFFFF"
+					opacity="0.5"
+				/>
 
 				{/* Small accent sparkles on bow */}
 				<rect x="52" y="23" width="2" height="2" fill="#FFFFFF" />
@@ -215,7 +236,14 @@ export function GiftBox({ className = "", animated = false }: GiftBoxProps) {
 			<rect x="26" y="76" width="1" height="32" fill="#FF1493" opacity="0.25" />
 			{/* Box right edge */}
 			<rect x="100" y="74" width="1" height="36" fill="#C71585" opacity="0.5" />
-			<rect x="101" y="76" width="1" height="32" fill="#8B0045" opacity="0.25" />
+			<rect
+				x="101"
+				y="76"
+				width="1"
+				height="32"
+				fill="#8B0045"
+				opacity="0.25"
+			/>
 			{/* Box bottom edge */}
 			<rect x="30" y="120" width="68" height="1" fill="#8B0045" opacity="0.4" />
 

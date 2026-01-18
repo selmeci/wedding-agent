@@ -319,9 +319,30 @@ export function Bride({ className = "" }: { className?: string }) {
 				{/* Skirt sparkles */}
 				<rect x="56" y="96" width="2" height="2" fill="#FFFFFF" />
 				<rect x="70" y="104" width="2" height="2" fill="#FFFFFF" />
-				<rect x="48" y="112" width="2" height="2" fill="#FFFFFF" opacity="0.7" />
-				<rect x="78" y="108" width="2" height="2" fill="#FFFFFF" opacity="0.7" />
-				<rect x="62" y="118" width="2" height="2" fill="#FFFFFF" opacity="0.6" />
+				<rect
+					x="48"
+					y="112"
+					width="2"
+					height="2"
+					fill="#FFFFFF"
+					opacity="0.7"
+				/>
+				<rect
+					x="78"
+					y="108"
+					width="2"
+					height="2"
+					fill="#FFFFFF"
+					opacity="0.7"
+				/>
+				<rect
+					x="62"
+					y="118"
+					width="2"
+					height="2"
+					fill="#FFFFFF"
+					opacity="0.6"
+				/>
 
 				{/* Bodice sparkles */}
 				<rect x="50" y="66" width="2" height="2" fill="#FFFFFF" opacity="0.6" />

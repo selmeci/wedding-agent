@@ -91,7 +91,14 @@ export function Heart({
 
 			{/* Right edge anti-aliasing */}
 			<rect x="104" y="40" width="1" height="16" fill="#FF3D6F" opacity="0.5" />
-			<rect x="105" y="42" width="1" height="12" fill="#FF3D6F" opacity="0.25" />
+			<rect
+				x="105"
+				y="42"
+				width="1"
+				height="12"
+				fill="#FF3D6F"
+				opacity="0.25"
+			/>
 			<rect x="96" y="56" width="1" height="8" fill="#FF6B8E" opacity="0.5" />
 			<rect x="97" y="58" width="1" height="4" fill="#FF6B8E" opacity="0.25" />
 			<rect x="88" y="64" width="1" height="8" fill="#FF9BB0" opacity="0.5" />
