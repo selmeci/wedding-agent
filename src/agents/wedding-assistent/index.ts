@@ -10,43 +10,39 @@ import {
 	streamText,
 	type ToolSet,
 } from "ai";
-import { match } from "ts-pattern";
 import { buildSystemPrompt } from "@/agents/wedding-assistent/system-prompt";
 import type {
 	GroupInfo,
 	WeddingAgentState,
 } from "@/agents/wedding-assistent/types";
-import { determineTaskFromState } from "@/agents/wedding-assistent/utils";
 import { createDb, type Database } from "@/db";
 import {
-	changeAttendanceDecisionTool,
-	confirmAttendanceTool,
-	confirmIdentityTool,
 	executions,
 	getAccommodationInfoTool,
-	saveDietaryTool,
-	saveTransportTool,
+	saveRsvpTool,
 	sendMessageToCoupleTool,
-	updateRsvpTool,
 } from "@/tools";
 import type { Outputs } from "@/tools/types";
 import { cleanupMessages, processToolCalls } from "@/utils";
 import { sendEmailNotification } from "@/utils/email";
-// TODO: Re-enable when email notifications are ready
-// import { sendEmailNotification } from "@/utils/email";
 
 /**
- * Chat Agent implementation that handles real-time AI chat interactions
+ * Simplified Chat Agent
+ *
+ * Goal-oriented agent with:
+ * - 3 states: collecting, completed, declined
+ * - 3 tools: saveRsvp, getAccommodationInfo, sendMessageToCouple
+ * - Single system prompt for entire conversation
  */
 export class Chat extends AIChatAgent<Env, WeddingAgentState> {
 	private db: Database | null = null;
 
+	/**
+	 * Simplified initial state - only 2 fields
+	 */
 	initialState: WeddingAgentState = {
-		conversationState: "initializing",
+		conversationState: "collecting",
 		groupId: null,
-		guestId: null,
-		identificationAttempts: 0,
-		rsvpComplete: false,
 	};
 
 	getEnv() {
@@ -57,7 +53,6 @@ export class Chat extends AIChatAgent<Env, WeddingAgentState> {
 		if (!this.db) {
 			this.db = createDb(this.env.DB);
 		}
-
 		return this.db;
 	}
 
@@ -75,113 +70,62 @@ export class Chat extends AIChatAgent<Env, WeddingAgentState> {
 	}
 
 	/**
-	 * Generate initial greeting message for QR flow
+	 * Generate initial greeting message
 	 *
-	 * QR flow (groupId exists): Greet entire group by names and ask who's chatting
+	 * Single guest: Personal greeting + attendance question
+	 * Multi guest: Group greeting + attendance question (no "who's writing")
 	 */
 	private getInitialGreeting(groupContext: GroupInfo): string {
-		// QR flow - group greeting (UC-01, UC-02)
 		const isSingleGuest = groupContext.guests.length === 1;
 
 		if (isSingleGuest) {
-			// Single guest - skip "who's writing" and ask directly about attendance
-			// AI will auto-identify in first response
-			return `Ahoj ${groupContext.guestNames[0]}! 💕 Som tvoj osobný svadobný asistent. Pomôžem ti potvrdiť účasť na svadbe, zozbierať potrebné informácie pre hostinu a zodpovedať všetky otázky ohľadom nášho veľkého dňa. Vážime si, že nám venuješ čas! Môžem sa na teba tešiť 27. marca na sobáši aj hostine?`;
+			const guest = groupContext.guests[0];
+			return `Ahoj ${guest.firstName}! 💕 Som tvoj osobný svadobný asistent. Pomôžem ti potvrdiť účasť na svadbe a zodpovedať všetky otázky. Môžem sa na teba tešiť 27. marca na sobáši aj hostine?`;
 		}
 
-		// Multiple guests - greet all and ask who's chatting
-		return `Ahoj ${groupContext.guestNames.join(", ")}! 💕 Som váš osobný svadobný asistent. Pomôžem vám potvrdiť účasť na svadbe, zozbierať potrebné informácie pre hostinu a zodpovedať všetky otázky ohľadom nášho veľkého dňa. Vážime si, že nám venujete čas! Kto z vás práve píše?`;
+		// Multi guest - greet all and ask about attendance directly (no identity question)
+		return `Ahoj ${groupContext.guestNames.join(" a ")}! 💕 Som váš osobný svadobný asistent. Pomôžem vám potvrdiť účasť na svadbe a zodpovedať všetky otázky. Môžeme sa na vás tešiť 27. marca na sobáši aj hostine?`;
 	}
 
 	/**
-	 * Handles incoming chat messages and manages the response stream
+	 * Handles incoming chat messages
 	 */
 	async onChatMessage(
 		onFinish: StreamTextOnFinishCallback<ToolSet>,
 		_options?: { abortSignal?: AbortSignal },
 	) {
+		// Skip if only greeting message exists
 		if (this.messages.length === 1) {
 			return;
 		}
 
-		console.log("State", { state: this.state });
+		console.log("State:", this.state);
 
-		// Load group context (QR flow only)
-		// groupId must be set via setGroupId() before chat starts
+		// Validate QR code access
 		if (!this.state.groupId) {
 			throw new Error("No groupId set. Access only allowed via QR code.");
 		}
 
 		const groupContext = await this.getGroupContext(this.state.groupId);
 
-		// Determine task type based on current state (used for logging)
-		const taskType = determineTaskFromState(
-			this.state.conversationState,
-			this.state.rsvpComplete,
-		);
-		console.log("Task type:", taskType);
-
-		// Select appropriate model for task
-		//const model = fireworks(this.env)("accounts/fireworks/models/gpt-oss-120b");
-		//const model = getModelForTask(taskType, this.env);
+		// Use Claude Sonnet 4
 		const model = anthropic("claude-sonnet-4-5");
 
-		// Build context-aware system prompt
-		const system = buildSystemPrompt(this.state, groupContext);
-		console.log("System prompt:\n", system);
+		// Build goal-oriented system prompt (single prompt for all states)
+		const system = buildSystemPrompt(groupContext);
+		console.log("System prompt length:", system.length);
 
-		// Determine which tools to provide based on conversation state
-		// Using state-based tool gating to ensure proper RSVP collection flow
-		const tools = match(this.state.conversationState)
-			// Identification states
-			.with("group_welcome", "identifying_individual", () => ({
-				confirmAttendance: confirmAttendanceTool, // For single-guest auto-ID flow
-				confirmIdentity: confirmIdentityTool,
-			}))
-			// Attendance confirmation
-			.with("identified", "confirming_attendance", () => ({
-				confirmAttendance: confirmAttendanceTool,
-			}))
-			// RSVP sub-states - each state has specific tool
-			.with("collecting_dietary", () => ({
-				saveDietary: saveDietaryTool,
-			}))
-			.with("collecting_transport", () => ({
-				saveTransport: saveTransportTool,
-				updateRsvp: updateRsvpTool, // Allow finalizing RSVP if transport leads directly to completion
-			}))
-			.with("collecting_accommodation", () => ({
-				getAccommodationInfo: getAccommodationInfoTool,
-				updateRsvp: updateRsvpTool, // Allow finalizing RSVP directly from this state
-			}))
-			.with("completing_rsvp", () => ({
-				updateRsvp: updateRsvpTool,
-			}))
-			// Post-RSVP states - general chat + RSVP editing + messaging
-			.with("completed", () => ({
-				changeAttendanceDecision: changeAttendanceDecisionTool,
-				getAccommodationInfo: getAccommodationInfoTool,
-				sendMessageToCouple: sendMessageToCoupleTool, // Send message to Ivonka and Roman
-				updateRsvp: updateRsvpTool, // For editing existing RSVP
-			}))
-			.with("declined", () => ({
-				changeAttendanceDecision: changeAttendanceDecisionTool,
-				getAccommodationInfo: getAccommodationInfoTool,
-				sendMessageToCouple: sendMessageToCoupleTool, // Can still send message even if declined
-			}))
-			// Edge cases
-			.with("initializing", "identification_failed", () => ({
-				getAccommodationInfo: getAccommodationInfoTool,
-			}))
-			.exhaustive();
+		// Flat tool set - always the same 3 tools, no state-based gating
+		const tools = {
+			getAccommodationInfo: getAccommodationInfoTool,
+			saveRsvp: saveRsvpTool,
+			sendMessageToCouple: sendMessageToCoupleTool,
+		};
 
 		const stream = createUIMessageStream({
 			execute: async ({ writer }) => {
-				// Clean up incomplete tool calls to prevent API errors
 				const cleanedMessages = cleanupMessages(this.messages);
 
-				// Process any pending tool calls from previous messages
-				// This handles human-in-the-loop confirmations for tools
 				const processedMessages = await processToolCalls({
 					dataStream: writer,
 					executions,
@@ -193,156 +137,46 @@ export class Chat extends AIChatAgent<Env, WeddingAgentState> {
 					maxOutputTokens: 2048,
 					messages: await convertToModelMessages(processedMessages),
 					model,
-					// Wrap onFinish to process tool results and update agent state
 					onFinish: async (finishResult) => {
-						// Capture old state before processing tools
 						const oldState = this.state.conversationState;
 
-						// Process tool results for state updates
-						// Currently handles: confirmIdentity, confirmAttendance, updateRsvp
+						// Process tool results - only saveRsvp changes state
 						for (const step of finishResult.steps) {
 							for (const toolResult of step.toolResults) {
-								console.log("Tool result:", { output: toolResult.output });
-								await match<Outputs>(toolResult.output as Outputs)
-									.with({ type: "confirm-identity" }, async (output) => {
-										if (output.success) {
-											const stateUpdate = output.stateUpdate;
-											if (stateUpdate) {
-												this.setState({
-													...this.state,
-													...stateUpdate,
-												});
+								const output = toolResult.output as Outputs;
+								console.log("Tool result:", output);
 
-												console.log(
-													"Identity confirmed. State updated to:",
-													stateUpdate.conversationState,
-													"Guest:",
-													output.guest.firstName,
-													output.guest.lastName,
-												);
-											}
-										}
-									})
-									.with({ type: "confirm-attendance" }, async (output) => {
-										if (output.success) {
-											this.setState({
-												...this.state,
-												...output.stateUpdate,
-											});
+								if (
+									output.type === "save-rsvp" &&
+									output.success &&
+									output.stateUpdate
+								) {
+									this.setState({
+										...this.state,
+										conversationState: output.stateUpdate.conversationState,
+									});
 
-											console.log(
-												"Attendance confirmed. State:",
-												output.stateUpdate.conversationState,
-											);
-										}
-									})
-									.with({ type: "update-rsvp" }, async (output) => {
-										if (output.success) {
-											const finalState = output.stateUpdate;
-
-											this.setState({
-												...this.state,
-												...finalState,
-											});
-
-											console.log(
-												"RSVP saved successfully. State:",
-												finalState.conversationState,
-											);
-										}
-									})
-									.with({ type: "save-dietary" }, async (output) => {
-										if (output.success) {
-											const currentRsvpData = this.state.rsvpData || {
-												attendCeremony: true,
-												dietaryRestrictions: null,
-												needsAccommodation: null,
-												needsTransportAfter: null,
-												transportDestination: null,
-												willAttend: true,
-											};
-											this.setState({
-												...this.state,
-												conversationState: output.stateUpdate.conversationState,
-												rsvpData: {
-													...currentRsvpData,
-													attendCeremony: true,
-													dietaryRestrictions:
-														output.stateUpdate.rsvpData.dietaryRestrictions,
-													willAttend: true,
-												},
-											});
-
-											console.log(
-												"Dietary saved. State:",
-												output.stateUpdate.conversationState,
-											);
-										}
-									})
-									.with({ type: "save-transport" }, async (output) => {
-										if (output.success) {
-											const currentRsvpData = this.state.rsvpData || {
-												attendCeremony: true,
-												dietaryRestrictions: null,
-												needsAccommodation: null,
-												needsTransportAfter: null,
-												transportDestination: null,
-												willAttend: true,
-											};
-											this.setState({
-												...this.state,
-												conversationState: output.stateUpdate.conversationState,
-												rsvpData: {
-													...currentRsvpData,
-													needsTransportAfter:
-														output.stateUpdate.rsvpData.needsTransportAfter,
-													transportDestination:
-														output.stateUpdate.rsvpData.transportDestination,
-												},
-											});
-
-											console.log(
-												"Transport saved. Next state:",
-												output.stateUpdate.conversationState,
-											);
-										}
-									})
-									.with(
-										{ type: "change-attendance-decision" },
-										async (output) => {
-											if (output.success) {
-												this.setState({
-													...this.state,
-													...output.stateUpdate,
-												});
-
-												console.log(
-													"Attendance decision changed. State:",
-													output.stateUpdate.conversationState,
-													"Guest now attending:",
-													output.stateUpdate.rsvpData.willAttend,
-												);
-											}
-										},
-									)
-									.otherwise(async () => {});
+									console.log(
+										"RSVP saved. New state:",
+										output.stateUpdate.conversationState,
+									);
+								}
+								// Other tools (getAccommodationInfo, sendMessageToCouple) don't change state
 							}
 						}
 
-						// Check for state transition to final states (completed or declined)
-						// Send email notification only on FIRST transition to final state
+						// Send email on state transition to final state
 						const newState = this.state.conversationState;
 						if (
 							oldState !== newState &&
 							(newState === "completed" || newState === "declined")
 						) {
 							console.log(
-								`[State Transition] ${oldState} → ${newState}. Sending email notification...`,
+								`[State Transition] ${oldState} → ${newState}. Sending email...`,
 							);
 							await this.sendEmailNotification();
 						}
 
-						// Call base callback
 						await (
 							onFinish as unknown as StreamTextOnFinishCallback<typeof tools>
 						)(finishResult);
@@ -360,92 +194,70 @@ export class Chat extends AIChatAgent<Env, WeddingAgentState> {
 	}
 
 	async onConnect(connection: Connection) {
-		console.log(`User ${connection.id} has connected to the chat agent...`);
+		console.log(`User ${connection.id} connected`);
 
-		// Validate groupId is set (QR code access only)
 		if (!this.state.groupId) {
 			throw new Error("No groupId set. Access only allowed via QR code.");
 		}
 
 		const groupContext = await this.getGroupContext(this.state.groupId);
 
-		// 🎯 INITIAL GREETING: If this is the first interaction (no messages yet),
-		// inject a proactive greeting message from the assistant
-		// This implements UC-01, UC-02 requirements
+		// Initial greeting on first connection
 		if (this.messages.length === 0) {
 			const greeting = this.getInitialGreeting(groupContext);
-			console.log("Initial greeting:\n", greeting);
+			console.log("Initial greeting:", greeting);
 
-			// Add assistant greeting as first message
 			this.messages.push({
 				id: crypto.randomUUID(),
-				parts: [
-					{
-						text: greeting,
-						type: "text",
-					},
-				],
+				parts: [{ text: greeting, type: "text" }],
 				role: "assistant",
 			});
 
-			// Persist the greeting message
 			await this.saveMessages(this.messages);
 
-			// QR flow: Move to group_welcome state
-			this.setState({
-				...this.state,
-				conversationState: "group_welcome",
-			});
+			// State stays "collecting" - no state change needed
 		}
 	}
 
 	/**
-	 * Send email notification when RSVP reaches final state
-	 * Called automatically on state transition to 'completed' or 'declined'
-	 *
-	 * NOTE: Currently disabled. Uncomment implementation when email service is configured.
+	 * Send email notification when RSVP is completed
 	 */
 	private async sendEmailNotification(): Promise<void> {
-		const { groupId, guestId } = this.state;
+		const { groupId } = this.state;
 
-		if (!groupId || !guestId) {
-			console.error(
-				"[Email Notification] Cannot send email: missing groupId or guestId",
-			);
+		if (!groupId) {
+			console.error("[Email] Cannot send: missing groupId");
 			return;
 		}
 
 		try {
 			const db = this.getDatabase();
 
-			// Get guest information
-			const guest = await db.query.guests.findFirst({
-				where: (t, { eq }) => eq(t.id, guestId),
-			});
-
-			if (!guest) {
-				console.error("[Email Notification] Guest not found:", guestId);
-				return;
-			}
-
-			// Get all guests in group for attendee count
+			// Get all guests in group
 			const groupGuests = await db.query.guests.findMany({
 				where: (t, { eq }) => eq(t.groupId, groupId),
 			});
 
-			// Get RSVP response from database
+			if (groupGuests.length === 0) {
+				console.error("[Email] No guests found for group:", groupId);
+				return;
+			}
+
+			// Get RSVP response
 			const rsvpResponse = await db.query.guestGroupResponses.findFirst({
 				where: (t, { eq }) => eq(t.groupId, groupId),
 			});
 
 			if (!rsvpResponse) {
-				console.error("[Email Notification] RSVP response not found:", groupId);
+				console.error("[Email] RSVP response not found:", groupId);
 				return;
 			}
 
-			const guestName = `${guest.firstName} ${guest.lastName}`.trim();
+			// Use first guest's name for email (or group name)
+			const guestName = groupGuests
+				.map((g) => `${g.firstName} ${g.lastName}`)
+				.join(", ");
 
-			// Send email notification
 			const emailResult = await sendEmailNotification(this.env, {
 				attendeeCount: groupGuests.length,
 				dietaryRestrictions: rsvpResponse.dietaryRestrictions,
@@ -457,37 +269,27 @@ export class Chat extends AIChatAgent<Env, WeddingAgentState> {
 			});
 
 			if (emailResult.success) {
-				console.log(
-					"[Email Notification] Email sent successfully:",
-					emailResult.messageId,
-				);
+				console.log("[Email] Sent successfully:", emailResult.messageId);
 			} else {
-				console.warn("[Email Notification] Email failed:", emailResult.error);
+				console.warn("[Email] Failed:", emailResult.error);
 			}
 		} catch (error: unknown) {
 			console.error(
-				"[Email Notification] Error sending email:",
+				"[Email] Error:",
 				error instanceof Error ? error.message : String(error),
 			);
-			// Don't throw - email failure should not break the conversation
 		}
 	}
 
 	/**
 	 * Load group context from D1 database
-	 *
-	 * @param groupId - UUID of guest group (required for QR-only access)
-	 * @returns GroupInfo with guests from the group
 	 */
 	private async getGroupContext(groupId: string): Promise<GroupInfo> {
 		const db = this.getDatabase();
 
-		// QR flow: Load specific group with its guests
 		const groupWithGuests = await db.query.guestGroups.findFirst({
 			where: (t, { eq }) => eq(t.id, groupId),
-			with: {
-				guests: true,
-			},
+			with: { guests: true },
 		});
 
 		if (!groupWithGuests) {
@@ -497,7 +299,7 @@ export class Chat extends AIChatAgent<Env, WeddingAgentState> {
 		return {
 			groupId,
 			groupName: groupWithGuests.name,
-			guestNames: groupWithGuests.guests.map((g) => `${g.firstName}`),
+			guestNames: groupWithGuests.guests.map((g) => g.firstName),
 			guests: groupWithGuests.guests,
 			isFromModra: groupWithGuests.isFromModra ?? false,
 		};

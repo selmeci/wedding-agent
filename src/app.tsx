@@ -722,10 +722,7 @@ export default function Chat() {
 						) : activeTab === "summary" ? (
 							/* Summary Tab Content */
 							<div className="flex-1 min-h-0 overflow-y-auto bg-gradient-to-br from-pink-50 via-white to-pink-100">
-								<RsvpSummary
-									agentState={agentState}
-									onEditRsvp={() => setActiveTab("chat")}
-								/>
+								<RsvpSummary onEditRsvp={() => setActiveTab("chat")} />
 							</div>
 						) : activeTab === "audio" ? (
 							/* Audio Tab Content */
@@ -736,7 +733,7 @@ export default function Chat() {
 							/* Photos Tab Content */
 							<PhotoUpload
 								qrToken={qrToken}
-								guestId={agentState?.guestId ?? null}
+								guestId={null}
 								isAdminMode={isAdminMode}
 								adminSecret={adminSecret}
 							/>

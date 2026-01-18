@@ -57,7 +57,7 @@ export const sendMessageToCoupleTool = tool<
 		if (!agent) throw new Error("No agent found");
 
 		const db = agent.getDatabase();
-		const { groupId, guestId } = agent.state;
+		const { groupId } = agent.state;
 
 		if (!groupId) {
 			return {
@@ -80,17 +80,14 @@ export const sendMessageToCoupleTool = tool<
 			if (group) {
 				groupName = group.name;
 
-				if (guestId) {
-					const guest = group.guests.find((g) => g.id === guestId);
-					if (guest) {
-						guestName = `${guest.firstName} ${guest.lastName}`;
-					}
-				} else if (group.guests.length === 1) {
+				if (group.guests.length === 1) {
 					// Single guest group
 					guestName = `${group.guests[0].firstName} ${group.guests[0].lastName}`;
 				} else {
-					// Multi-guest group, unknown who is writing
-					guestName = `Člen skupiny ${group.name}`;
+					// Multi-guest group - use all names
+					guestName = group.guests
+						.map((g) => `${g.firstName} ${g.lastName}`)
+						.join(", ");
 				}
 			}
 		} catch (error) {

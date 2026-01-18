@@ -1,41 +1,31 @@
-import { changeAttendanceDecisionTool } from "./changeAttendanceDecision";
-import { confirmAttendanceTool } from "./confirmAttendance";
-import { confirmIdentityTool } from "./confirmIdentity";
-import { getAccommodationInfoTool } from "./getAccommodationInfo";
-import { getIdentificationContextTool } from "./getIdentificationContext";
-import { saveAccommodationTool } from "./saveAccommodation";
-import { saveDietaryTool } from "./saveDietary";
-import { saveTransportTool } from "./saveTransport";
-import { sendMessageToCoupleTool } from "./sendMessageToCouple";
-import { updateRsvpTool } from "./updateRsvp";
+/**
+ * Simplified tool exports
+ *
+ * Only 3 tools needed:
+ * - saveRsvp: Atomic RSVP storage
+ * - getAccommodationInfo: Hotel information
+ * - sendMessageToCouple: Message to wedding couple
+ */
 
-export { changeAttendanceDecisionTool } from "./changeAttendanceDecision";
-export { confirmAttendanceTool } from "./confirmAttendance";
-export { confirmIdentityTool } from "./confirmIdentity";
+import { getAccommodationInfoTool } from "./getAccommodationInfo";
+import { saveRsvpTool } from "./saveRsvp";
+import { sendMessageToCoupleTool } from "./sendMessageToCouple";
+
 export { getAccommodationInfoTool } from "./getAccommodationInfo";
-export { getIdentificationContextTool } from "./getIdentificationContext";
-export { saveAccommodationTool } from "./saveAccommodation";
-export { saveDietaryTool } from "./saveDietary";
-export { saveTransportTool } from "./saveTransport";
+export { saveRsvpTool } from "./saveRsvp";
 export { sendMessageToCoupleTool } from "./sendMessageToCouple";
-export { updateRsvpTool } from "./updateRsvp";
 
 /**
- * Implementation of confirmation-required tools
- * This object contains the actual logic for tools that need human approval
- * Each function here corresponds to a tool above that doesn't have an execute function
+ * Tool executions for confirmation-required tools
+ * Currently empty - all tools auto-execute
  */
 export const executions = {};
 
+/**
+ * All available tools
+ */
 export const tools = {
-	changeAttendanceDecisionTool,
-	confirmAttendanceTool,
-	confirmIdentityTool,
-	getAccommodationInfoTool,
-	getIdentificationContextTool,
-	saveAccommodationTool,
-	saveDietaryTool,
-	saveTransportTool,
-	sendMessageToCoupleTool,
-	updateRsvpTool,
+	getAccommodationInfo: getAccommodationInfoTool,
+	saveRsvp: saveRsvpTool,
+	sendMessageToCouple: sendMessageToCoupleTool,
 };

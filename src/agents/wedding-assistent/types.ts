@@ -1,61 +1,45 @@
 import { z } from "zod";
 import type { Guest } from "@/db";
 
+/**
+ * Simplified conversation states
+ *
+ * Only 3 states needed:
+ * - collecting: RSVP in progress (includes initial greeting, questions, everything before save)
+ * - completed: RSVP done, guest will attend
+ * - declined: RSVP done, guest won't attend
+ */
 export const ConversationStateSchema = z.enum([
-	"initializing",
-	"group_welcome",
-	"identifying_individual",
-	"identified",
-	"confirming_attendance", // After identification, waiting for yes/no to attendance question
-	// RSVP collection sub-states (ordered flow)
-	"collecting_dietary", // Step 1: Ask about dietary restrictions
-	"collecting_transport", // Step 2: Ask about transport after celebration
-	"collecting_accommodation", // Step 3: Ask about accommodation (conditional)
-	"completing_rsvp", // Step 4: Finalize and save RSVP
+	"collecting",
 	"completed",
-	"declined", // Guest declined attendance
-	"identification_failed",
+	"declined",
 ] as const);
 
-/**
- * Conversation states for the wedding RSVP wedding-agent-ws
- */
 export type ConversationState = z.infer<typeof ConversationStateSchema>;
 
 /**
- * Task types for model selection
- */
-export type TaskType =
-	| "chat_general" // Friendly conversation after RSVP complete
-	| "identification" // Guest identification reasoning
-	| "rsvp_collection" // RSVP tool calling
-	| "information_provision"; // Wedding info, Q&A for unidentified guests
-
-/**
- * Agent state persisted across messages
+ * Simplified agent state
+ *
+ * Only essential fields:
+ * - groupId: identifies which group of guests (from QR code)
+ * - conversationState: current phase
+ *
+ * Removed:
+ * - guestId: not needed, AI uses names from context for addressing
+ * - identificationAttempts: no formal identification
+ * - rsvpComplete: implied by conversationState
+ * - rsvpData: stored directly in DB, not in state
  */
 export interface WeddingAgentState {
 	groupId: string | null;
-	guestId: string | null;
 	conversationState: ConversationState;
-	identificationAttempts: number;
-	rsvpComplete: boolean;
-	// RSVP data for summary tab
-	rsvpData?: {
-		willAttend: boolean;
-		attendCeremony: boolean | null;
-		dietaryRestrictions: string | null;
-		needsTransportAfter: boolean | null;
-		transportDestination: string | null;
-		needsAccommodation: boolean | null;
-	};
 }
 
 /**
  * Group context information loaded from D1
  */
 export interface GroupInfo {
-	groupId: string | null; // Can be null for no-QR flow (all guests)
+	groupId: string | null;
 	groupName: string;
 	isFromModra: boolean;
 	guestNames: string[];
