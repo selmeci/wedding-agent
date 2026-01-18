@@ -734,7 +734,6 @@ export default function Chat() {
 							<PhotoUpload
 								qrToken={qrToken}
 								guestId={null}
-								isAdminMode={isAdminMode}
 								adminSecret={adminSecret}
 							/>
 						)}

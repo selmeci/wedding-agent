@@ -13,14 +13,12 @@ interface Photo {
 interface PhotoUploadProps {
 	qrToken: string;
 	guestId: string | null;
-	isAdminMode?: boolean;
 	adminSecret?: string | null;
 }
 
 export function PhotoUpload({
 	qrToken,
 	guestId,
-	isAdminMode,
 	adminSecret,
 }: PhotoUploadProps) {
 	const [photos, setPhotos] = useState<Photo[]>([]);
@@ -69,11 +67,6 @@ export function PhotoUpload({
 		async (e: React.ChangeEvent<HTMLInputElement>) => {
 			const files = e.target.files;
 			if (!files || files.length === 0) return;
-
-			if (!guestId && !isAdminMode) {
-				alert("Musíš byť identifikovaný pred nahrávaním fotiek");
-				return;
-			}
 
 			setIsLoading(true);
 			setTotalUploads(files.length);
@@ -141,7 +134,7 @@ export function PhotoUpload({
 				fileInputRef.current.value = "";
 			}
 		},
-		[qrToken, guestId, isAdminMode, adminSecret],
+		[qrToken, guestId, adminSecret],
 	);
 
 	const openDeleteModal = useCallback((photoId: string) => {
@@ -257,21 +250,19 @@ export function PhotoUpload({
 						onChange={handleFileSelect}
 						className="hidden"
 						id="photo-upload-input"
-						disabled={isLoading || !guestId}
+						disabled={isLoading}
 					/>
 					<label
 						htmlFor="photo-upload-input"
 						className={`block w-full font-medium py-3 px-4 rounded-xl transition-colors shadow-md text-center ${
-							isLoading || !guestId
+							isLoading
 								? "bg-gray-400 cursor-not-allowed"
 								: "bg-pink-500 hover:bg-pink-600 cursor-pointer"
 						} text-white`}
 					>
 						{isLoading
 							? "Nahrávam..."
-							: !guestId
-								? "Najprv sa identifikuj v chate"
-								: `➕ Pridať fotky (${photos.length}/neobmedzené)`}
+							: `➕ Pridať fotky (${photos.length}/neobmedzené)`}
 					</label>
 				</div>
 
@@ -315,9 +306,7 @@ export function PhotoUpload({
 							Zatiaľ tu nie sú žiadne fotky
 						</h3>
 						<p className="text-gray-500 text-sm">
-							{!guestId
-								? "Najprv sa identifikuj v chate aby si mohol pridať fotky"
-								: "Pridajte prvú fotku kliknutím na tlačidlo vyššie"}
+							Pridajte prvú fotku kliknutím na tlačidlo vyššie
 						</p>
 					</div>
 				)}
