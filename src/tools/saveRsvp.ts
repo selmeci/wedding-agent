@@ -251,6 +251,12 @@ async function saveToDatabase(
 		message: data.willAttend
 			? "RSVP uložené. Hosť príde na svadbu."
 			: "RSVP uložené. Hosť nepríde na svadbu.",
+		rsvpData: {
+			willAttend: data.willAttend,
+			dietaryRestrictions: data.dietaryRestrictions,
+			needsTransportAfter: data.needsTransportAfter,
+			transportDestination: data.transportDestination,
+		},
 		stateUpdate: {
 			conversationState: finalState,
 		},

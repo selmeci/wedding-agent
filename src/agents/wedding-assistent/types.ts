@@ -18,21 +18,27 @@ export const ConversationStateSchema = z.enum([
 export type ConversationState = z.infer<typeof ConversationStateSchema>;
 
 /**
+ * RSVP data for display in summary
+ */
+export interface RsvpData {
+	willAttend: boolean;
+	dietaryRestrictions: string | null;
+	needsTransportAfter: boolean | null;
+	transportDestination: string | null;
+}
+
+/**
  * Simplified agent state
  *
- * Only essential fields:
+ * Essential fields:
  * - groupId: identifies which group of guests (from QR code)
  * - conversationState: current phase
- *
- * Removed:
- * - guestId: not needed, AI uses names from context for addressing
- * - identificationAttempts: no formal identification
- * - rsvpComplete: implied by conversationState
- * - rsvpData: stored directly in DB, not in state
+ * - rsvpData: cached RSVP data for display (also stored in DB)
  */
 export interface WeddingAgentState {
 	groupId: string | null;
 	conversationState: ConversationState;
+	rsvpData: RsvpData | null;
 }
 
 /**

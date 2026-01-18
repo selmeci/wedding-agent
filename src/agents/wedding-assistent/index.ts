@@ -38,11 +38,12 @@ export class Chat extends AIChatAgent<Env, WeddingAgentState> {
 	private db: Database | null = null;
 
 	/**
-	 * Simplified initial state - only 2 fields
+	 * Initial state
 	 */
 	initialState: WeddingAgentState = {
 		conversationState: "collecting",
 		groupId: null,
+		rsvpData: null,
 	};
 
 	getEnv() {
@@ -154,6 +155,7 @@ export class Chat extends AIChatAgent<Env, WeddingAgentState> {
 									this.setState({
 										...this.state,
 										conversationState: output.stateUpdate.conversationState,
+										rsvpData: output.rsvpData ?? null,
 									});
 
 									console.log(

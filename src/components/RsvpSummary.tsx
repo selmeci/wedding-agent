@@ -1,23 +1,60 @@
+import type { RsvpData } from "@/agents/wedding-assistent/types";
+
 interface RsvpSummaryProps {
+	rsvpData: RsvpData | null;
 	onEditRsvp: () => void;
 }
 
-export function RsvpSummary({ onEditRsvp }: RsvpSummaryProps) {
+export function RsvpSummary({ rsvpData, onEditRsvp }: RsvpSummaryProps) {
+	// Default values if no RSVP data yet
+	const data = rsvpData || {
+		willAttend: true,
+		dietaryRestrictions: null,
+		needsTransportAfter: false,
+		transportDestination: null,
+	};
+
 	return (
 		<div className="space-y-6 p-4 pb-8 max-w-2xl mx-auto">
-			{/* RSVP Status Card */}
+			{/* RSVP Cards Grid */}
 			<section>
 				<h2 className="text-2xl font-serif text-pink-600 mb-4 flex items-center gap-2">
 					📋 Tvoje RSVP
 				</h2>
-				<div className="bg-gradient-to-br from-pink-50 to-white rounded-xl p-4 shadow-md border border-pink-200 mb-4">
-					<div className="text-center">
-						<div className="text-4xl mb-2">✅</div>
-						<div className="text-lg font-semibold text-pink-600">
-							RSVP dokončené
+				<div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+					{/* Attendance Card */}
+					<div className="bg-gradient-to-br from-pink-50 to-white rounded-xl p-4 shadow-md border border-pink-200">
+						<div className="text-3xl mb-2">✅</div>
+						<div className="text-xs text-gray-500 uppercase tracking-wider mb-1">
+							Účasť
 						</div>
-						<div className="text-sm text-gray-500 mt-1">
-							Tvoje odpovede sú uložené. Detaily nájdeš v chate.
+						<div className="text-base font-semibold text-pink-600">
+							{data.willAttend ? "Prídem" : "Neprídem"}
+						</div>
+						<div className="text-xs text-gray-400 mt-1">27.3.2026</div>
+					</div>
+
+					{/* Dietary Card */}
+					<div className="bg-gradient-to-br from-pink-50 to-white rounded-xl p-4 shadow-md border border-pink-200">
+						<div className="text-3xl mb-2">🍽️</div>
+						<div className="text-xs text-gray-500 uppercase tracking-wider mb-1">
+							Strava
+						</div>
+						<div className="text-base font-semibold text-pink-600">
+							{data.dietaryRestrictions || "Bez obmedzení"}
+						</div>
+					</div>
+
+					{/* Transport Card */}
+					<div className="bg-gradient-to-br from-pink-50 to-white rounded-xl p-4 shadow-md border border-pink-200">
+						<div className="text-3xl mb-2">🚗</div>
+						<div className="text-xs text-gray-500 uppercase tracking-wider mb-1">
+							Odvoz
+						</div>
+						<div className="text-base font-semibold text-pink-600">
+							{data.needsTransportAfter
+								? data.transportDestination || "Áno"
+								: "Nie"}
 						</div>
 					</div>
 				</div>

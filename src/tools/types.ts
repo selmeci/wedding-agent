@@ -79,6 +79,13 @@ export const SaveRsvpInputSchema = z.object({
 	transportDestination: z.string().nullable().optional(),
 });
 
+const RsvpDataSchema = z.object({
+	willAttend: z.boolean(),
+	dietaryRestrictions: z.string().nullable(),
+	needsTransportAfter: z.boolean().nullable(),
+	transportDestination: z.string().nullable(),
+});
+
 export const SaveRsvpOutputSchema = z.object({
 	type: z.literal("save-rsvp"),
 	success: z.boolean(),
@@ -90,6 +97,7 @@ export const SaveRsvpOutputSchema = z.object({
 		})
 		.optional(),
 	willAttend: z.boolean().optional(),
+	rsvpData: RsvpDataSchema.optional(),
 	// Validation error fields
 	hint: z.string().optional(),
 	missingField: z.string().optional(),
