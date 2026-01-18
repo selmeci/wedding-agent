@@ -276,6 +276,28 @@ export const SaveAccommodationOutputSchema = z.discriminatedUnion("success", [
 	SaveAccommodationOutputFailureSchema,
 ]);
 
+// SendMessageToCouple - Send message from guest to the wedding couple
+export const SendMessageToCoupleInputSchema = z.object({
+	message: z.string().min(1).max(1000),
+});
+
+export const SendMessageToCoupleOutputSuccessSchema = z.object({
+	message: z.string(),
+	success: z.literal(true),
+	type: z.literal("send-message-to-couple"),
+});
+
+export const SendMessageToCoupleOutputFailureSchema = z.object({
+	error: z.string(),
+	success: z.literal(false),
+	type: z.literal("send-message-to-couple"),
+});
+
+export const SendMessageToCoupleOutputSchema = z.discriminatedUnion("success", [
+	SendMessageToCoupleOutputSuccessSchema,
+	SendMessageToCoupleOutputFailureSchema,
+]);
+
 export const OutputsSchema = z.discriminatedUnion("type", [
 	ConfirmIdentityOutputSchema,
 	ConfirmAttendanceOutputSchema,
@@ -286,6 +308,7 @@ export const OutputsSchema = z.discriminatedUnion("type", [
 	SaveDietaryOutputSchema,
 	SaveTransportOutputSchema,
 	SaveAccommodationOutputSchema,
+	SendMessageToCoupleOutputSchema,
 ] as const);
 
 export type ConfirmIdentityInput = z.infer<typeof ConfirmIdentityInputSchema>;
@@ -333,6 +356,13 @@ export type SaveAccommodationInput = z.infer<
 >;
 export type SaveAccommodationOutput = z.infer<
 	typeof SaveAccommodationOutputSchema
+>;
+
+export type SendMessageToCoupleInput = z.infer<
+	typeof SendMessageToCoupleInputSchema
+>;
+export type SendMessageToCoupleOutput = z.infer<
+	typeof SendMessageToCoupleOutputSchema
 >;
 
 export type Outputs = z.infer<typeof OutputsSchema>;

@@ -12,6 +12,15 @@ export interface EmailNotificationParams {
 }
 
 /**
+ * Guest message parameters - for sending messages from guests to the couple
+ */
+export interface GuestMessageParams {
+	guestName: string;
+	groupName: string;
+	message: string;
+}
+
+/**
  * Email notification result
  */
 export interface EmailNotificationResult {
@@ -120,6 +129,99 @@ Automatická notifikácia z Wedding RSVP systému`;
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : String(error);
 		console.error("[Email Notification] Failed to send email:", error);
+		return {
+			error: errorMessage,
+			success: false,
+		};
+	}
+}
+
+/**
+ * Send a message from a guest to the wedding couple
+ *
+ * @param env - Cloudflare environment bindings (for Brevo config)
+ * @param params - Guest message parameters
+ * @returns Result with success status and messageId or error
+ */
+export async function sendGuestMessage(
+	env: Env,
+	params: GuestMessageParams,
+): Promise<EmailNotificationResult> {
+	try {
+		const timestamp = new Date().toLocaleString("sk-SK", {
+			timeZone: "Europe/Bratislava",
+		});
+
+		const subject = `[Správa od hosťa] 💌 ${params.guestName}`;
+
+		const textContent = `Ahoj Ivonka a Roman!
+
+Máte novú správu od hosťa cez svadobného asistenta.
+
+📨 **Od:** ${params.guestName} (${params.groupName})
+
+---
+
+${params.message}
+
+---
+
+🕒 Odoslané: ${timestamp}
+
+---
+Správa odoslaná cez Wedding RSVP asistenta`;
+
+		const emailPayload: BrevoEmailRequest = {
+			sender: {
+				email: env.BREVO_SENDER_EMAIL,
+				name: env.BREVO_SENDER_NAME,
+			},
+			subject,
+			textContent,
+			to: [
+				{ email: "selmeci.roman@gmail.com" },
+				{ email: "ivona.hrdlickova@gmail.com" },
+			],
+		};
+
+		console.log("[Guest Message] Sending email:", {
+			from: params.guestName,
+			group: params.groupName,
+			messageLength: params.message.length,
+		});
+
+		const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+			body: JSON.stringify(emailPayload),
+			headers: {
+				"api-key": env.BREVO_API_KEY,
+				"Content-Type": "application/json",
+			},
+			method: "POST",
+		});
+
+		if (!response.ok) {
+			const errorText = await response.text();
+			console.error(
+				"[Guest Message] Brevo API error:",
+				response.status,
+				errorText,
+			);
+			return {
+				error: `Brevo API returned ${response.status}: ${errorText}`,
+				success: false,
+			};
+		}
+
+		const result = (await response.json()) as BrevoEmailResponse;
+		console.log("[Guest Message] Email sent successfully:", result.messageId);
+
+		return {
+			messageId: result.messageId,
+			success: true,
+		};
+	} catch (error) {
+		const errorMessage = error instanceof Error ? error.message : String(error);
+		console.error("[Guest Message] Failed to send email:", error);
 		return {
 			error: errorMessage,
 			success: false,

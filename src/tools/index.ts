@@ -6,6 +6,7 @@ import { getIdentificationContextTool } from "./getIdentificationContext";
 import { saveAccommodationTool } from "./saveAccommodation";
 import { saveDietaryTool } from "./saveDietary";
 import { saveTransportTool } from "./saveTransport";
+import { sendMessageToCoupleTool } from "./sendMessageToCouple";
 import { updateRsvpTool } from "./updateRsvp";
 
 export { changeAttendanceDecisionTool } from "./changeAttendanceDecision";
@@ -16,6 +17,7 @@ export { getIdentificationContextTool } from "./getIdentificationContext";
 export { saveAccommodationTool } from "./saveAccommodation";
 export { saveDietaryTool } from "./saveDietary";
 export { saveTransportTool } from "./saveTransport";
+export { sendMessageToCoupleTool } from "./sendMessageToCouple";
 export { updateRsvpTool } from "./updateRsvp";
 
 /**
@@ -34,5 +36,6 @@ export const tools = {
 	saveAccommodationTool,
 	saveDietaryTool,
 	saveTransportTool,
+	sendMessageToCoupleTool,
 	updateRsvpTool,
 };

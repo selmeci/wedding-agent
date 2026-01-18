@@ -26,6 +26,7 @@ import {
 	getAccommodationInfoTool,
 	saveDietaryTool,
 	saveTransportTool,
+	sendMessageToCoupleTool,
 	updateRsvpTool,
 } from "@/tools";
 import type { Outputs } from "@/tools/types";
@@ -156,15 +157,17 @@ export class Chat extends AIChatAgent<Env, WeddingAgentState> {
 			.with("completing_rsvp", () => ({
 				updateRsvp: updateRsvpTool,
 			}))
-			// Post-RSVP states - general chat + RSVP editing
+			// Post-RSVP states - general chat + RSVP editing + messaging
 			.with("completed", () => ({
 				changeAttendanceDecision: changeAttendanceDecisionTool,
 				getAccommodationInfo: getAccommodationInfoTool,
+				sendMessageToCouple: sendMessageToCoupleTool, // Send message to Ivonka and Roman
 				updateRsvp: updateRsvpTool, // For editing existing RSVP
 			}))
 			.with("declined", () => ({
 				changeAttendanceDecision: changeAttendanceDecisionTool,
 				getAccommodationInfo: getAccommodationInfoTool,
+				sendMessageToCouple: sendMessageToCoupleTool, // Can still send message even if declined
 			}))
 			// Edge cases
 			.with("initializing", "identification_failed", () => ({

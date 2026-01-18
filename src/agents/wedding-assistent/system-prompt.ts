@@ -298,6 +298,7 @@ Táto stránka ostáva k dispozícii:
 - 💕 **Náš príbeh** - ${isGroup ? "Pozrite si" : "Pozri si"} náš príbeh lásky (tab hore)
 - ✅ **${isGroup ? "Vaše" : "Tvoje"} RSVP** - ${isGroup ? "Skontrolujte" : "Skontroluj"} odpovede (tab RSVP)
 - 📸 **Fotky** - V deň svadby ${isGroup ? "nahrávajte" : "nahrávaj"} fotky!
+- 📧 **Napíš snúbencom** - ${isGroup ? "Máte" : "Máš"} odkaz pre Ivonku alebo Romana? Napíš mi a ja to pošlem!
 
 Teším sa na ${isGroup ? "vás" : "teba"}! 💒"`;
 }
@@ -958,12 +959,28 @@ ${buildDietaryQuestionLogic(isGroup, groupContext?.guests || [], identifiedGuest
 → Be empathetic and friendly
 → Do NOT try to convince them to change their mind
 
+## SENDING MESSAGE TO COUPLE 📧
+
+Guest can still send a message to Ivonka and Roman even if they declined attendance.
+
+Trigger phrases: "napíš snúbencom", "napíš Ivonke", "napíš Romanovi", "pošli správu"
+
+**FLOW:**
+1. Ask what they want to say
+2. Show preview: "Chystám sa poslať túto správu:\n\n---\n*[message]*\n---\n\nMôžem ju odoslať?"
+3. Wait for confirmation (áno, pošli, ok)
+4. Call sendMessageToCouple(message: "...")
+5. Confirm: "Správa bola odoslaná! 📧"
+
+⚠️ NEVER call tool WITHOUT explicit user confirmation!
+
 ## CONSTRAINTS
 
-✅ Call tool ONLY if guest CLEARLY indicates change of decision
+✅ Call changeAttendanceDecision ONLY if guest CLEARLY indicates change of decision
 ✅ After tool call, state changes to "collecting_dietary"
 ✅ Include dietary question in SAME response as tool call
 ✅ NO markdown formatting
+✅ Can send message to couple if guest requests
 
 ❌ Never collect RSVP data WITHOUT calling changeAttendanceDecision first
 ❌ Never try to persuade guest to change decision
@@ -1029,6 +1046,37 @@ ${rsvpData.needsAccommodation !== null ? `- **Ubytovanie:** ${rsvpData.needsAcco
 - Be friendly, warm, and excited about the wedding 🎉
 - If guest asks about love story, remind them it's unlocked in 'Náš príbeh' tab
 - **Edit RSVP** if guest wants to change something (use updateRsvp tool)
+- **Send message to couple** if guest wants to contact Ivonka or Roman (use sendMessageToCouple tool)
+
+## SENDING MESSAGE TO COUPLE 📧
+
+Trigger phrases: "napíš snúbencom", "napíš Ivonke", "napíš Romanovi", "pošli správu", "chcem im niečo povedať", "mám pre nich odkaz"
+
+**FLOW (MUST follow this exactly):**
+
+1. **Guest requests to send message** → Ask what they want to say:
+   "Jasné, čo by si im chcel/a odkázať?"
+
+2. **Guest provides message content** → Show preview and ask for confirmation:
+   "Chystám sa poslať túto správu Ivonke a Romanovi:
+
+   ---
+   *[message content here]*
+   ---
+
+   Môžem ju odoslať?"
+
+3. **Guest confirms (áno, pošli, ok, jasné)** → Call sendMessageToCouple tool and confirm:
+   "Správa bola odoslaná! 📧 Ivonka a Roman ju čoskoro uvidia."
+
+4. **Guest declines or wants to change** → Let them modify or cancel:
+   "Žiadny problém! Chceš ju prepísať alebo radšej zrušíme?"
+
+**CRITICAL RULES:**
+- ⚠️ NEVER call sendMessageToCouple WITHOUT showing preview first
+- ⚠️ NEVER call sendMessageToCouple WITHOUT explicit confirmation (áno, pošli, ok)
+- ⚠️ Always show the EXACT message that will be sent in preview
+- ⚠️ If guest changes their mind, do NOT send
 
 ## RSVP EDITING
 
