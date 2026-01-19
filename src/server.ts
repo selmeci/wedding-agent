@@ -639,14 +639,14 @@ app.post("/api/audio", async (c) => {
 		// Generate audio ID and R2 key
 		const audioId = crypto.randomUUID();
 		const extensionMap: Record<string, string> = {
+			"audio/3gpp": "3gp",
+			"audio/3gpp2": "3g2",
+			"audio/aac": "aac",
 			"audio/mp4": "m4a",
 			"audio/mpeg": "mp3",
 			"audio/ogg": "ogg",
 			"audio/wav": "wav",
 			"audio/webm": "webm",
-			"audio/aac": "aac",
-			"audio/3gpp": "3gp",
-			"audio/3gpp2": "3g2",
 			"audio/x-m4a": "m4a",
 		};
 		// Extract base MIME type without codec parameters (e.g., "audio/webm;codecs=opus" -> "audio/webm")
@@ -840,6 +840,18 @@ app.get("/api/admin/verify", async (c) => {
 	const expectedSecret = c.env.SECRET;
 
 	if (!adminSecret || adminSecret !== expectedSecret) {
+		return c.json({ valid: false }, 401);
+	}
+
+	return c.json({ valid: true });
+});
+
+// Couple mode validation endpoint
+app.get("/api/couple/verify", async (c) => {
+	const coupleSecret = c.req.query("coupleSecret");
+	const expectedSecret = c.env.COUPLE_SECRET;
+
+	if (!coupleSecret || !expectedSecret || coupleSecret !== expectedSecret) {
 		return c.json({ valid: false }, 401);
 	}
 

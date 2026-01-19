@@ -21,7 +21,12 @@ import { Header } from "@/components/Header";
 import { MemoizedMarkdown } from "@/components/memoized-markdown";
 import { AudioRecorder } from "@/components/AudioRecorder";
 import { PhotoUpload } from "@/components/PhotoUpload";
-import { GiftBox, Heart, LoveStoryTimeline } from "@/components/PixelArt";
+import {
+	GiftBox,
+	Heart,
+	LoveStoryTimeline,
+	Proposal,
+} from "@/components/PixelArt";
 import { RsvpSummary } from "@/components/RsvpSummary";
 import { Textarea } from "@/components/textarea/Textarea";
 import { ToolInvocationCard } from "@/components/tool-invocation-card/ToolInvocationCard";
@@ -75,6 +80,10 @@ export default function Chat() {
 	// Admin mode state - allows accessing all tabs without completing RSVP
 	const [isAdminMode, setIsAdminMode] = useState(false);
 
+	// Couple mode state - allows snúbenci to send messages that appear distinctly
+	const coupleSecret = searchParams.get("coupleSecret");
+	const [isCoupleMode, setIsCoupleMode] = useState(false);
+
 	// Check if wedding has already happened
 	const weddingDate = new Date("2026-03-27T14:30:00Z");
 	const isAfterWedding = new Date() > weddingDate;
@@ -115,6 +124,22 @@ export default function Chat() {
 		}
 	}, [adminSecret]);
 
+	// Validate couple secret on mount
+	useEffect(() => {
+		if (coupleSecret) {
+			fetch(
+				`/api/couple/verify?coupleSecret=${encodeURIComponent(coupleSecret)}`,
+			)
+				.then((res) => res.json() as Promise<{ valid: boolean }>)
+				.then((data) => {
+					if (data.valid) {
+						setIsCoupleMode(true);
+					}
+				})
+				.catch(() => setIsCoupleMode(false));
+		}
+	}, [coupleSecret]);
+
 	const [agentInput, setAgentInput] = useState("");
 	const handleAgentInputChange = (
 		e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
@@ -129,7 +154,8 @@ export default function Chat() {
 		e.preventDefault();
 		if (!agentInput.trim()) return;
 
-		const message = agentInput;
+		// Prepend couple marker if in couple mode (AI will skip response)
+		const message = isCoupleMode ? `[COUPLE]${agentInput}` : agentInput;
 		setAgentInput("");
 
 		// Keep focus mode active and refocus textarea for continuous messaging
@@ -243,6 +269,19 @@ export default function Chat() {
 	const formatTime = (date: Date) => {
 		return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 	};
+
+	// Helper functions for couple messages
+	const isCoupleMessage = (message: UIMessage) => {
+		const textPart = message.parts?.find((p) => p.type === "text");
+		return (
+			textPart &&
+			"text" in textPart &&
+			typeof textPart.text === "string" &&
+			textPart.text.startsWith("[COUPLE]")
+		);
+	};
+
+	const stripCouplePrefix = (text: string) => text.replace(/^\[COUPLE\]/, "");
 
 	// Detect when timeline gets unlocked (only on state TRANSITION)
 	useEffect(() => {
@@ -464,6 +503,13 @@ export default function Chat() {
 						{/* Conditional content based on active tab (report mode always shows chat) */}
 						{mode === "report" || activeTab === "chat" ? (
 							<>
+								{/* Couple mode banner */}
+								{isCoupleMode && (
+									<div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-center py-2 px-4 text-sm font-medium shadow-inner">
+										Posielate správy ako Ivonka a Roman
+									</div>
+								)}
+
 								{/* Messages */}
 								{/* biome-ignore lint/a11y/noStaticElementInteractions: Background click to deactivate focus mode is intentional UX pattern */}
 								{/* biome-ignore lint/a11y/useKeyWithClickEvents: Keyboard users can use Escape or tab navigation, click is for mouse/touch only */}
@@ -489,8 +535,12 @@ export default function Chat() {
 
 									{agentMessages.map((m, index) => {
 										const isUser = m.role === "user";
+										const isCouple = isCoupleMessage(m);
+										// Show avatar if first message, different role, or different type (couple vs regular)
 										const showAvatar =
-											index === 0 || agentMessages[index - 1]?.role !== m.role;
+											index === 0 ||
+											agentMessages[index - 1]?.role !== m.role ||
+											isCoupleMessage(agentMessages[index - 1]) !== isCouple;
 
 										// Check if this is an empty assistant message during loading
 										const isLoadingMessage =
@@ -525,33 +575,65 @@ export default function Chat() {
 										return (
 											<div key={m.id}>
 												<div
-													className={`flex gap-3 mb-4 ${isUser ? "justify-end" : "justify-start"}`}
+													className={`flex gap-3 mb-4 ${
+														isCouple
+															? "justify-start"
+															: isUser
+																? "justify-end"
+																: "justify-start"
+													}`}
 												>
-													{showAvatar && !isUser && (
+													{/* Couple Avatar */}
+													{showAvatar && isCouple && (
+														<div className="flex-shrink-0">
+															<div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center shadow-md ring-2 ring-purple-300 overflow-hidden">
+																<Proposal className="w-8 h-8" />
+															</div>
+														</div>
+													)}
+													{!showAvatar && isCouple && <div className="w-10" />}
+
+													{/* Assistant Avatar */}
+													{showAvatar && !isUser && !isCouple && (
 														<div className="flex-shrink-0">
 															<div className="w-10 h-10 rounded-full bg-gradient-pink flex items-center justify-center shadow-sm">
 																<Heart className="w-6 h-6" />
 															</div>
 														</div>
 													)}
-													{!showAvatar && !isUser && <div className="w-10" />}
+													{!showAvatar && !isUser && !isCouple && (
+														<div className="w-10" />
+													)}
 
 													<div
 														className={`flex flex-col ${isUser ? "max-w-[75%] md:max-w-[70%]" : "max-w-[75%] md:max-w-[70%]"}`}
 													>
 														{m.parts?.map((part, i) => {
 															if (part.type === "text") {
+																// Strip couple prefix for display
+																const displayText = isCouple
+																	? stripCouplePrefix(part.text)
+																	: part.text;
+
 																return (
 																	// biome-ignore lint/suspicious/noArrayIndexKey: immutable index
 																	<div key={i}>
 																		<div
 																			className={`rounded-2xl px-4 py-2.5 shadow-sm ${
-																				isUser
-																					? "bg-pink-500 text-white rounded-br-none"
-																					: "bg-white text-gray-900 border border-gray-100 rounded-bl-none"
+																				isCouple
+																					? "bg-gradient-to-br from-purple-100 to-pink-100 text-purple-900 border-2 border-purple-200 rounded-bl-none"
+																					: isUser
+																						? "bg-pink-500 text-white rounded-br-none"
+																						: "bg-white text-gray-900 border border-gray-100 rounded-bl-none"
 																			}`}
 																		>
-																			{part.text.startsWith(
+																			{/* Couple message label */}
+																			{isCouple && (
+																				<p className="text-xs font-semibold text-purple-600 mb-1">
+																					Od Ivonky a Romana
+																				</p>
+																			)}
+																			{displayText.startsWith(
 																				"scheduled message",
 																			) && (
 																				<span className="absolute -top-3 -left-2 text-base">
@@ -560,7 +642,7 @@ export default function Chat() {
 																			)}
 																			<MemoizedMarkdown
 																				id={`${m.id}-${i}`}
-																				content={part.text.replace(
+																				content={displayText.replace(
 																					/^scheduled message: /,
 																					"",
 																				)}
@@ -568,9 +650,11 @@ export default function Chat() {
 																		</div>
 																		<p
 																			className={`text-xs mt-1.5 ${
-																				isUser
-																					? "text-pink-600 text-right"
-																					: "text-gray-400 text-left"
+																				isCouple
+																					? "text-purple-500 text-left"
+																					: isUser
+																						? "text-pink-600 text-right"
+																						: "text-gray-400 text-left"
 																			}`}
 																		>
 																			{formatTime(
@@ -629,14 +713,17 @@ export default function Chat() {
 														})}
 													</div>
 
-													{showAvatar && isUser && (
+													{/* User Avatar - only for regular user messages, not couple */}
+													{showAvatar && isUser && !isCouple && (
 														<div className="flex-shrink-0">
 															<div className="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center shadow-sm">
 																<GiftBox className="w-6 h-6" />
 															</div>
 														</div>
 													)}
-													{!showAvatar && isUser && <div className="w-10" />}
+													{!showAvatar && isUser && !isCouple && (
+														<div className="w-10" />
+													)}
 												</div>
 											</div>
 										);

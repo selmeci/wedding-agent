@@ -100,6 +100,16 @@ export class Chat extends AIChatAgent<Env, WeddingAgentState> {
 			return;
 		}
 
+		// Skip AI response for couple messages (identified by [COUPLE] prefix)
+		const lastMessage = this.messages[this.messages.length - 1];
+		const lastTextPart = lastMessage?.parts?.find(
+			(p): p is { type: "text"; text: string } => p.type === "text",
+		);
+		if (lastTextPart?.text?.startsWith("[COUPLE]")) {
+			console.log("Couple message detected - skipping AI response");
+			return;
+		}
+
 		console.log("State:", this.state);
 
 		// Validate QR code access
