@@ -16,7 +16,7 @@
     "binding": "AI",
     "remote": true
   },
-  "r2_buckets": [{ "binding": "BUCKET", "bucket_name": "wedding-photos" }],
+  "r2_buckets": [{ "binding": "BUCKET", "bucket_name": "wedding-photos", "remote": true }],
   "d1_databases": [
     {
       "binding": "DB",

@@ -1,6 +1,12 @@
 import { Play, TrashIcon, XIcon } from "@phosphor-icons/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { BrokenHeart, PhotoUploadAnimation } from "@/components/PixelArt";
+import {
+	type UploadProgress,
+	confirmUpload,
+	getPresignedUrl,
+	uploadToR2,
+} from "@/utils/media-upload";
 
 interface Media {
 	id: string;
@@ -118,7 +124,12 @@ export function PhotoUpload({
 	const [totalUploads, setTotalUploads] = useState(0);
 	const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 	const [photoToDelete, setPhotoToDelete] = useState<string | null>(null);
+	const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(
+		null,
+	);
 	const fileInputRef = useRef<HTMLInputElement>(null);
+
+	// Always use presigned URLs for all uploads (better progress tracking, no Worker size limits)
 
 	// Fetch media on mount
 	useEffect(() => {
@@ -150,7 +161,7 @@ export function PhotoUpload({
 			}
 		};
 
-		fetchMedia();
+		void fetchMedia();
 	}, [qrToken]);
 
 	const handleFileSelect = useCallback(
@@ -174,67 +185,59 @@ export function PhotoUpload({
 				try {
 					const isVideo = videoTypes.includes(file.type);
 
-					// Create FormData
-					const formData = new FormData();
-					formData.append("file", file);
+					// === PRESIGNED URL FLOW (for all uploads) ===
+					setUploadProgress({ phase: "preparing", percent: 0 });
 
-					// For videos, generate thumbnail and get duration
+					// 1. Get presigned URL
+					const presignData = await getPresignedUrl(file, qrToken, guestId);
+
+					// 2. Generate thumbnail and duration for videos
+					let thumbnail: Blob | null = null;
+					let duration: number | null = null;
+
 					if (isVideo) {
-						const [thumbnail, duration] = await Promise.all([
+						setUploadProgress({ phase: "preparing", percent: 25 });
+						const [thumb, dur] = await Promise.all([
 							generateVideoThumbnail(file),
 							getVideoDuration(file),
 						]);
-
-						if (thumbnail) {
-							formData.append("thumbnail", thumbnail, "thumbnail.webp");
-						}
-						if (duration > 0) {
-							formData.append("duration", duration.toString());
-						}
+						thumbnail = thumb;
+						duration = dur;
 					}
 
-					// Upload to API
-					const headers: Record<string, string> = {
-						"x-qr-token": qrToken,
-					};
-					if (guestId) {
-						headers["x-guest-id"] = guestId;
-					}
-					if (adminSecret) {
-						headers["x-admin-secret"] = adminSecret;
-					}
-					const response = await fetch("/api/photos", {
-						body: formData,
-						headers,
-						method: "POST",
+					// 3. Upload directly to R2
+					setUploadProgress({ phase: "uploading", percent: 0 });
+					await uploadToR2(presignData.uploadUrl, file, (percent) => {
+						setUploadProgress({ phase: "uploading", percent });
 					});
 
-					if (!response.ok) {
-						const error = await response.json();
-						console.error("Upload failed:", error);
-						// @ts-expect-error error.error is always defined
-						alert(`Nepodarilo sa nahrať ${file.name}: ${error.error}`);
-						continue;
-					}
+					// 4. Confirm upload
+					setUploadProgress({ phase: "confirming", percent: 100 });
+					const confirmed = await confirmUpload(
+						presignData,
+						file,
+						qrToken,
+						thumbnail,
+						duration,
+					);
 
-					const uploadedMedia = await response.json<{
-						id: string;
-						fileName: string;
-						uploadedAt: string;
-						mediaType: "image" | "video";
-						duration?: number;
-					}>();
+					const result = {
+						id: confirmed.id,
+						mediaType: confirmed.mediaType,
+						duration: duration ?? undefined,
+					};
 
 					// Add to media list
+					setUploadProgress({ phase: "done", percent: 100 });
 					setMediaList((prev) => [
 						{
-							duration: uploadedMedia.duration,
-							fileName: uploadedMedia.fileName,
-							fullUrl: `/api/photos/${uploadedMedia.id}/full`,
-							id: uploadedMedia.id,
-							mediaType: uploadedMedia.mediaType || "image",
-							thumbnailUrl: `/api/photos/${uploadedMedia.id}/thumbnail`,
-							uploadedAt: new Date(uploadedMedia.uploadedAt),
+							duration: result.duration,
+							fileName: file.name,
+							fullUrl: `/api/photos/${result.id}/full`,
+							id: result.id,
+							mediaType: result.mediaType || "image",
+							thumbnailUrl: `/api/photos/${result.id}/thumbnail`,
+							uploadedAt: new Date(),
 						},
 						...prev,
 					]);
@@ -243,11 +246,14 @@ export function PhotoUpload({
 					setCurrentUpload(uploaded);
 				} catch (error) {
 					console.error("Upload error:", error);
-					alert(`Chyba pri nahrávaní ${file.name}`);
+					alert(
+						`Chyba pri nahrávaní ${file.name}: ${error instanceof Error ? error.message : "Neznáma chyba"}`,
+					);
 				}
 			}
 
 			setIsLoading(false);
+			setUploadProgress(null);
 			setCurrentUpload(0);
 			setTotalUploads(0);
 
@@ -256,7 +262,7 @@ export function PhotoUpload({
 				fileInputRef.current.value = "";
 			}
 		},
-		[qrToken, guestId, adminSecret],
+		[qrToken, guestId],
 	);
 
 	const openDeleteModal = useCallback((mediaId: string) => {
@@ -359,6 +365,28 @@ export function PhotoUpload({
 							currentUpload={currentUpload}
 							totalUploads={totalUploads}
 						/>
+						{/* Detailed progress for presigned uploads */}
+						{uploadProgress && (
+							<div className="mt-3 space-y-2">
+								<div className="flex justify-between text-sm text-gray-600">
+									<span>
+										{uploadProgress.phase === "preparing" &&
+											"Pripravujem upload..."}
+										{uploadProgress.phase === "uploading" &&
+											"Nahrávam súbor..."}
+										{uploadProgress.phase === "confirming" && "Dokončujem..."}
+										{uploadProgress.phase === "done" && "Hotovo!"}
+									</span>
+									<span>{uploadProgress.percent}%</span>
+								</div>
+								<div className="w-full bg-white/50 rounded-full h-2 overflow-hidden">
+									<div
+										className="bg-gradient-to-r from-pink-500 to-pink-600 h-2 rounded-full transition-all duration-300"
+										style={{ width: `${uploadProgress.percent}%` }}
+									/>
+								</div>
+							</div>
+						)}
 					</div>
 				)}
 

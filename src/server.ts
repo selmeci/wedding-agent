@@ -278,12 +278,14 @@ app.get("/agents/report/:qrToken/reset", async (c) => {
 });
 
 // Photo upload API
-// POST /api/photos - Upload photo
+// POST /api/photos - Upload photo (direct, max 100MB)
 app.post("/api/photos", async (c) => {
+	console.log("📤 POST /api/photos - Direct upload started");
 	try {
 		// Get QR token from header for auth
 		const qrToken = c.req.header("x-qr-token");
 		if (!qrToken) {
+			console.log("❌ POST /api/photos - Missing QR token");
 			return c.json({ error: "Missing QR token" }, 401);
 		}
 
@@ -315,8 +317,13 @@ app.post("/api/photos", async (c) => {
 		const file = formData.get("file") as File | null;
 
 		if (!file) {
+			console.log("❌ POST /api/photos - No file provided");
 			return c.json({ error: "No file provided" }, 400);
 		}
+
+		console.log(
+			`📁 POST /api/photos - File: ${file.name}, Size: ${(file.size / 1024 / 1024).toFixed(2)}MB, Type: ${file.type}`,
+		);
 
 		// Validate file type
 		const imageTypes = [
@@ -334,6 +341,7 @@ app.post("/api/photos", async (c) => {
 		];
 		const allowedTypes = [...imageTypes, ...videoTypes];
 		if (!allowedTypes.includes(file.type)) {
+			console.log(`❌ POST /api/photos - Invalid file type: ${file.type}`);
 			return c.json({ error: "Invalid file type" }, 400);
 		}
 
@@ -343,6 +351,9 @@ app.post("/api/photos", async (c) => {
 		// Validate file size (100MB max - Cloudflare Workers limit)
 		const maxSize = 100 * 1024 * 1024;
 		if (file.size > maxSize) {
+			console.log(
+				`❌ POST /api/photos - File too large: ${(file.size / 1024 / 1024).toFixed(2)}MB > 100MB`,
+			);
 			return c.json({ error: "Súbor je príliš veľký (max 100MB)" }, 400);
 		}
 
@@ -358,11 +369,13 @@ app.post("/api/photos", async (c) => {
 		const r2Key = `groups/${group.id}/photos/${mediaId}.${fileExtension}`;
 
 		// Upload to R2
+		console.log(`⬆️ POST /api/photos - Uploading to R2: ${r2Key}`);
 		await c.env.BUCKET.put(r2Key, file.stream(), {
 			httpMetadata: {
 				contentType: file.type,
 			},
 		});
+		console.log(`✅ POST /api/photos - R2 upload complete: ${r2Key}`);
 
 		// Upload thumbnail for videos
 		let thumbnailR2Key: string | null = null;
@@ -388,6 +401,9 @@ app.post("/api/photos", async (c) => {
 			thumbnailR2Key,
 		});
 
+		console.log(
+			`✅ POST /api/photos - Success: ${mediaId} (${mediaType}, ${(file.size / 1024 / 1024).toFixed(2)}MB)`,
+		);
 		return c.json({
 			duration: isVideo && duration ? duration : undefined,
 			fileName: file.name,
@@ -396,7 +412,7 @@ app.post("/api/photos", async (c) => {
 			uploadedAt: new Date().toISOString(),
 		});
 	} catch (error) {
-		console.error("Photo upload error:", error);
+		console.error("❌ POST /api/photos - Error:", error);
 		return c.json(
 			{
 				details: error instanceof Error ? error.message : String(error),
@@ -409,10 +425,12 @@ app.post("/api/photos", async (c) => {
 
 // GET /api/photos - List photos for group
 app.get("/api/photos", async (c) => {
+	console.log("📋 GET /api/photos - List request started");
 	try {
 		// Get QR token from header for auth
 		const qrToken = c.req.header("x-qr-token");
 		if (!qrToken) {
+			console.log("❌ GET /api/photos - Missing QR token");
 			return c.json({ error: "Missing QR token" }, 401);
 		}
 
@@ -453,9 +471,12 @@ app.get("/api/photos", async (c) => {
 			uploadedAt: photo.uploadedAt,
 		}));
 
+		console.log(
+			`✅ GET /api/photos - Found ${photos.length} items (${photos.filter((p) => p.mediaType === "video").length} videos, ${photos.filter((p) => p.mediaType === "image").length} images)`,
+		);
 		return c.json({ photos: photosWithUrls });
 	} catch (error) {
-		console.error("Photo list error:", error);
+		console.error("❌ GET /api/photos - Error:", error);
 		return c.json(
 			{
 				details: error instanceof Error ? error.message : String(error),
@@ -468,8 +489,9 @@ app.get("/api/photos", async (c) => {
 
 // GET /api/photos/:id/thumbnail - Get thumbnail
 app.get("/api/photos/:id/thumbnail", async (c) => {
+	const photoId = c.req.param("id");
+	console.log(`🖼️ GET /api/photos/${photoId}/thumbnail - Request started`);
 	try {
-		const photoId = c.req.param("id");
 		const db = createDb(c.env.DB);
 
 		// Get photo metadata
@@ -478,15 +500,28 @@ app.get("/api/photos/:id/thumbnail", async (c) => {
 		});
 
 		if (!media) {
+			console.log(
+				`❌ GET /api/photos/${photoId}/thumbnail - Media not found in DB`,
+			);
 			return c.json({ error: "Media not found" }, 404);
 		}
+
+		console.log(
+			`🖼️ GET /api/photos/${photoId}/thumbnail - Found ${media.mediaType}, r2Key=${media.r2Key}, thumbnailR2Key=${media.thumbnailR2Key}`,
+		);
 
 		// For videos, return the stored thumbnail
 		if (media.mediaType === "video" && media.thumbnailR2Key) {
 			const thumbnail = await c.env.BUCKET.get(media.thumbnailR2Key);
 			if (!thumbnail) {
+				console.log(
+					`❌ GET /api/photos/${photoId}/thumbnail - Video thumbnail not found in R2: ${media.thumbnailR2Key}`,
+				);
 				return c.json({ error: "Video thumbnail not found in storage" }, 404);
 			}
+			console.log(
+				`✅ GET /api/photos/${photoId}/thumbnail - Serving video thumbnail`,
+			);
 
 			return new Response(thumbnail.body, {
 				headers: {
@@ -499,9 +534,15 @@ app.get("/api/photos/:id/thumbnail", async (c) => {
 		// For images, use Cloudflare Image Resizing
 		const object = await c.env.BUCKET.get(media.r2Key);
 		if (!object) {
+			console.log(
+				`❌ GET /api/photos/${photoId}/thumbnail - Image not found in R2: ${media.r2Key}`,
+			);
 			return c.json({ error: "Photo file not found in storage" }, 404);
 		}
 
+		console.log(
+			`✅ GET /api/photos/${photoId}/thumbnail - Serving image thumbnail`,
+		);
 		// Return with Cloudflare Image Resizing headers
 		return new Response(object.body, {
 			headers: {
@@ -514,7 +555,7 @@ app.get("/api/photos/:id/thumbnail", async (c) => {
 			},
 		});
 	} catch (error) {
-		console.error("Thumbnail error:", error);
+		console.error(`❌ GET /api/photos/${photoId}/thumbnail - Error:`, error);
 		return c.json(
 			{
 				details: error instanceof Error ? error.message : String(error),
@@ -527,8 +568,9 @@ app.get("/api/photos/:id/thumbnail", async (c) => {
 
 // GET /api/photos/:id/full - Get full resolution
 app.get("/api/photos/:id/full", async (c) => {
+	const photoId = c.req.param("id");
+	console.log(`📺 GET /api/photos/${photoId}/full - Request started`);
 	try {
-		const photoId = c.req.param("id");
 		const db = createDb(c.env.DB);
 
 		// Get photo metadata
@@ -537,15 +579,26 @@ app.get("/api/photos/:id/full", async (c) => {
 		});
 
 		if (!photo) {
+			console.log(`❌ GET /api/photos/${photoId}/full - Not found in DB`);
 			return c.json({ error: "Photo not found" }, 404);
 		}
+
+		console.log(
+			`📺 GET /api/photos/${photoId}/full - Found ${photo.mediaType}, r2Key=${photo.r2Key}, size=${photo.fileSize}`,
+		);
 
 		// Get object from R2
 		const object = await c.env.BUCKET.get(photo.r2Key);
 		if (!object) {
+			console.log(
+				`❌ GET /api/photos/${photoId}/full - File not found in R2: ${photo.r2Key}`,
+			);
 			return c.json({ error: "Photo file not found in storage" }, 404);
 		}
 
+		console.log(
+			`✅ GET /api/photos/${photoId}/full - Serving ${photo.mediaType} (${(photo.fileSize / 1024 / 1024).toFixed(2)}MB)`,
+		);
 		// Return full resolution
 		return new Response(object.body, {
 			headers: {
@@ -555,7 +608,7 @@ app.get("/api/photos/:id/full", async (c) => {
 			},
 		});
 	} catch (error) {
-		console.error("Full photo error:", error);
+		console.error(`❌ GET /api/photos/${photoId}/full - Error:`, error);
 		return c.json(
 			{
 				details: error instanceof Error ? error.message : String(error),
@@ -568,14 +621,16 @@ app.get("/api/photos/:id/full", async (c) => {
 
 // DELETE /api/photos/:id - Delete photo
 app.delete("/api/photos/:id", async (c) => {
+	const photoId = c.req.param("id");
+	console.log(`🗑️ DELETE /api/photos/${photoId} - Request started`);
 	try {
 		// Get QR token from header for auth
 		const qrToken = c.req.header("x-qr-token");
 		if (!qrToken) {
+			console.log(`❌ DELETE /api/photos/${photoId} - Missing QR token`);
 			return c.json({ error: "Missing QR token" }, 401);
 		}
 
-		const photoId = c.req.param("id");
 		const db = createDb(c.env.DB);
 
 		// Validate QR token and get group
@@ -616,13 +671,267 @@ app.delete("/api/photos/:id", async (c) => {
 		// Delete from D1
 		await db.delete(photoUploads).where(eq(photoUploads.id, photoId));
 
+		console.log(`✅ DELETE /api/photos/${photoId} - Successfully deleted`);
 		return c.json({ success: true });
 	} catch (error) {
-		console.error("Photo delete error:", error);
+		console.error(`❌ DELETE /api/photos/${photoId} - Error:`, error);
 		return c.json(
 			{
 				details: error instanceof Error ? error.message : String(error),
 				error: "Failed to delete photo",
+			},
+			500,
+		);
+	}
+});
+
+// Presigned URL API for large file uploads
+// POST /api/media/presign - Get presigned URL for direct R2 upload
+app.post("/api/media/presign", async (c) => {
+	console.log("🔑 POST /api/media/presign - Presign request started");
+	try {
+		// Get QR token from header for auth
+		const qrToken = c.req.header("x-qr-token");
+		if (!qrToken) {
+			console.log("❌ POST /api/media/presign - Missing QR token");
+			return c.json({ error: "Missing QR token" }, 401);
+		}
+
+		const db = createDb(c.env.DB);
+
+		// Validate QR token and get group
+		const group = await db.query.guestGroups.findFirst({
+			where: (t, { eq }) => eq(t.qrToken, qrToken),
+			with: { guests: true },
+		});
+
+		if (!group) {
+			return c.json({ error: "Invalid QR token" }, 403);
+		}
+
+		// Get guestId from header, or use first guest from group
+		let guestId = c.req.header("x-guest-id");
+		if (!guestId && group.guests.length > 0) {
+			guestId = group.guests[0].id;
+		}
+		if (!guestId) {
+			return c.json({ error: "No guest available in group" }, 400);
+		}
+
+		// Parse request body
+		const { fileName, contentType, fileSize } = await c.req.json<{
+			fileName: string;
+			contentType: string;
+			fileSize: number;
+		}>();
+
+		console.log(
+			`📁 POST /api/media/presign - File: ${fileName}, Size: ${(fileSize / 1024 / 1024).toFixed(2)}MB, Type: ${contentType}`,
+		);
+
+		// Allowed MIME types
+		const imageTypes = [
+			"image/jpeg",
+			"image/png",
+			"image/heic",
+			"image/heif",
+			"image/webp",
+		];
+		const videoTypes = [
+			"video/mp4",
+			"video/quicktime",
+			"video/webm",
+			"video/x-m4v",
+		];
+		const allowedTypes = [...imageTypes, ...videoTypes];
+
+		if (!allowedTypes.includes(contentType)) {
+			return c.json({ error: "Nepovolený typ súboru" }, 400);
+		}
+
+		// Validate file size (1GB max for presigned uploads)
+		const MAX_FILE_SIZE = 1024 * 1024 * 1024; // 1GB
+		if (fileSize > MAX_FILE_SIZE) {
+			return c.json({ error: "Súbor je príliš veľký (max 1GB)" }, 400);
+		}
+
+		// Generate media ID and R2 key
+		const mediaId = crypto.randomUUID();
+		const fileExtension = fileName.split(".").pop()?.toLowerCase() || "bin";
+		const r2Key = `groups/${group.id}/photos/${mediaId}.${fileExtension}`;
+		const isVideo = videoTypes.includes(contentType);
+
+		// Create R2 client and generate presigned URL
+		const { createR2Client, generatePresignedPutUrl } = await import(
+			"@/utils/r2-presign"
+		);
+
+		const r2Client = createR2Client({
+			endpoint: c.env.R2_ENDPOINT,
+			accessKeyId: c.env.R2_ACCESS_KEY_ID,
+			secretAccessKey: c.env.R2_SECRET_ACCESS_KEY,
+		});
+
+		const uploadUrl = await generatePresignedPutUrl(
+			r2Client,
+			"wedding-photos",
+			r2Key,
+			contentType,
+			3600, // 1 hour expiry
+		);
+
+		console.log(
+			`✅ POST /api/media/presign - Success: ${mediaId}, r2Key: ${r2Key}`,
+		);
+		return c.json({
+			mediaId,
+			uploadUrl,
+			r2Key,
+			mediaType: isVideo ? "video" : "image",
+			guestId,
+		});
+	} catch (error) {
+		console.error("❌ POST /api/media/presign - Error:", error);
+		return c.json(
+			{
+				error: "Failed to generate upload URL",
+				details: error instanceof Error ? error.message : String(error),
+			},
+			500,
+		);
+	}
+});
+
+// POST /api/media/confirm - Confirm upload and save metadata
+app.post("/api/media/confirm", async (c) => {
+	console.log("✔️ POST /api/media/confirm - Confirm request started");
+	try {
+		// Get QR token from header for auth
+		const qrToken = c.req.header("x-qr-token");
+		if (!qrToken) {
+			console.log("❌ POST /api/media/confirm - Missing QR token");
+			return c.json({ error: "Missing QR token" }, 401);
+		}
+
+		const db = createDb(c.env.DB);
+
+		// Validate QR token and get group
+		const group = await db.query.guestGroups.findFirst({
+			where: (t, { eq }) => eq(t.qrToken, qrToken),
+			with: { guests: true },
+		});
+
+		if (!group) {
+			console.log("❌ POST /api/media/confirm - Invalid QR token");
+			return c.json({ error: "Invalid QR token" }, 403);
+		}
+
+		// Parse form data
+		console.log("📋 POST /api/media/confirm - Parsing form data...");
+		const formData = await c.req.formData();
+		const mediaId = formData.get("mediaId") as string;
+		const r2Key = formData.get("r2Key") as string;
+		const fileName = formData.get("fileName") as string;
+		const guestId = formData.get("guestId") as string;
+		const mediaType = formData.get("mediaType") as "image" | "video";
+		const durationStr = formData.get("duration") as string | null;
+		const thumbnailFile = formData.get("thumbnail") as File | null;
+
+		console.log(
+			`📋 POST /api/media/confirm - Data: mediaId=${mediaId}, r2Key=${r2Key}, fileName=${fileName}, mediaType=${mediaType}, duration=${durationStr}, hasThumbnail=${!!thumbnailFile}`,
+		);
+
+		if (!mediaId || !r2Key || !fileName || !guestId || !mediaType) {
+			console.log(
+				`❌ POST /api/media/confirm - Missing required fields: mediaId=${!!mediaId}, r2Key=${!!r2Key}, fileName=${!!fileName}, guestId=${!!guestId}, mediaType=${!!mediaType}`,
+			);
+			return c.json({ error: "Missing required fields" }, 400);
+		}
+
+		// Verify guest belongs to group
+		const guestBelongsToGroup = group.guests.some((g) => g.id === guestId);
+		if (!guestBelongsToGroup) {
+			console.log(
+				`❌ POST /api/media/confirm - Guest ${guestId} does not belong to group`,
+			);
+			return c.json({ error: "Invalid guest ID" }, 403);
+		}
+
+		// Verify file exists in R2
+		console.log(`🔍 POST /api/media/confirm - Verifying file in R2: ${r2Key}`);
+		const { createR2Client, verifyObjectExists } = await import(
+			"@/utils/r2-presign"
+		);
+
+		const r2Client = createR2Client({
+			endpoint: c.env.R2_ENDPOINT,
+			accessKeyId: c.env.R2_ACCESS_KEY_ID,
+			secretAccessKey: c.env.R2_SECRET_ACCESS_KEY,
+		});
+
+		const verification = await verifyObjectExists(
+			r2Client,
+			"wedding-photos",
+			r2Key,
+		);
+		console.log(
+			`🔍 POST /api/media/confirm - R2 verification: exists=${verification.exists}, size=${verification.size}, contentType=${verification.contentType}`,
+		);
+		if (!verification.exists) {
+			console.log(
+				`❌ POST /api/media/confirm - File not found in R2: ${r2Key}`,
+			);
+			return c.json({ error: "File not found in storage", r2Key }, 400);
+		}
+
+		// Upload thumbnail for videos (via Worker binding - small file)
+		let thumbnailR2Key: string | null = null;
+		if (mediaType === "video" && thumbnailFile) {
+			thumbnailR2Key = `groups/${group.id}/photos/${mediaId}_thumb.webp`;
+			console.log(
+				`🖼️ POST /api/media/confirm - Uploading thumbnail: ${thumbnailR2Key}`,
+			);
+			await c.env.BUCKET.put(thumbnailR2Key, thumbnailFile.stream(), {
+				httpMetadata: { contentType: "image/webp" },
+			});
+			console.log(`✅ POST /api/media/confirm - Thumbnail uploaded`);
+		}
+
+		// Save metadata to D1
+		const duration = durationStr ? Number.parseInt(durationStr, 10) : null;
+
+		console.log(
+			`💾 POST /api/media/confirm - Saving to DB: id=${mediaId}, size=${verification.size}, duration=${duration}`,
+		);
+		await db.insert(photoUploads).values({
+			id: mediaId,
+			fileName,
+			fileSize: verification.size || 0,
+			mimeType: verification.contentType || "application/octet-stream",
+			mediaType,
+			duration,
+			r2Key,
+			thumbnailR2Key,
+			guestId,
+		});
+
+		console.log(
+			`✅ POST /api/media/confirm - Success: ${mediaId} (${mediaType}, ${(verification.size || 0) / 1024 / 1024}MB)`,
+		);
+		return c.json({
+			success: true,
+			id: mediaId,
+			mediaType,
+			fileName,
+			duration,
+			uploadedAt: new Date().toISOString(),
+		});
+	} catch (error) {
+		console.error("❌ POST /api/media/confirm - Error:", error);
+		return c.json(
+			{
+				error: "Failed to confirm upload",
+				details: error instanceof Error ? error.message : String(error),
 			},
 			500,
 		);

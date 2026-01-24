@@ -13,7 +13,11 @@
       "Bash(pnpm exec biome:*)",
       "Bash(pnpm exec tsc:*)",
       "Bash(npm install:*)",
-      "Bash(pnpm add:*)"
+      "Bash(pnpm add:*)",
+      "Bash(wrangler r2 bucket cors put:*)",
+      "Bash(wrangler r2 bucket cors set:*)",
+      "Bash(wrangler r2 bucket cors list:*)",
+      "Bash(xxd:*)"
     ]
   }
 }
