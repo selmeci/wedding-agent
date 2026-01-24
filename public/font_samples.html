@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ukážky fontov pre svadobné menovky</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Alex+Brush&family=Allura&family=Dancing+Script:wght@400;700&family=Great+Vibes&family=Parisienne&family=Pinyon+Script&family=Sacramento&family=Tangerine:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: #f5f5f5;
+            padding: 40px 20px;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            text-align: center;
+            font-weight: 300;
+            margin-bottom: 10px;
+            color: #374151;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #6b7280;
+            margin-bottom: 40px;
+        }
+        
+        .font-grid {
+            display: grid;
+            gap: 25px;
+        }
+        
+        .font-card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            overflow: hidden;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+        }
+        
+        .font-info {
+            padding: 25px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        .font-number {
+            font-size: 0.75rem;
+            opacity: 0.7;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 5px;
+        }
+        
+        .font-name {
+            font-size: 1.4rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+        
+        .font-desc {
+            font-size: 0.85rem;
+            opacity: 0.9;
+            line-height: 1.5;
+        }
+        
+        .font-preview {
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            min-height: 180px;
+        }
+        
+        .preview-title {
+            font-size: 0.65rem;
+            color: #9ca3af;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 8px;
+            font-family: 'Segoe UI', sans-serif;
+        }
+        
+        .preview-name {
+            color: #374151;
+            margin-bottom: 15px;
+        }
+        
+        .preview-samples {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .sample {
+            font-size: 0.8rem;
+            color: #6b7280;
+            font-family: 'Segoe UI', sans-serif;
+        }
+        
+        /* Individual font styles */
+        .great-vibes .preview-name { font-family: 'Great Vibes', cursive; font-size: 42px; }
+        .dancing-script .preview-name { font-family: 'Dancing Script', cursive; font-size: 38px; }
+        .parisienne .preview-name { font-family: 'Parisienne', cursive; font-size: 40px; }
+        .tangerine .preview-name { font-family: 'Tangerine', cursive; font-size: 52px; font-weight: 700; }
+        .alex-brush .preview-name { font-family: 'Alex Brush', cursive; font-size: 44px; }
+        .allura .preview-name { font-family: 'Allura', cursive; font-size: 42px; }
+        .sacramento .preview-name { font-family: 'Sacramento', cursive; font-size: 44px; }
+        .pinyon .preview-name { font-family: 'Pinyon Script', cursive; font-size: 42px; }
+        
+        /* Color variations */
+        .dancing-script .font-info { background: linear-gradient(135deg, #f472b6 0%, #ec4899 100%); }
+        .parisienne .font-info { background: linear-gradient(135deg, #34d399 0%, #059669 100%); }
+        .tangerine .font-info { background: linear-gradient(135deg, #fbbf24 0%, #d97706 100%); }
+        .alex-brush .font-info { background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%); }
+        .allura .font-info { background: linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%); }
+        .sacramento .font-info { background: linear-gradient(135deg, #f87171 0%, #dc2626 100%); }
+        .pinyon .font-info { background: linear-gradient(135deg, #4ade80 0%, #16a34a 100%); }
+        
+        .comparison {
+            margin-top: 50px;
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+        
+        .comparison h2 {
+            font-weight: 500;
+            margin-bottom: 25px;
+            color: #374151;
+        }
+        
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        
+        .comparison-item {
+            text-align: center;
+            padding: 20px;
+            background: #f9fafb;
+            border-radius: 12px;
+        }
+        
+        .comparison-item .name {
+            margin-bottom: 8px;
+            color: #374151;
+        }
+        
+        .comparison-item .font-label {
+            font-size: 0.7rem;
+            color: #9ca3af;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .comp-great-vibes { font-family: 'Great Vibes', cursive; font-size: 32px; }
+        .comp-dancing { font-family: 'Dancing Script', cursive; font-size: 28px; }
+        .comp-parisienne { font-family: 'Parisienne', cursive; font-size: 30px; }
+        .comp-tangerine { font-family: 'Tangerine', cursive; font-size: 38px; font-weight: 700; }
+        .comp-alex { font-family: 'Alex Brush', cursive; font-size: 32px; }
+        .comp-allura { font-family: 'Allura', cursive; font-size: 32px; }
+        .comp-sacramento { font-family: 'Sacramento', cursive; font-size: 34px; }
+        .comp-pinyon { font-family: 'Pinyon Script', cursive; font-size: 32px; }
+        
+        .current-note {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 15px 20px;
+            margin-top: 30px;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .current-note strong {
+            color: #92400e;
+        }
+        
+        @media (max-width: 600px) {
+            .font-card {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Ukážky fontov pre svadobné menovky</h1>
+        <p class="subtitle">Všetky fonty podporujú slovenskú diakritiku (ľ, š, č, ť, ž, ý, á, í, é, ú, ô)</p>
+        
+        <div class="font-grid">
+            <!-- Great Vibes -->
+            <div class="font-card great-vibes">
+                <div class="font-info">
+                    <div class="font-number">Font 1</div>
+                    <div class="font-name">Great Vibes</div>
+                    <div class="font-desc">Elegantný kaligrafický štýl. Pripomína ručné písmo perom. Veľmi čitateľný aj vo väčšej veľkosti. Ideálny pre formálne svadobné tlače.</div>
+                </div>
+                <div class="font-preview">
+                    <div class="preview-title">Mama ženícha</div>
+                    <div class="preview-name">Mamka</div>
+                    <div class="preview-samples">
+                        <span class="sample">Ľubka • Šelméci • Peťa</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Dancing Script -->
+            <div class="font-card dancing-script">
+                <div class="font-info">
+                    <div class="font-number">Font 2</div>
+                    <div class="font-name">Dancing Script</div>
+                    <div class="font-desc">Hravejší a modernejší štýl. Menej formálny, ale stále elegantný. Výborná čitateľnosť. Vhodný pre neformálnejšie svadby.</div>
+                </div>
+                <div class="font-preview">
+                    <div class="preview-title">Mama ženícha</div>
+                    <div class="preview-name">Mamka</div>
+                    <div class="preview-samples">
+                        <span class="sample">Ľubka • Šelméci • Peťa</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Parisienne -->
+            <div class="font-card parisienne">
+                <div class="font-info">
+                    <div class="font-number">Font 3</div>
+                    <div class="font-name">Parisienne</div>
+                    <div class="font-desc">Romantický francúzsky štýl. Jemné a ženské písmo. Evokuje parížsku elegancziu. Krásne pre svadobné oznámenia.</div>
+                </div>
+                <div class="font-preview">
+                    <div class="preview-title">Mama ženícha</div>
+                    <div class="preview-name">Mamka</div>
+                    <div class="preview-samples">
+                        <span class="sample">Ľubka • Šelméci • Peťa</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tangerine -->
+            <div class="font-card tangerine">
+                <div class="font-info">
+                    <div class="font-number">Font 4</div>
+                    <div class="font-name">Tangerine</div>
+                    <div class="font-desc">Tenké a vysoké kaligrafické písmo. Veľmi elegantné a sofistikované. Najlepšie vyzerá vo väčšej veľkosti. Luxusný dojem.</div>
+                </div>
+                <div class="font-preview">
+                    <div class="preview-title">Mama ženícha</div>
+                    <div class="preview-name">Mamka</div>
+                    <div class="preview-samples">
+                        <span class="sample">Ľubka • Šelméci • Peťa</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Alex Brush -->
+            <div class="font-card alex-brush">
+                <div class="font-info">
+                    <div class="font-number">Font 5</div>
+                    <div class="font-name">Alex Brush</div>
+                    <div class="font-desc">Klasické kaligrafické písmo. Plynulé a spojité ťahy. Pripomína písmo štetcom. Univerzálne použiteľné.</div>
+                </div>
+                <div class="font-preview">
+                    <div class="preview-title">Mama ženícha</div>
+                    <div class="preview-name">Mamka</div>
+                    <div class="preview-samples">
+                        <span class="sample">Ľubka • Šelméci • Peťa</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Allura -->
+            <div class="font-card allura">
+                <div class="font-info">
+                    <div class="font-number">Font 6</div>
+                    <div class="font-name">Allura</div>
+                    <div class="font-desc">Moderné písané písmo. Čisté línie s elegantnými oblúkmi. Veľmi dobre čitateľné. Kombinácia tradičného a moderného.</div>
+                </div>
+                <div class="font-preview">
+                    <div class="preview-title">Mama ženícha</div>
+                    <div class="preview-name">Mamka</div>
+                    <div class="preview-samples">
+                        <span class="sample">Ľubka • Šelméci • Peťa</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Sacramento -->
+            <div class="font-card sacramento">
+                <div class="font-info">
+                    <div class="font-number">Font 7</div>
+                    <div class="font-name">Sacramento</div>
+                    <div class="font-desc">Jednoduché a priateľské písmo. Menej okázalé, ale stále elegantné. Výborná čitateľnosť aj v menších veľkostiach.</div>
+                </div>
+                <div class="font-preview">
+                    <div class="preview-title">Mama ženícha</div>
+                    <div class="preview-name">Mamka</div>
+                    <div class="preview-samples">
+                        <span class="sample">Ľubka • Šelméci • Peťa</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Pinyon Script -->
+            <div class="font-card pinyon">
+                <div class="font-info">
+                    <div class="font-number">Font 8</div>
+                    <div class="font-name">Pinyon Script</div>
+                    <div class="font-desc">Tradičné kaligrafické písmo. Historický vzhľad s ozdobnými ťahmi. Pripomína viktoriánsku éru. Pre klasické svadby.</div>
+                </div>
+                <div class="font-preview">
+                    <div class="preview-title">Mama ženícha</div>
+                    <div class="preview-name">Mamka</div>
+                    <div class="preview-samples">
+                        <span class="sample">Ľubka • Šelméci • Peťa</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Comparison -->
+        <div class="comparison">
+            <h2>Porovnanie: "Zuzka" vo všetkých fontoch</h2>
+            <div class="comparison-grid">
+                <div class="comparison-item">
+                    <div class="name comp-great-vibes">Zuzka</div>
+                    <div class="font-label">Great Vibes</div>
+                </div>
+                <div class="comparison-item">
+                    <div class="name comp-dancing">Zuzka</div>
+                    <div class="font-label">Dancing Script</div>
+                </div>
+                <div class="comparison-item">
+                    <div class="name comp-parisienne">Zuzka</div>
+                    <div class="font-label">Parisienne</div>
+                </div>
+                <div class="comparison-item">
+                    <div class="name comp-tangerine">Zuzka</div>
+                    <div class="font-label">Tangerine</div>
+                </div>
+                <div class="comparison-item">
+                    <div class="name comp-alex">Zuzka</div>
+                    <div class="font-label">Alex Brush</div>
+                </div>
+                <div class="comparison-item">
+                    <div class="name comp-allura">Zuzka</div>
+                    <div class="font-label">Allura</div>
+                </div>
+                <div class="comparison-item">
+                    <div class="name comp-sacramento">Zuzka</div>
+                    <div class="font-label">Sacramento</div>
+                </div>
+                <div class="comparison-item">
+                    <div class="name comp-pinyon">Zuzka</div>
+                    <div class="font-label">Pinyon Script</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="current-note">
+            <strong>Aktuálne použitý:</strong> Lora Italic - nie je to typické "písané" písmo, ale elegantná kurzíva s výbornou podporou diakritiky. Ak chceš zmeniť na niektorý z vyššie uvedených, daj vedieť!
+        </div>
+    </div>
+</body>
+</html>

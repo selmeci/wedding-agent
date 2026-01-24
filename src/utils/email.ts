@@ -382,7 +382,10 @@ Toto je automatická správa zo svadobného asistenta.`;
 		}
 
 		const result = (await response.json()) as BrevoEmailResponse;
-		console.log("[Newsletter Message] Email sent successfully:", result.messageId);
+		console.log(
+			"[Newsletter Message] Email sent successfully:",
+			result.messageId,
+		);
 
 		return {
 			messageId: result.messageId,

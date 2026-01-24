@@ -6,6 +6,7 @@ import { guests } from "./guests";
  * Photo uploads table - Tracks wedding photos uploaded by guests
  */
 export const photoUploads = sqliteTable("photo_uploads", {
+	duration: integer("duration"), // Video duration in seconds
 	fileName: text("file_name").notNull(),
 	fileSize: integer("file_size").notNull(), // Size in bytes
 	guestId: text("guest_id")
@@ -14,8 +15,12 @@ export const photoUploads = sqliteTable("photo_uploads", {
 	id: text("id")
 		.primaryKey()
 		.$defaultFn(() => crypto.randomUUID()),
+	mediaType: text("media_type", { enum: ["image", "video"] })
+		.notNull()
+		.default("image"),
 	mimeType: text("mime_type").notNull(),
 	r2Key: text("r2_key").notNull().unique(), // R2 object key
+	thumbnailR2Key: text("thumbnail_r2_key"), // For video thumbnails
 	uploadedAt: integer("uploaded_at", { mode: "timestamp" })
 		.notNull()
 		.default(sql`(unixepoch())`),

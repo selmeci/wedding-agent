@@ -1,13 +1,102 @@
-import { TrashIcon, XIcon } from "@phosphor-icons/react";
+import { Play, TrashIcon, XIcon } from "@phosphor-icons/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { BrokenHeart, PhotoUploadAnimation } from "@/components/PixelArt";
 
-interface Photo {
+interface Media {
 	id: string;
 	fileName: string;
 	uploadedAt: Date;
 	thumbnailUrl: string;
 	fullUrl: string;
+	mediaType: "image" | "video";
+	duration?: number;
+}
+
+// Generate thumbnail from video file using canvas
+async function generateVideoThumbnail(file: File): Promise<Blob | null> {
+	return new Promise((resolve) => {
+		const video = document.createElement("video");
+		video.preload = "metadata";
+		video.muted = true;
+		video.playsInline = true;
+
+		video.onloadeddata = () => {
+			// Seek to 1 second or 10% of duration, whichever is less
+			video.currentTime = Math.min(1, video.duration * 0.1);
+		};
+
+		video.onseeked = () => {
+			const canvas = document.createElement("canvas");
+			canvas.width = 400;
+			canvas.height = 400;
+
+			const ctx = canvas.getContext("2d");
+			if (!ctx) {
+				resolve(null);
+				return;
+			}
+
+			// Calculate cover dimensions
+			const videoAspect = video.videoWidth / video.videoHeight;
+			let sx = 0,
+				sy = 0,
+				sw = video.videoWidth,
+				sh = video.videoHeight;
+
+			if (videoAspect > 1) {
+				sw = video.videoHeight;
+				sx = (video.videoWidth - sw) / 2;
+			} else {
+				sh = video.videoWidth;
+				sy = (video.videoHeight - sh) / 2;
+			}
+
+			ctx.drawImage(video, sx, sy, sw, sh, 0, 0, 400, 400);
+
+			canvas.toBlob(
+				(blob) => {
+					URL.revokeObjectURL(video.src);
+					resolve(blob);
+				},
+				"image/webp",
+				0.8,
+			);
+		};
+
+		video.onerror = () => {
+			URL.revokeObjectURL(video.src);
+			resolve(null);
+		};
+
+		video.src = URL.createObjectURL(file);
+	});
+}
+
+// Get video duration in seconds
+async function getVideoDuration(file: File): Promise<number> {
+	return new Promise((resolve) => {
+		const video = document.createElement("video");
+		video.preload = "metadata";
+
+		video.onloadedmetadata = () => {
+			URL.revokeObjectURL(video.src);
+			resolve(Math.round(video.duration));
+		};
+
+		video.onerror = () => {
+			URL.revokeObjectURL(video.src);
+			resolve(0);
+		};
+
+		video.src = URL.createObjectURL(file);
+	});
+}
+
+// Format duration as mm:ss
+function formatDuration(seconds: number): string {
+	const mins = Math.floor(seconds / 60);
+	const secs = seconds % 60;
+	return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
 
 interface PhotoUploadProps {
@@ -21,8 +110,8 @@ export function PhotoUpload({
 	guestId,
 	adminSecret,
 }: PhotoUploadProps) {
-	const [photos, setPhotos] = useState<Photo[]>([]);
-	const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
+	const [mediaList, setMediaList] = useState<Media[]>([]);
+	const [selectedMedia, setSelectedMedia] = useState<Media | null>(null);
 	const [showWifiWarning, setShowWifiWarning] = useState(true);
 	const [isLoading, setIsLoading] = useState(false);
 	const [currentUpload, setCurrentUpload] = useState(0);
@@ -31,11 +120,11 @@ export function PhotoUpload({
 	const [photoToDelete, setPhotoToDelete] = useState<string | null>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
-	// Fetch photos on mount
+	// Fetch media on mount
 	useEffect(() => {
 		if (!qrToken) return;
 
-		const fetchPhotos = async () => {
+		const fetchMedia = async () => {
 			try {
 				const response = await fetch("/api/photos", {
 					headers: {
@@ -44,23 +133,24 @@ export function PhotoUpload({
 				});
 
 				if (!response.ok) {
-					console.error("Failed to fetch photos:", await response.text());
+					console.error("Failed to fetch media:", await response.text());
 					return;
 				}
 
-				const data = await response.json<{ photos: Photo[] }>();
-				setPhotos(
-					data.photos.map((p: Photo) => ({
+				const data = await response.json<{ photos: Media[] }>();
+				setMediaList(
+					data.photos.map((p: Media) => ({
 						...p,
+						mediaType: p.mediaType || "image",
 						uploadedAt: new Date(p.uploadedAt),
 					})),
 				);
 			} catch (error) {
-				console.error("Error fetching photos:", error);
+				console.error("Error fetching media:", error);
 			}
 		};
 
-		fetchPhotos();
+		fetchMedia();
 	}, [qrToken]);
 
 	const handleFileSelect = useCallback(
@@ -72,12 +162,36 @@ export function PhotoUpload({
 			setTotalUploads(files.length);
 			setCurrentUpload(0);
 
+			const videoTypes = [
+				"video/mp4",
+				"video/quicktime",
+				"video/webm",
+				"video/x-m4v",
+			];
+
 			let uploaded = 0;
 			for (const file of Array.from(files)) {
 				try {
+					const isVideo = videoTypes.includes(file.type);
+
 					// Create FormData
 					const formData = new FormData();
 					formData.append("file", file);
+
+					// For videos, generate thumbnail and get duration
+					if (isVideo) {
+						const [thumbnail, duration] = await Promise.all([
+							generateVideoThumbnail(file),
+							getVideoDuration(file),
+						]);
+
+						if (thumbnail) {
+							formData.append("thumbnail", thumbnail, "thumbnail.webp");
+						}
+						if (duration > 0) {
+							formData.append("duration", duration.toString());
+						}
+					}
 
 					// Upload to API
 					const headers: Record<string, string> = {
@@ -103,16 +217,24 @@ export function PhotoUpload({
 						continue;
 					}
 
-					const uploadedPhoto = await response.json<Photo>();
+					const uploadedMedia = await response.json<{
+						id: string;
+						fileName: string;
+						uploadedAt: string;
+						mediaType: "image" | "video";
+						duration?: number;
+					}>();
 
-					// Add to photos list
-					setPhotos((prev) => [
+					// Add to media list
+					setMediaList((prev) => [
 						{
-							fileName: uploadedPhoto.fileName,
-							fullUrl: `/api/photos/${uploadedPhoto.id}/full`,
-							id: uploadedPhoto.id,
-							thumbnailUrl: `/api/photos/${uploadedPhoto.id}/thumbnail`,
-							uploadedAt: new Date(uploadedPhoto.uploadedAt),
+							duration: uploadedMedia.duration,
+							fileName: uploadedMedia.fileName,
+							fullUrl: `/api/photos/${uploadedMedia.id}/full`,
+							id: uploadedMedia.id,
+							mediaType: uploadedMedia.mediaType || "image",
+							thumbnailUrl: `/api/photos/${uploadedMedia.id}/thumbnail`,
+							uploadedAt: new Date(uploadedMedia.uploadedAt),
 						},
 						...prev,
 					]);
@@ -137,8 +259,8 @@ export function PhotoUpload({
 		[qrToken, guestId, adminSecret],
 	);
 
-	const openDeleteModal = useCallback((photoId: string) => {
-		setPhotoToDelete(photoId);
+	const openDeleteModal = useCallback((mediaId: string) => {
+		setPhotoToDelete(mediaId);
 		setIsDeleteModalOpen(true);
 	}, []);
 
@@ -162,26 +284,26 @@ export function PhotoUpload({
 				const error = await response.json();
 				console.error("Delete failed:", error);
 				// @ts-expect-error error.error is always defined
-				alert(`Nepodarilo sa vymazať fotku: ${error.error}`);
+				alert(`Nepodarilo sa vymazať: ${error.error}`);
 				return;
 			}
 
 			// Remove from state
-			setPhotos((prev) => prev.filter((p) => p.id !== photoToDelete));
-			setSelectedPhoto(null);
+			setMediaList((prev) => prev.filter((m) => m.id !== photoToDelete));
+			setSelectedMedia(null);
 			closeDeleteModal();
 		} catch (error) {
 			console.error("Delete error:", error);
-			alert("Chyba pri mazaní fotky");
+			alert("Chyba pri mazaní");
 		}
 	}, [photoToDelete, qrToken, closeDeleteModal]);
 
-	const openLightbox = useCallback((photo: Photo) => {
-		setSelectedPhoto(photo);
+	const openLightbox = useCallback((media: Media) => {
+		setSelectedMedia(media);
 	}, []);
 
 	const closeLightbox = useCallback(() => {
-		setSelectedPhoto(null);
+		setSelectedMedia(null);
 	}, []);
 
 	// Keyboard support for delete modal (Escape to close)
@@ -204,10 +326,10 @@ export function PhotoUpload({
 				{/* Header */}
 				<div className="text-center">
 					<h2 className="text-2xl font-serif text-pink-600 mb-2 flex items-center justify-center gap-2">
-						📸 Svadovné Spomienky
+						📸 Svadobné Spomienky
 					</h2>
 					<p className="text-sm text-gray-600">
-						Zdieľajte svoje fotky zo svadby s nami!
+						Zdieľajte svoje fotky a videá zo svadby s nami!
 					</p>
 				</div>
 
@@ -217,7 +339,7 @@ export function PhotoUpload({
 						<div className="text-xl">⚡</div>
 						<div className="flex-1 text-sm text-yellow-800">
 							<strong>Tip:</strong> Používajte WiFi pre rýchlejšie nahrávanie
-							fotiek.
+							fotiek a videí.
 						</div>
 						<button
 							onClick={() => setShowWifiWarning(false)}
@@ -245,7 +367,7 @@ export function PhotoUpload({
 					<input
 						ref={fileInputRef}
 						type="file"
-						accept="image/jpeg,image/png,image/heic,image/heif,image/webp"
+						accept="image/jpeg,image/png,image/heic,image/heif,image/webp,video/mp4,video/quicktime,video/webm,video/x-m4v"
 						multiple
 						onChange={handleFileSelect}
 						className="hidden"
@@ -262,36 +384,51 @@ export function PhotoUpload({
 					>
 						{isLoading
 							? "Nahrávam..."
-							: `➕ Pridať fotky (${photos.length}/neobmedzené)`}
+							: `➕ Pridať fotky a videá (${mediaList.length})`}
 					</label>
 				</div>
 
-				{/* Photo Grid */}
-				{photos.length > 0 ? (
+				{/* Media Grid */}
+				{mediaList.length > 0 ? (
 					<div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
-						{photos.map((photo) => (
-							// biome-ignore lint/a11y/useKeyWithClickEvents: Photo grid items are clickable for lightbox
-							// biome-ignore lint/a11y/noStaticElementInteractions: Photo grid items open lightbox on click
+						{mediaList.map((media) => (
+							// biome-ignore lint/a11y/useKeyWithClickEvents: Media grid items are clickable for lightbox
+							// biome-ignore lint/a11y/noStaticElementInteractions: Media grid items open lightbox on click
 							<div
-								key={photo.id}
+								key={media.id}
 								className="relative aspect-square bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow group cursor-pointer"
-								onClick={() => openLightbox(photo)}
+								onClick={() => openLightbox(media)}
 							>
 								<img
-									src={photo.thumbnailUrl}
-									alt={photo.fileName}
+									src={media.thumbnailUrl}
+									alt={media.fileName}
 									className="w-full h-full object-cover"
 									loading="lazy"
 								/>
+								{/* Video Overlay */}
+								{media.mediaType === "video" && (
+									<>
+										<div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+											<div className="bg-black/50 rounded-full p-3">
+												<Play size={24} weight="fill" className="text-white" />
+											</div>
+										</div>
+										{media.duration && (
+											<div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded">
+												{formatDuration(media.duration)}
+											</div>
+										)}
+									</>
+								)}
 								{/* Delete Button */}
 								<button
 									onClick={(e) => {
 										e.stopPropagation();
-										openDeleteModal(photo.id);
+										openDeleteModal(media.id);
 									}}
 									className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
 									type="button"
-									aria-label="Vymazať fotku"
+									aria-label="Vymazať"
 								>
 									<TrashIcon size={16} weight="fill" />
 								</button>
@@ -303,29 +440,29 @@ export function PhotoUpload({
 					<div className="text-center py-16 px-4">
 						<div className="text-6xl mb-4">📷</div>
 						<h3 className="text-xl font-semibold text-gray-700 mb-2">
-							Zatiaľ tu nie sú žiadne fotky
+							Zatiaľ tu nie sú žiadne spomienky
 						</h3>
 						<p className="text-gray-500 text-sm">
-							Pridajte prvú fotku kliknutím na tlačidlo vyššie
+							Pridajte prvú fotku alebo video kliknutím na tlačidlo vyššie
 						</p>
 					</div>
 				)}
 
-				{/* Photo Counter */}
-				{photos.length > 0 && (
+				{/* Media Counter */}
+				{mediaList.length > 0 && (
 					<div className="text-center text-sm text-gray-600 pb-4">
-						{photos.length}{" "}
-						{photos.length === 1
-							? "fotka nahraná"
-							: photos.length < 5
-								? "fotky nahrané"
-								: "fotiek nahraných"}
+						{mediaList.length}{" "}
+						{mediaList.length === 1
+							? "spomienka nahraná"
+							: mediaList.length < 5
+								? "spomienky nahrané"
+								: "spomienok nahraných"}
 					</div>
 				)}
 			</div>
 
 			{/* Lightbox */}
-			{selectedPhoto && (
+			{selectedMedia && (
 				// biome-ignore lint/a11y/useKeyWithClickEvents: Lightbox overlay closes on click
 				// biome-ignore lint/a11y/noStaticElementInteractions: Lightbox overlay is clickable to close
 				<div
@@ -344,22 +481,34 @@ export function PhotoUpload({
 					<button
 						onClick={(e) => {
 							e.stopPropagation();
-							openDeleteModal(selectedPhoto.id);
+							openDeleteModal(selectedMedia.id);
 						}}
 						className="absolute bottom-4 right-4 bg-red-500 hover:bg-red-600 text-white rounded-full py-3 px-6 transition-colors shadow-lg flex items-center gap-2"
 						type="button"
 					>
 						<TrashIcon size={20} weight="fill" />
-						Vymazať fotku
+						Vymazať
 					</button>
 
-					{/* biome-ignore lint/a11y/useKeyWithClickEvents: Image stopPropagation prevents overlay close */}
-					<img
-						src={selectedPhoto.fullUrl}
-						alt={selectedPhoto.fileName}
-						className="max-w-full max-h-full object-contain"
-						onClick={(e) => e.stopPropagation()}
-					/>
+					{selectedMedia.mediaType === "video" ? (
+						// biome-ignore lint/a11y/useKeyWithClickEvents: Video stopPropagation prevents overlay close
+						<video
+							src={selectedMedia.fullUrl}
+							controls
+							autoPlay
+							playsInline
+							className="max-w-full max-h-full"
+							onClick={(e) => e.stopPropagation()}
+						/>
+					) : (
+						// biome-ignore lint/a11y/useKeyWithClickEvents: Image stopPropagation prevents overlay close
+						<img
+							src={selectedMedia.fullUrl}
+							alt={selectedMedia.fileName}
+							className="max-w-full max-h-full object-contain"
+							onClick={(e) => e.stopPropagation()}
+						/>
+					)}
 				</div>
 			)}
 
@@ -379,13 +528,15 @@ export function PhotoUpload({
 						{/* Pink Gradient Header */}
 						<div className="bg-gradient-to-r from-pink-500 to-pink-600 rounded-t-2xl p-6 text-center">
 							<BrokenHeart className="w-20 h-20 mx-auto mb-3" />
-							<h3 className="text-xl font-bold text-white">Vymazať fotku?</h3>
+							<h3 className="text-xl font-bold text-white">
+								Vymazať spomienku?
+							</h3>
 						</div>
 
 						{/* Content */}
 						<div className="p-6 text-center">
 							<p className="text-gray-700 mb-6">
-								Táto akcia sa nedá vrátiť späť. Fotka bude natrvalo vymazaná.
+								Táto akcia sa nedá vrátiť späť. Súbor bude natrvalo vymazaný.
 							</p>
 
 							{/* Buttons */}

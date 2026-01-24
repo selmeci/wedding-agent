@@ -319,27 +319,43 @@ app.post("/api/photos", async (c) => {
 		}
 
 		// Validate file type
-		const allowedTypes = [
+		const imageTypes = [
 			"image/jpeg",
 			"image/png",
 			"image/heic",
 			"image/heif",
 			"image/webp",
 		];
+		const videoTypes = [
+			"video/mp4",
+			"video/quicktime",
+			"video/webm",
+			"video/x-m4v",
+		];
+		const allowedTypes = [...imageTypes, ...videoTypes];
 		if (!allowedTypes.includes(file.type)) {
 			return c.json({ error: "Invalid file type" }, 400);
 		}
 
-		// Validate file size (max 25MB)
-		const maxSize = 25 * 1024 * 1024; // 25MB
+		const isVideo = videoTypes.includes(file.type);
+		const mediaType = isVideo ? "video" : "image";
+
+		// Validate file size (100MB max - Cloudflare Workers limit)
+		const maxSize = 100 * 1024 * 1024;
 		if (file.size > maxSize) {
-			return c.json({ error: "File too large (max 25MB)" }, 400);
+			return c.json({ error: "Súbor je príliš veľký (max 100MB)" }, 400);
 		}
 
-		// Generate photo ID and R2 key
-		const photoId = crypto.randomUUID();
-		const fileExtension = file.name.split(".").pop() || "jpg";
-		const r2Key = `groups/${group.id}/photos/${photoId}.${fileExtension}`;
+		// Get thumbnail and duration for videos
+		const thumbnailFile = formData.get("thumbnail") as File | null;
+		const durationStr = formData.get("duration") as string | null;
+		const duration = durationStr ? Number.parseInt(durationStr, 10) : null;
+
+		// Generate media ID and R2 key
+		const mediaId = crypto.randomUUID();
+		const fileExtension =
+			file.name.split(".").pop() || (isVideo ? "mp4" : "jpg");
+		const r2Key = `groups/${group.id}/photos/${mediaId}.${fileExtension}`;
 
 		// Upload to R2
 		await c.env.BUCKET.put(r2Key, file.stream(), {
@@ -348,19 +364,35 @@ app.post("/api/photos", async (c) => {
 			},
 		});
 
+		// Upload thumbnail for videos
+		let thumbnailR2Key: string | null = null;
+		if (isVideo && thumbnailFile) {
+			thumbnailR2Key = `groups/${group.id}/photos/${mediaId}_thumb.webp`;
+			await c.env.BUCKET.put(thumbnailR2Key, thumbnailFile.stream(), {
+				httpMetadata: {
+					contentType: "image/webp",
+				},
+			});
+		}
+
 		// Save metadata to D1
 		await db.insert(photoUploads).values({
+			duration: isVideo && duration ? duration : null,
 			fileName: file.name,
 			fileSize: file.size,
 			guestId,
-			id: photoId,
+			id: mediaId,
+			mediaType,
 			mimeType: file.type,
 			r2Key,
+			thumbnailR2Key,
 		});
 
 		return c.json({
+			duration: isVideo && duration ? duration : undefined,
 			fileName: file.name,
-			id: photoId,
+			id: mediaId,
+			mediaType,
 			uploadedAt: new Date().toISOString(),
 		});
 	} catch (error) {
@@ -412,9 +444,11 @@ app.get("/api/photos", async (c) => {
 
 		// Return photos with thumbnail and full URLs
 		const photosWithUrls = photos.map((photo) => ({
+			duration: photo.duration,
 			fileName: photo.fileName,
 			fullUrl: `/api/photos/${photo.id}/full`,
 			id: photo.id,
+			mediaType: photo.mediaType,
 			thumbnailUrl: `/api/photos/${photo.id}/thumbnail`,
 			uploadedAt: photo.uploadedAt,
 		}));
@@ -439,16 +473,31 @@ app.get("/api/photos/:id/thumbnail", async (c) => {
 		const db = createDb(c.env.DB);
 
 		// Get photo metadata
-		const photo = await db.query.photoUploads.findFirst({
+		const media = await db.query.photoUploads.findFirst({
 			where: (t, { eq }) => eq(t.id, photoId),
 		});
 
-		if (!photo) {
-			return c.json({ error: "Photo not found" }, 404);
+		if (!media) {
+			return c.json({ error: "Media not found" }, 404);
 		}
 
-		// Get object from R2
-		const object = await c.env.BUCKET.get(photo.r2Key);
+		// For videos, return the stored thumbnail
+		if (media.mediaType === "video" && media.thumbnailR2Key) {
+			const thumbnail = await c.env.BUCKET.get(media.thumbnailR2Key);
+			if (!thumbnail) {
+				return c.json({ error: "Video thumbnail not found in storage" }, 404);
+			}
+
+			return new Response(thumbnail.body, {
+				headers: {
+					"Cache-Control": "public, max-age=31536000",
+					"Content-Type": "image/webp",
+				},
+			});
+		}
+
+		// For images, use Cloudflare Image Resizing
+		const object = await c.env.BUCKET.get(media.r2Key);
 		if (!object) {
 			return c.json({ error: "Photo file not found in storage" }, 404);
 		}
@@ -461,7 +510,7 @@ app.get("/api/photos/:id/thumbnail", async (c) => {
 				"CF-Image-Format": "webp",
 				"CF-Image-Height": "400",
 				"CF-Image-Width": "400",
-				"Content-Type": photo.mimeType,
+				"Content-Type": media.mimeType,
 			},
 		});
 	} catch (error) {
@@ -558,6 +607,11 @@ app.delete("/api/photos/:id", async (c) => {
 
 		// Delete from R2
 		await c.env.BUCKET.delete(photo.r2Key);
+
+		// Delete thumbnail if exists (for videos)
+		if (photo.thumbnailR2Key) {
+			await c.env.BUCKET.delete(photo.thumbnailR2Key);
+		}
 
 		// Delete from D1
 		await db.delete(photoUploads).where(eq(photoUploads.id, photoId));
