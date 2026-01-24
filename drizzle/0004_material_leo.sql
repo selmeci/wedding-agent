@@ -1,0 +1,1 @@
+ALTER TABLE `guest_groups` ADD `newsletter_email` text;

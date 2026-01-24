@@ -19,19 +19,20 @@ import { createDb, type Database } from "@/db";
 import {
 	executions,
 	getAccommodationInfoTool,
+	newsletterSubscriptionTool,
 	saveRsvpTool,
 	sendMessageToCoupleTool,
 } from "@/tools";
 import type { Outputs } from "@/tools/types";
 import { cleanupMessages, processToolCalls } from "@/utils";
-import { sendEmailNotification } from "@/utils/email";
+import { sendEmailNotification, sendNewsletterMessage } from "@/utils/email";
 
 /**
  * Simplified Chat Agent
  *
  * Goal-oriented agent with:
  * - 3 states: collecting, completed, declined
- * - 3 tools: saveRsvp, getAccommodationInfo, sendMessageToCouple
+ * - 4 tools: saveRsvp, getAccommodationInfo, sendMessageToCouple, newsletterSubscription
  * - Single system prompt for entire conversation
  */
 export class Chat extends AIChatAgent<Env, WeddingAgentState> {
@@ -107,6 +108,7 @@ export class Chat extends AIChatAgent<Env, WeddingAgentState> {
 		);
 		if (lastTextPart?.text?.startsWith("[COUPLE]")) {
 			console.log("Couple message detected - skipping AI response");
+			await this.handleCoupleMessage(lastTextPart.text);
 			return;
 		}
 
@@ -126,9 +128,10 @@ export class Chat extends AIChatAgent<Env, WeddingAgentState> {
 		const system = buildSystemPrompt(groupContext);
 		console.log("System prompt length:", system.length);
 
-		// Flat tool set - always the same 3 tools, no state-based gating
+		// Flat tool set - always the same tools, no state-based gating
 		const tools = {
 			getAccommodationInfo: getAccommodationInfoTool,
+			newsletterSubscription: newsletterSubscriptionTool,
 			saveRsvp: saveRsvpTool,
 			sendMessageToCouple: sendMessageToCoupleTool,
 		};
@@ -288,6 +291,57 @@ export class Chat extends AIChatAgent<Env, WeddingAgentState> {
 		} catch (error: unknown) {
 			console.error(
 				"[Email] Error:",
+				error instanceof Error ? error.message : String(error),
+			);
+		}
+	}
+
+	/**
+	 * Handle couple message delivery to subscribed group email
+	 */
+	private async handleCoupleMessage(rawMessage: string): Promise<void> {
+		const { groupId } = this.state;
+
+		if (!groupId) {
+			console.error("[Couple Message] Missing groupId.");
+			return;
+		}
+
+		const message = rawMessage.replace(/^\[COUPLE\]/, "").trim();
+		if (!message) {
+			console.warn("[Couple Message] Empty message. Skipping email.");
+			return;
+		}
+
+		try {
+			const db = this.getDatabase();
+
+			const group = await db.query.guestGroups.findFirst({
+				where: (t, { eq }) => eq(t.id, groupId),
+			});
+
+			if (!group?.newsletterEmail) {
+				console.log("[Couple Message] No newsletter email for group.");
+				return;
+			}
+
+			const emailResult = await sendNewsletterMessage(this.env, {
+				email: group.newsletterEmail,
+				groupName: group.name,
+				message,
+			});
+
+			if (emailResult.success) {
+				console.log(
+					"[Couple Message] Email sent successfully:",
+					emailResult.messageId,
+				);
+			} else {
+				console.warn("[Couple Message] Failed:", emailResult.error);
+			}
+		} catch (error: unknown) {
+			console.error(
+				"[Couple Message] Error:",
 				error instanceof Error ? error.message : String(error),
 			);
 		}

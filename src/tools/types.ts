@@ -3,10 +3,11 @@ import { z } from "zod";
 /**
  * Simplified tool type definitions
  *
- * Only 3 tools needed:
+ * Only 4 tools needed:
  * - saveRsvp: Atomic RSVP storage
  * - getAccommodationInfo: Hotel information
  * - sendMessageToCouple: Message to wedding couple
+ * - newsletterSubscription: Subscribe/unsubscribe to updates
  */
 
 // ===== GetAccommodationInfo =====
@@ -108,12 +109,58 @@ export const SaveRsvpOutputSchema = z.object({
 export type SaveRsvpInput = z.infer<typeof SaveRsvpInputSchema>;
 export type SaveRsvpOutput = z.infer<typeof SaveRsvpOutputSchema>;
 
+// ===== Newsletter Subscription =====
+
+export const NewsletterSubscriptionInputSchema = z
+	.object({
+		action: z.enum(["subscribe", "unsubscribe"]),
+		email: z.email().optional(),
+	})
+	.superRefine((data, ctx) => {
+		if (data.action === "subscribe" && !data.email) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: "Email is required for subscribe action.",
+				path: ["email"],
+			});
+		}
+	});
+
+export const NewsletterSubscriptionOutputSuccessSchema = z.object({
+	message: z.string(),
+	success: z.literal(true),
+	type: z.literal("newsletter-subscription"),
+});
+
+export const NewsletterSubscriptionOutputFailureSchema = z.object({
+	error: z.string(),
+	success: z.literal(false),
+	type: z.literal("newsletter-subscription"),
+});
+
+export const NewsletterSubscriptionOutputSchema = z.discriminatedUnion(
+	"success",
+	[
+		NewsletterSubscriptionOutputSuccessSchema,
+		NewsletterSubscriptionOutputFailureSchema,
+	],
+);
+
+export type NewsletterSubscriptionInput = z.infer<
+	typeof NewsletterSubscriptionInputSchema
+>;
+export type NewsletterSubscriptionOutput = z.infer<
+	typeof NewsletterSubscriptionOutputSchema
+>;
+
 // ===== Combined Outputs =====
 
 export const OutputsSchema = z.discriminatedUnion("type", [
 	GetAccommodationInfoOutputSchema,
 	SendMessageToCoupleOutputSuccessSchema,
 	SendMessageToCoupleOutputFailureSchema,
+	NewsletterSubscriptionOutputSuccessSchema,
+	NewsletterSubscriptionOutputFailureSchema,
 	SaveRsvpOutputSchema,
 ] as const);
 

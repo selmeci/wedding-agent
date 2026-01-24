@@ -16,6 +16,7 @@ export const guestGroups = sqliteTable("guest_groups", {
 		.$defaultFn(() => crypto.randomUUID()),
 	isFromModra: integer("is_from_modra", { mode: "boolean" }).default(false),
 	name: text("name").notNull(), // e.g., "Rodina Novákovcov", "Marek a Katka"
+	newsletterEmail: text("newsletter_email"),
 	qrToken: text("qr_token").notNull().unique(),
 });
 

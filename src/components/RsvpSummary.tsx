@@ -8,10 +8,10 @@ interface RsvpSummaryProps {
 export function RsvpSummary({ rsvpData, onEditRsvp }: RsvpSummaryProps) {
 	// Default values if no RSVP data yet
 	const data = rsvpData || {
-		willAttend: true,
 		dietaryRestrictions: null,
 		needsTransportAfter: false,
 		transportDestination: null,
+		willAttend: true,
 	};
 
 	return (
@@ -170,8 +170,9 @@ export function RsvpSummary({ rsvpData, onEditRsvp }: RsvpSummaryProps) {
 								príspevok privítame. 💝
 							</div>
 							<div className="text-xs text-gray-500 mt-2 italic">
-								Hmotné dary nie sú potrebné. Obálku môžete odovzdať pri vstupe
-								alebo počas hostiny.
+								Hmotné dary nie sú potrebné. Obálku môžete odovzdať po obrade
+								alebo počas hostiny nech je s tým čo najmenej starostí.
+								Ďakujeme.
 							</div>
 						</div>
 					</div>
@@ -181,13 +182,45 @@ export function RsvpSummary({ rsvpData, onEditRsvp }: RsvpSummaryProps) {
 						<div className="text-2xl">🅿️</div>
 						<div className="flex-1">
 							<div className="font-medium text-gray-900">Parkovanie</div>
-							<div className="text-sm text-gray-600">
-								Pri nemocnici (Vajanského 1)
-							</div>
-							<div className="text-xs text-gray-500 mt-1">
-								Bezplatné, 7 min pešo od sobáša
+							<div className="space-y-2 text-sm text-gray-600">
+								<div>
+									Pri nemocnici (Vajanského 1)
+									<div className="text-xs text-gray-500 mt-1">
+										Bezplatné, 7 min pešo od sobáša
+									</div>
+								</div>
+								<div>
+									Pred OC Kockou
+									<div className="text-xs text-gray-500 mt-1">
+										Bezplatné, 6 min pešo od sobáša
+									</div>
+								</div>
+								<div>
+									Na námestí
+									<div className="text-xs text-gray-500 mt-1">
+										Platené do 16:30, 2 min pešo od sobáša
+									</div>
+								</div>
 							</div>
 						</div>
+					</div>
+				</div>
+			</section>
+
+			{/* Chat Commands */}
+			<section>
+				<h2 className="text-2xl font-serif text-pink-600 mb-4 flex items-center gap-2">
+					💬 Čo vieš v chate
+				</h2>
+				<div className="bg-white rounded-lg p-4 border border-pink-100 space-y-3">
+					<div className="text-sm text-gray-600">
+						Napíš mi niektorý z týchto príkazov:
+					</div>
+					<div className="space-y-2 text-sm text-gray-700">
+						<div>📨 „odber noviniek“ – prihlásenie na emailové novinky</div>
+						<div>🛑 „odhlásiť novinky“ – zrušenie odberu</div>
+						<div>💌 „chcem odkázať“ – správa pre Ivonku a Romana</div>
+						<div>✏️ „zmeniť RSVP“ – upraviť účasť, diétu alebo odvoz</div>
 					</div>
 				</div>
 			</section>
