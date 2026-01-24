@@ -11,7 +11,9 @@
       "Bash(npx biome:*)",
       "Bash(npx tsc:*)",
       "Bash(pnpm exec biome:*)",
-      "Bash(pnpm exec tsc:*)"
+      "Bash(pnpm exec tsc:*)",
+      "Bash(npm install:*)",
+      "Bash(pnpm add:*)"
     ]
   }
 }
