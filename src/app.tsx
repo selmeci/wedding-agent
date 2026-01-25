@@ -7,6 +7,7 @@ import { CaretDownIcon } from "@radix-ui/react-icons";
 import { useAgentChat } from "agents/ai-react";
 import { useAgent } from "agents/react";
 import { isStaticToolUIPart } from "ai";
+import { AnimatePresence, motion } from "framer-motion";
 import {
 	useCallback,
 	useEffect,
@@ -14,6 +15,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { Envelope } from "@/components/Envelope";
 // Component imports
 import { Button } from "@/components/button/Button";
 import { Countdown } from "@/components/Countdown/Countdown";
@@ -36,6 +38,9 @@ import type { tools } from "./tools";
 // List of tools that require human confirmation
 // NOTE: this should match the tools that don't have execute functions in tools.ts
 const toolsRequiringConfirmation: (keyof typeof tools)[] = [];
+
+// LocalStorage key for tracking envelope open state
+const ENVELOPE_OPENED_KEY = "wedding_envelope_opened";
 
 export default function Chat() {
 	const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -101,6 +106,29 @@ export default function Chat() {
 	const [timelineJustUnlocked, setTimelineJustUnlocked] = useState(false);
 	// Track previous conversation state to detect transition
 	const prevConversationStateRef = useRef<string | null>(null);
+
+	// State for envelope animation (first-time visitors)
+	const [showEnvelope, setShowEnvelope] = useState(() => {
+		// Skip envelope in report mode
+		if (mode === "report") return false;
+		// Check if envelope was already opened
+		try {
+			return !localStorage.getItem(ENVELOPE_OPENED_KEY);
+		} catch {
+			// localStorage might not be available
+			return false;
+		}
+	});
+
+	// Handle envelope open
+	const handleEnvelopeOpen = useCallback(() => {
+		try {
+			localStorage.setItem(ENVELOPE_OPENED_KEY, "true");
+		} catch {
+			// Ignore localStorage errors
+		}
+		setShowEnvelope(false);
+	}, []);
 
 	const agent = useAgent({
 		agent: mode === "report" ? "report" : "chat",
@@ -310,8 +338,23 @@ export default function Chat() {
 		prevConversationStateRef.current = currentState || null;
 	}, [agentState?.conversationState]);
 
+	// Show envelope for first-time visitors
+	if (showEnvelope) {
+		return (
+			<AnimatePresence mode="wait">
+				<Envelope key="envelope" onOpen={handleEnvelopeOpen} />
+			</AnimatePresence>
+		);
+	}
+
 	return (
-		<div className="flex flex-col h-screen w-full bg-gradient-to-br from-pink-50 via-white to-pink-100">
+		<motion.div
+			key="chat-content"
+			className="flex flex-col h-screen w-full bg-gradient-to-br from-pink-50 via-white to-pink-100"
+			initial={{ opacity: 0 }}
+			animate={{ opacity: 1 }}
+			transition={{ duration: 0.5, ease: "easeOut" }}
+		>
 			{/* Header and Countdown - different in report mode */}
 			{mode === "report" ? (
 				<div className="bg-gradient-pink p-4 text-center">
@@ -830,6 +873,6 @@ export default function Chat() {
 					</div>
 				</div>
 			</main>
-		</div>
+		</motion.div>
 	);
 }

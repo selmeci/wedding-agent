@@ -188,3 +188,103 @@ code {
 .animate-spin-slow {
   animation: spin-slow 1.2s linear infinite;
 }
+
+/* === ENVELOPE ANIMATION STYLES === */
+
+/* 3D Perspective container */
+.envelope-perspective {
+  perspective: 1000px;
+  transform-style: preserve-3d;
+}
+
+/* Envelope container */
+.envelope-container {
+  position: relative;
+  transform-style: preserve-3d;
+}
+
+/* Envelope flap with backface hidden */
+.envelope-flap {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transform-style: preserve-3d;
+}
+
+/* Wax seal organic shape effect */
+.wax-seal {
+  border-radius: 50%;
+  filter: drop-shadow(0 4px 8px rgba(127, 29, 29, 0.4));
+}
+
+/* Envelope wrapper gradient background */
+.envelope-wrapper {
+  background: linear-gradient(
+    180deg,
+    #fff5f7 0%,
+    #ffe3e8 50%,
+    #ffc9d4 100%
+  );
+}
+
+/* Envelope hover glow effect */
+.envelope-perspective:hover .envelope-container {
+  filter: drop-shadow(0 8px 24px rgba(255, 107, 142, 0.3));
+}
+
+/* Seal breaking particle effect (optional enhancement) */
+@keyframes sealParticle {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--tx, 20px), var(--ty, -30px)) scale(0);
+    opacity: 0;
+  }
+}
+
+.seal-particle {
+  animation: sealParticle 0.6s ease-out forwards;
+}
+
+/* Envelope entrance animation */
+@keyframes envelopeEntrance {
+  0% {
+    opacity: 0;
+    transform: translateY(40px) scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.envelope-entrance {
+  animation: envelopeEntrance 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* Subtle float animation for sealed envelope */
+@keyframes envelopeFloat {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+.envelope-float {
+  animation: envelopeFloat 3s ease-in-out infinite;
+}
+
+/* Reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .envelope-float,
+  .seal-particle {
+    animation: none;
+  }
+
+  .envelope-perspective:hover .envelope-container {
+    filter: none;
+  }
+}

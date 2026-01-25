@@ -17,7 +17,14 @@
       "Bash(wrangler r2 bucket cors put:*)",
       "Bash(wrangler r2 bucket cors set:*)",
       "Bash(wrangler r2 bucket cors list:*)",
-      "Bash(xxd:*)"
+      "Bash(xxd:*)",
+      "WebFetch(domain:codepen.io)",
+      "WebFetch(domain:robb.is)",
+      "WebFetch(domain:codewebstack.com)",
+      "WebFetch(domain:caniuse.com)",
+      "WebFetch(domain:motion.dev)",
+      "WebFetch(domain:www.framer.com)",
+      "Bash(timeout /t 5)"
     ]
   }
 }
