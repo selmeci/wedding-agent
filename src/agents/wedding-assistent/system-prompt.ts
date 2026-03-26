@@ -1,4 +1,5 @@
 import type { GroupInfo } from "@/agents/wedding-assistent/types";
+import { weddingSchedule } from "@/data/schedule";
 
 /**
  * Goal-Oriented System Prompt Builder
@@ -132,9 +133,7 @@ ${guestContext}
 - Distance: 5 min walk from ceremony
 
 **Schedule:**
-- 15:30-16:00: Ceremony
-- 16:00-17:00: Photos
-- 17:00-midnight: Reception
+${weddingSchedule.map((item) => `- ${item.time}: ${item.title}${item.subtitle ? ` (${item.subtitle})` : ""}`).join("\n")}
 
 **Dress Code (Semi-Formal/Cocktail):**
 - Ladies: No white (reserved for bride), avoid black, colorful preferred
