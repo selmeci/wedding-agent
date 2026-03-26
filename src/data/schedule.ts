@@ -25,7 +25,7 @@ export const weddingSchedule: ScheduleItem[] = [
 	{
 		time: "16:15 – 16:20",
 		title: "Presun hostí do Starého domu",
-		subtitle: "Reštaurácia Starý Dom, Dukelská 2",
+		subtitle: "Reštaurácia Starý Dom, Dukelská 2 (5 min chôdze od sobáša)",
 		emoji: "🚶",
 	},
 	{

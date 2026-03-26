@@ -133,7 +133,7 @@ ${guestContext}
 - Distance: 5 min walk from ceremony
 
 **Schedule:**
-${weddingSchedule.map((item) => `- ${item.time}: ${item.title}`).join("\n")}
+${weddingSchedule.map((item) => `- ${item.time}: ${item.title}${item.subtitle ? ` (${item.subtitle})` : ""}`).join("\n")}
 
 **Dress Code (Semi-Formal/Cocktail):**
 - Ladies: No white (reserved for bride), avoid black, colorful preferred
