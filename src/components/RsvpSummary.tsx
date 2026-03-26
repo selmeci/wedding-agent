@@ -1,4 +1,5 @@
 import type { RsvpData } from "@/agents/wedding-assistent/types";
+import { weddingSchedule } from "@/data/schedule";
 
 interface RsvpSummaryProps {
 	rsvpData: RsvpData | null;
@@ -75,62 +76,29 @@ export function RsvpSummary({ rsvpData, onEditRsvp }: RsvpSummaryProps) {
 					📅 Program Dňa
 				</h2>
 				<div className="space-y-4">
-					{/* Sobáš */}
-					<div className="flex gap-4 items-start">
-						<div className="flex-shrink-0 w-16 text-right">
-							<div className="text-lg font-bold text-pink-600">15:30</div>
-						</div>
-						<div className="flex-shrink-0">
-							<div className="w-12 h-12 rounded-full bg-pink-100 flex items-center justify-center text-2xl">
-								⛪
+					{weddingSchedule.map((item) => (
+						<div
+							key={`${item.time}-${item.title}`}
+							className="flex gap-4 items-start"
+						>
+							<div className="flex-shrink-0 w-28 text-right">
+								<div className="text-sm font-bold text-pink-600">
+									{item.time}
+								</div>
+							</div>
+							<div className="flex-shrink-0">
+								<div className="w-12 h-12 rounded-full bg-pink-100 flex items-center justify-center text-2xl">
+									{item.emoji}
+								</div>
+							</div>
+							<div className="flex-1">
+								<div className="font-semibold text-gray-900">{item.title}</div>
+								{item.subtitle && (
+									<div className="text-sm text-gray-600">{item.subtitle}</div>
+								)}
 							</div>
 						</div>
-						<div className="flex-1">
-							<div className="font-semibold text-gray-900">Sobáš</div>
-							<div className="text-sm text-gray-600">Sobášna sieň v Modre</div>
-							<div className="text-xs text-gray-500">
-								Štúrova 59, 900 01 Modra
-							</div>
-						</div>
-					</div>
-
-					{/* Fotenie */}
-					<div className="flex gap-4 items-start">
-						<div className="flex-shrink-0 w-16 text-right">
-							<div className="text-lg font-bold text-pink-600">16:00</div>
-						</div>
-						<div className="flex-shrink-0">
-							<div className="w-12 h-12 rounded-full bg-pink-100 flex items-center justify-center text-2xl">
-								📸
-							</div>
-						</div>
-						<div className="flex-1">
-							<div className="font-semibold text-gray-900">Fotenie</div>
-							<div className="text-sm text-gray-600">~1 hodina</div>
-						</div>
-					</div>
-
-					{/* Hostina */}
-					<div className="flex gap-4 items-start">
-						<div className="flex-shrink-0 w-16 text-right">
-							<div className="text-lg font-bold text-pink-600">17:00</div>
-						</div>
-						<div className="flex-shrink-0">
-							<div className="w-12 h-12 rounded-full bg-pink-100 flex items-center justify-center text-2xl">
-								🍽️
-							</div>
-						</div>
-						<div className="flex-1">
-							<div className="font-semibold text-gray-900">Hostina</div>
-							<div className="text-sm text-gray-600">Reštaurácia Starý Dom</div>
-							<div className="text-xs text-gray-500">
-								Dukelská 2, 900 01 Modra
-							</div>
-							<div className="text-xs text-gray-400 mt-1">
-								(5 minút chôdze od sobáša)
-							</div>
-						</div>
-					</div>
+					))}
 				</div>
 			</section>
 
