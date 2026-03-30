@@ -2,6 +2,8 @@
 
 Podrobný návod na nasadenie migrácie media pipeline z R2 na Cloudflare Images (obrázky) a Cloudflare Stream (videá).
 
+> **Všetky kroky sú cez `curl` — žiadny Dashboard nie je potrebný.**
+
 ## Prehľad zmien
 
 | Pred | Po |
@@ -13,91 +15,135 @@ Podrobný návod na nasadenie migrácie media pipeline z R2 na Cloudflare Images
 | S3 SDK + presigned URLs | CF Direct Creator Upload |
 | Audio v R2 | Audio v R2 (bez zmeny) |
 
----
+## Premenné použité v tomto návode
 
-## Krok 1: Nastavenie Cloudflare Images
+Nastavte si tieto premenné v termináli pred začatím:
 
-### 1.1 Vytvorenie Image Variants
-
-1. Otvorte [Cloudflare Dashboard](https://dash.cloudflare.com)
-2. Choďte na **Images** → **Variants**
-3. Vytvorte dva varianty:
-
-**Variant `thumbnail`:**
-- Name: `thumbnail`
-- Fit: **Cover**
-- Width: `400`
-- Height: `400`
-- Metadata: **Strip all**
-
-**Variant `public`:**
-- Name: `public`
-- Fit: **Scale down**
-- Width: (nechajte prázdne — zachová originál)
-- Height: (nechajte prázdne)
-- Metadata: **Strip all**
-
-### 1.2 Overenie Account Hash
-
-1. V Dashboard → **Images** → **Overview**
-2. V sekcii **Developer Resources** nájdite **Account Hash**
-3. Overte, že sa zhoduje s hodnotou v `wrangler.jsonc`:
-   ```
-   CF_IMAGES_ACCOUNT_HASH: "RGjy3nJORK4YV7rkav2-Zg"
-   ```
+```bash
+export CF_ACCOUNT_ID="fb0866add4b7bc5813b01a16ce090bfc"
+export CF_TOKEN="<váš CF_IMAGE_TOKEN>"
+export WEDDING_SECRET="<váš SECRET>"
+```
 
 ---
 
-## Krok 2: Nastavenie Cloudflare Stream
+## Krok 1: Vytvorenie Image Variants
 
-### 2.1 Overenie Customer Code
+CF Images potrebuje dva varianty — `thumbnail` (400x400 cover pre grid) a `public` (plná veľkosť pre lightbox).
 
-1. V Dashboard → **Stream** → **Overview**
-2. Nájdite **Customer subdomain** alebo code
-3. Overte, že sa zhoduje s hodnotou v `wrangler.jsonc`:
-   ```
-   CF_STREAM_CUSTOMER_CODE: "fb0866add4b7bc5813b01a16ce090bfc"
-   ```
+### 1.1 Vytvoriť variant `thumbnail`
 
-### 2.2 Registrácia Webhook
+```bash
+curl -X POST "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/images/v1/variants" \
+  -H "Authorization: Bearer ${CF_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "id": "thumbnail",
+    "options": {
+      "fit": "cover",
+      "width": 400,
+      "height": 400,
+      "metadata": "none"
+    },
+    "neverRequireSignedURLs": true
+  }'
+```
 
-Stream webhook je potrebný na to, aby sa video po spracovaní označilo ako pripravené na prehrávanie.
+Očakávaná odpoveď:
+```json
+{
+  "success": true,
+  "result": {
+    "variant": {
+      "id": "thumbnail",
+      "options": { "fit": "cover", "width": 400, "height": 400, "metadata": "none" }
+    }
+  }
+}
+```
 
-1. V Dashboard → **Stream** → **Settings** → **Webhooks**
-2. Pridajte webhook URL:
-   ```
-   https://ivonka-roman-forever.love/api/webhooks/stream
-   ```
-3. Uložte
+### 1.2 Vytvoriť variant `public`
 
-Webhook sa zavolá automaticky keď Stream dokončí transcoding videa.
+```bash
+curl -X POST "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/images/v1/variants" \
+  -H "Authorization: Bearer ${CF_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "id": "public",
+    "options": {
+      "fit": "scale-down",
+      "width": 4096,
+      "height": 4096,
+      "metadata": "none"
+    },
+    "neverRequireSignedURLs": true
+  }'
+```
+
+### 1.3 Overiť že varianty existujú
+
+```bash
+curl -s "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/images/v1/variants" \
+  -H "Authorization: Bearer ${CF_TOKEN}" | jq '.result.variants | keys'
+```
+
+Očakávaný výstup: `["public", "thumbnail"]`
 
 ---
 
-## Krok 3: API Token
+## Krok 2: Registrácia Stream Webhook
 
-### 3.1 Vytvorenie tokenu (ak ešte nemáte)
+Stream webhook je potrebný na to, aby sa video po spracovaní (transcoding) označilo ako pripravené na prehrávanie. Bez webhoooku by videá zostali v stave "Spracúva sa..." navždy.
 
-1. Dashboard → **My Profile** → **API Tokens** → **Create Token**
-2. Použite **Custom token** s oprávneniami:
-   - **Cloudflare Images** — Edit
-   - **Cloudflare Stream** — Edit
-3. Zone: **All zones** alebo špecifická doména
-4. Skopírujte vygenerovaný token
+### 2.1 Registrovať webhook
 
-### 3.2 Nastavenie tokenu ako Worker secret
+```bash
+curl -X PUT "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/stream/webhook" \
+  -H "Authorization: Bearer ${CF_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{ "notificationUrl": "https://ivonka-roman-forever.love/api/webhooks/stream" }'
+```
 
-Spustite v termináli:
+Očakávaná odpoveď:
+```json
+{
+  "success": true,
+  "result": {
+    "notificationUrl": "https://ivonka-roman-forever.love/api/webhooks/stream",
+    "secret": "..."
+  }
+}
+```
+
+> Poznámka: Stream podporuje iba jeden webhook URL na účet. PUT nahradí existujúci.
+
+### 2.2 Overiť webhook
+
+```bash
+curl -s "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/stream/webhook" \
+  -H "Authorization: Bearer ${CF_TOKEN}" | jq '.result'
+```
+
+---
+
+## Krok 3: API Token ako Worker Secret
+
+Ak ste ešte nenastavili secret:
 
 ```bash
 wrangler secret put CF_IMAGE_TOKEN
+# Vložte token keď sa vás spýta
 ```
-
-Vložte token keď sa vás spýta. Toto nastaví secret na produkcii.
 
 Pre lokálny vývoj pridajte do `.dev.vars`:
 ```
 CF_IMAGE_TOKEN=váš-api-token
+```
+
+### Overenie že secret je nastavený
+
+```bash
+wrangler secret list | grep CF_IMAGE_TOKEN
 ```
 
 ---
@@ -131,9 +177,9 @@ Overte výstup — mala by sa objaviť migrácia `0006_thankful_hellfire_club.sq
 npm run deploy
 ```
 
-Po deployi overte, že Worker beží:
+Overenie:
 ```bash
-curl https://ivonka-roman-forever.love/version
+curl -s https://ivonka-roman-forever.love/version | jq .
 ```
 
 ---
@@ -147,14 +193,12 @@ Tento krok prenesie všetky existujúce obrázky a videá z R2 do CF Images/Stre
 Migrácia beží v dávkach po 5 položkách (kvôli CPU limitu Workeru). Opakujte volanie kým `remaining` nebude 0.
 
 ```bash
-# Nahraďte <SECRET> hodnotou vášho SECRET env variable
-curl -X POST https://ivonka-roman-forever.love/api/admin/migrate-media \
-  -H "x-api-key: <SECRET>"
+curl -s -X POST https://ivonka-roman-forever.love/api/admin/migrate-media \
+  -H "x-api-key: ${WEDDING_SECRET}" | jq .
 ```
 
-### 6.2 Sledovanie priebehu
+### 6.2 Odpoveď
 
-Odpoveď vyzerá takto:
 ```json
 {
   "migrated": 5,
@@ -167,44 +211,40 @@ Odpoveď vyzerá takto:
 }
 ```
 
-### 6.3 Opakovanie až do dokončenia
-
-Opakujte curl príkaz, kým `remaining` nebude `0`:
+### 6.3 Automatická migrácia (loop)
 
 ```bash
-# Jednoduchý loop v bash (čaká 5 sekúnd medzi volaniami)
 while true; do
   RESULT=$(curl -s -X POST https://ivonka-roman-forever.love/api/admin/migrate-media \
-    -H "x-api-key: <SECRET>")
+    -H "x-api-key: ${WEDDING_SECRET}")
   echo "$RESULT" | jq .
   REMAINING=$(echo "$RESULT" | jq .remaining)
   if [ "$REMAINING" = "0" ]; then
-    echo "Migrácia dokončená!"
+    echo "✅ Migrácia dokončená!"
     break
   fi
-  echo "Zostáva: $REMAINING. Pokračujem za 5 sekúnd..."
+  echo "⏳ Zostáva: $REMAINING. Pokračujem za 5 sekúnd..."
   sleep 5
 done
 ```
 
 ### 6.4 Chyby pri migrácii
 
-Ak pole `errors` obsahuje položky, skontrolujte:
-- **Obrázky > 10MB** — CF Images má limit 10MB. Tieto treba manuálne zmenšiť a znovu nahrať.
-- **Videá > 200MB** — CF Stream API limit pre priamy upload. Tieto treba nahrať cez Dashboard manuálne.
-- **R2 objekt neexistuje** — Orphan záznam v DB. Môžete ho zmazať manuálne.
+| Chyba | Príčina | Riešenie |
+|---|---|---|
+| Obrázok > 10MB | CF Images limit | Manuálne zmenšiť a znovu nahrať |
+| Video > 200MB | CF Stream API limit | Nahrať cez Stream Direct Creator Upload manuálne |
+| R2 objekt neexistuje | Orphan záznam v DB | Zmazať záznam z D1 |
 
 ---
 
 ## Krok 7: Overenie
 
-Po dokončení migrácie overte:
-
 ### 7.1 Galéria
 
-Otvorte galériu:
-```
-https://ivonka-roman-forever.love/gallery?token=<SECRET_REPORT_TOKEN>
+```bash
+# Otvorte v prehliadači:
+echo "https://ivonka-roman-forever.love/gallery?token=<SECRET_REPORT_TOKEN>"
 ```
 
 Skontrolujte:
@@ -216,48 +256,62 @@ Skontrolujte:
 
 ### 7.2 Upload nových médií
 
-1. Otvorte stránku s QR tokenom (tab "Fotky")
-2. Nahrajte testovacie súbory:
-   - [ ] JPEG obrázok — zobrazí sa okamžite
-   - [ ] HEIC obrázok z iPhone — CF Images skonvertuje automaticky
-   - [ ] MP4 video — Stream spracuje, po chvíli prehrávateľné
-   - [ ] MOV/HEVC video z iPhone — Stream transcóduje
+Otvorte stránku s QR tokenom (tab "Fotky") a nahrajte:
+- [ ] JPEG obrázok — zobrazí sa okamžite
+- [ ] HEIC obrázok z iPhone — CF Images skonvertuje automaticky
+- [ ] MP4 video — Stream spracuje, po chvíli prehrávateľné
+- [ ] MOV/HEVC video z iPhone — Stream transcóduje
 
 ### 7.3 Audio (bez zmeny)
 
 - [ ] Nahrávanie audio stále funguje
 - [ ] Prehrávanie existujúcich nahrávok funguje
 
-### 7.4 Zmazanie
+### 7.4 Overenie cez API
 
-- [ ] Zmazanie obrázka z fotiek — zmizne z CF Images
-- [ ] Zmazanie videa — zmizne z CF Stream
+```bash
+# Počet obrázkov v CF Images
+curl -s "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/images/v1/stats" \
+  -H "Authorization: Bearer ${CF_TOKEN}" | jq '.result.count'
+
+# Počet videí v CF Stream
+curl -s "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/stream?limit=1" \
+  -H "Authorization: Bearer ${CF_TOKEN}" | jq '.result_info.total_count'
+```
 
 ---
 
-## Krok 8: Upratanie R2 bucketu (voliteľné)
+## Krok 8: Upratanie starých secrets
 
-Po úspešnej migrácii by R2 bucket mal obsahovať iba audio nahrávky (`groups/*/audio/*`). Photo a video objekty boli zmazané migračným skriptom.
+Po úspešnej migrácii odstráňte nepotrebné R2 secrets:
 
-Na overenie:
 ```bash
-# Výpis objektov v buckete (cez wrangler)
-wrangler r2 object list wedding-photos --prefix "groups/" | head -20
+wrangler secret delete R2_ACCESS_KEY_ID
+wrangler secret delete R2_SECRET_ACCESS_KEY
+wrangler secret delete R2_ENDPOINT
 ```
 
-Ak tam zostali orphan photo/video objekty, môžete ich zmazať manuálne cez Dashboard → R2 → wedding-photos.
+### Overenie R2 bucketu
+
+R2 bucket by mal obsahovať iba audio nahrávky:
+
+```bash
+# Výpis photo/video objektov (mali by byť prázdne)
+wrangler r2 object list wedding-photos --prefix "groups/" 2>&1 | grep -c "/photos/"
+
+# Výpis audio objektov (tieto zostávajú)
+wrangler r2 object list wedding-photos --prefix "groups/" 2>&1 | grep -c "/audio/"
+```
 
 ---
 
 ## Rollback plán
 
-Ak niečo nefunguje:
-
-1. **Revertujte PR** — R2 dáta existujú až kým ich migračný skript explicitne nezmaže
-2. **Ak migrácia už prebehla** — obrázky a videá sú v CF Images/Stream, ale R2 objekty boli zmazané. V tomto prípade:
-   - Nechajte CF Images/Stream ako zdroj
-   - Opravte bug v kóde a re-deploynite
-3. **Ak migrácia ešte neprebehla** — jednoduchý revert, žiadne dáta sa nestratili
+| Situácia | Postup |
+|---|---|
+| Migrácia ešte neprebehla | Revertujte PR, žiadne dáta sa nestratili |
+| Migrácia čiastočne prebehla | Nemigrované položky stále v R2 (fungujú cez fallback). Migrované sú v CF. Opravte bug a re-deploynite |
+| Migrácia dokončená | R2 foto/video objekty boli zmazané. Dáta sú v CF Images/Stream. Opravte bug v kóde, nie v dátach |
 
 ---
 
@@ -272,31 +326,79 @@ Ak niečo nefunguje:
 
 ---
 
-## Env premenné — kompletný zoznam
+## Env premenné — kompletný prehľad
 
 ### V `wrangler.jsonc` (vars — verejné):
-```
-CF_ACCOUNT_ID: "fb0866add4b7bc5813b01a16ce090bfc"
-CF_IMAGES_ACCOUNT_HASH: "RGjy3nJORK4YV7rkav2-Zg"
-CF_STREAM_CUSTOMER_CODE: "fb0866add4b7bc5813b01a16ce090bfc"
-```
+
+| Premenná | Hodnota | Účel |
+|---|---|---|
+| `CF_ACCOUNT_ID` | `fb0866add4b7bc5813b01a16ce090bfc` | Cloudflare Account ID |
+| `CF_IMAGES_ACCOUNT_HASH` | `RGjy3nJORK4YV7rkav2-Zg` | Hash pre imagedelivery.net URL |
+| `CF_STREAM_CUSTOMER_CODE` | `fb0866add4b7bc5813b01a16ce090bfc` | Code pre cloudflarestream.com URL |
 
 ### Secrets (cez `wrangler secret put`):
-```
-CF_IMAGE_TOKEN — API token s Images + Stream oprávneniami
-SECRET — existujúci admin secret (použitý aj pre migráciu)
-SECRET_REPORT_TOKEN — token pre galériu
-```
 
-### Už nepotrebné (po migrácii):
-```
-R2_ACCESS_KEY_ID — bol používaný pre presigned URLs (S3 SDK odstránený)
-R2_SECRET_ACCESS_KEY — rovnako
-R2_ENDPOINT — rovnako
-```
+| Secret | Účel |
+|---|---|
+| `CF_IMAGE_TOKEN` | API token s Images + Stream oprávneniami |
+| `SECRET` | Admin secret (seed, migrácia) |
+| `SECRET_REPORT_TOKEN` | Token pre galériu |
 
-Tieto staré secrets môžete odstrániť:
+### Odstránené po migrácii:
+
+| Secret | Dôvod odstránenia |
+|---|---|
+| `R2_ACCESS_KEY_ID` | S3 SDK odstránený |
+| `R2_SECRET_ACCESS_KEY` | S3 SDK odstránený |
+| `R2_ENDPOINT` | S3 SDK odstránený |
+
+---
+
+## Rýchly prehľad — všetky príkazy v poradí
+
 ```bash
+# 0. Nastaviť premenné
+export CF_ACCOUNT_ID="fb0866add4b7bc5813b01a16ce090bfc"
+export CF_TOKEN="<váš-token>"
+export WEDDING_SECRET="<váš-secret>"
+
+# 1. Vytvoriť Image varianty
+curl -X POST "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/images/v1/variants" \
+  -H "Authorization: Bearer ${CF_TOKEN}" -H "Content-Type: application/json" \
+  -d '{"id":"thumbnail","options":{"fit":"cover","width":400,"height":400,"metadata":"none"},"neverRequireSignedURLs":true}'
+
+curl -X POST "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/images/v1/variants" \
+  -H "Authorization: Bearer ${CF_TOKEN}" -H "Content-Type: application/json" \
+  -d '{"id":"public","options":{"fit":"scale-down","width":4096,"height":4096,"metadata":"none"},"neverRequireSignedURLs":true}'
+
+# 2. Registrovať Stream webhook
+curl -X PUT "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/stream/webhook" \
+  -H "Authorization: Bearer ${CF_TOKEN}" -H "Content-Type: application/json" \
+  -d '{"notificationUrl":"https://ivonka-roman-forever.love/api/webhooks/stream"}'
+
+# 3. Nastaviť secret (interaktívne)
+wrangler secret put CF_IMAGE_TOKEN
+
+# 4. DB migrácia
+npm run db:migrate:remote
+
+# 5. Deploy
+npm run deploy
+
+# 6. Migrovať existujúce médiá z R2
+while true; do
+  RESULT=$(curl -s -X POST https://ivonka-roman-forever.love/api/admin/migrate-media \
+    -H "x-api-key: ${WEDDING_SECRET}")
+  echo "$RESULT" | jq .
+  [ "$(echo "$RESULT" | jq .remaining)" = "0" ] && echo "✅ Hotovo!" && break
+  sleep 5
+done
+
+# 7. Overiť
+curl -s "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/images/v1/stats" \
+  -H "Authorization: Bearer ${CF_TOKEN}" | jq '.result.count'
+
+# 8. Upratať staré secrets
 wrangler secret delete R2_ACCESS_KEY_ID
 wrangler secret delete R2_SECRET_ACCESS_KEY
 wrangler secret delete R2_ENDPOINT
