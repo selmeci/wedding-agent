@@ -1,7 +1,7 @@
 ---
 title: "feat: Add token-protected media gallery page with grouped display and thumbnails"
 type: feat
-status: active
+status: completed
 date: 2026-03-30
 ---
 
