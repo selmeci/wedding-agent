@@ -531,135 +531,114 @@ app.get("/api/photos", async (c) => {
 	}
 });
 
-// GET /api/photos/:id/thumbnail - Get thumbnail
+// GET /api/photos/:id/thumbnail - Get thumbnail (edge-cached)
 app.get("/api/photos/:id/thumbnail", async (c) => {
 	const photoId = c.req.param("id");
-	console.log(`🖼️ GET /api/photos/${photoId}/thumbnail - Request started`);
+
+	// Check Cloudflare edge cache first
+	const cache = (caches as unknown as { default: Cache }).default;
+	const cacheKey = new Request(new URL(c.req.url).toString(), {
+		method: "GET",
+	});
+	const cachedResponse = await cache.match(cacheKey);
+	if (cachedResponse) {
+		return cachedResponse;
+	}
+
 	try {
 		const db = createDb(c.env.DB);
 
-		// Get photo metadata
 		const media = await db.query.photoUploads.findFirst({
 			where: (t, { eq }) => eq(t.id, photoId),
 		});
 
 		if (!media) {
-			console.log(
-				`❌ GET /api/photos/${photoId}/thumbnail - Media not found in DB`,
-			);
 			return c.json({ error: "Media not found" }, 404);
 		}
 
-		console.log(
-			`🖼️ GET /api/photos/${photoId}/thumbnail - Found ${media.mediaType}, r2Key=${media.r2Key}, thumbnailR2Key=${media.thumbnailR2Key}`,
-		);
+		let response: Response;
 
 		// For videos, return the stored thumbnail
 		if (media.mediaType === "video" && media.thumbnailR2Key) {
 			const thumbnail = await c.env.BUCKET.get(media.thumbnailR2Key);
 			if (!thumbnail) {
-				console.log(
-					`❌ GET /api/photos/${photoId}/thumbnail - Video thumbnail not found in R2: ${media.thumbnailR2Key}`,
-				);
 				return c.json({ error: "Video thumbnail not found in storage" }, 404);
 			}
-			console.log(
-				`✅ GET /api/photos/${photoId}/thumbnail - Serving video thumbnail`,
-			);
 
-			return new Response(thumbnail.body, {
+			response = new Response(thumbnail.body, {
 				headers: {
 					"Cache-Control": "public, max-age=31536000",
 					"Content-Type": "image/webp",
 				},
 			});
+		} else {
+			// For images, serve from R2
+			const object = await c.env.BUCKET.get(media.r2Key);
+			if (!object) {
+				return c.json({ error: "Photo file not found in storage" }, 404);
+			}
+
+			response = new Response(object.body, {
+				headers: {
+					"Cache-Control": "public, max-age=31536000",
+					"Content-Type": media.mimeType,
+				},
+			});
 		}
 
-		// For images, use Cloudflare Image Resizing
-		const object = await c.env.BUCKET.get(media.r2Key);
-		if (!object) {
-			console.log(
-				`❌ GET /api/photos/${photoId}/thumbnail - Image not found in R2: ${media.r2Key}`,
-			);
-			return c.json({ error: "Photo file not found in storage" }, 404);
-		}
-
-		console.log(
-			`✅ GET /api/photos/${photoId}/thumbnail - Serving image thumbnail`,
-		);
-		// Return with Cloudflare Image Resizing headers
-		return new Response(object.body, {
-			headers: {
-				"Cache-Control": "public, max-age=31536000",
-				"CF-Image-Fit": "cover",
-				"CF-Image-Format": "webp",
-				"CF-Image-Height": "400",
-				"CF-Image-Width": "400",
-				"Content-Type": media.mimeType,
-			},
-		});
+		// Store in edge cache (non-blocking)
+		c.executionCtx.waitUntil(cache.put(cacheKey, response.clone()));
+		return response;
 	} catch (error) {
 		console.error(`❌ GET /api/photos/${photoId}/thumbnail - Error:`, error);
-		return c.json(
-			{
-				details: error instanceof Error ? error.message : String(error),
-				error: "Failed to get thumbnail",
-			},
-			500,
-		);
+		return c.json({ error: "Failed to get thumbnail" }, 500);
 	}
 });
 
-// GET /api/photos/:id/full - Get full resolution
+// GET /api/photos/:id/full - Get full resolution (edge-cached)
 app.get("/api/photos/:id/full", async (c) => {
 	const photoId = c.req.param("id");
-	console.log(`📺 GET /api/photos/${photoId}/full - Request started`);
+
+	// Check Cloudflare edge cache first
+	const cache = (caches as unknown as { default: Cache }).default;
+	const cacheKey = new Request(new URL(c.req.url).toString(), {
+		method: "GET",
+	});
+	const cachedResponse = await cache.match(cacheKey);
+	if (cachedResponse) {
+		return cachedResponse;
+	}
+
 	try {
 		const db = createDb(c.env.DB);
 
-		// Get photo metadata
 		const photo = await db.query.photoUploads.findFirst({
 			where: (t, { eq }) => eq(t.id, photoId),
 		});
 
 		if (!photo) {
-			console.log(`❌ GET /api/photos/${photoId}/full - Not found in DB`);
 			return c.json({ error: "Photo not found" }, 404);
 		}
 
-		console.log(
-			`📺 GET /api/photos/${photoId}/full - Found ${photo.mediaType}, r2Key=${photo.r2Key}, size=${photo.fileSize}`,
-		);
-
-		// Get object from R2
 		const object = await c.env.BUCKET.get(photo.r2Key);
 		if (!object) {
-			console.log(
-				`❌ GET /api/photos/${photoId}/full - File not found in R2: ${photo.r2Key}`,
-			);
 			return c.json({ error: "Photo file not found in storage" }, 404);
 		}
 
-		console.log(
-			`✅ GET /api/photos/${photoId}/full - Serving ${photo.mediaType} (${(photo.fileSize / 1024 / 1024).toFixed(2)}MB)`,
-		);
-		// Return full resolution
-		return new Response(object.body, {
+		const response = new Response(object.body, {
 			headers: {
 				"Cache-Control": "public, max-age=31536000",
 				"Content-Disposition": `inline; filename="${photo.fileName}"`,
 				"Content-Type": photo.mimeType,
 			},
 		});
+
+		// Store in edge cache (non-blocking)
+		c.executionCtx.waitUntil(cache.put(cacheKey, response.clone()));
+		return response;
 	} catch (error) {
 		console.error(`❌ GET /api/photos/${photoId}/full - Error:`, error);
-		return c.json(
-			{
-				details: error instanceof Error ? error.message : String(error),
-				error: "Failed to get photo",
-			},
-			500,
-		);
+		return c.json({ error: "Failed to get photo" }, 500);
 	}
 });
 
