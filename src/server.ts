@@ -1497,6 +1497,87 @@ app.get("/api/couple/verify", async (c) => {
 	return c.json({ valid: true });
 });
 
+// HEIC Migration - List all HEIC/HEIF files
+app.get("/api/admin/heic-files", async (c) => {
+	const apiKey = c.req.header("x-api-key");
+	if (!apiKey || apiKey !== c.env.SECRET) {
+		return c.json({ error: "Unauthorized" }, 401);
+	}
+
+	const db = createDb(c.env.DB);
+	const heicFiles = await db.query.photoUploads.findMany({
+		where: (t, { or, eq }) =>
+			or(eq(t.mimeType, "image/heic"), eq(t.mimeType, "image/heif")),
+	});
+
+	return c.json({ files: heicFiles, count: heicFiles.length });
+});
+
+// HEIC Migration - Replace a HEIC file with converted WebP
+app.post("/api/admin/convert-heic/:id", async (c) => {
+	const apiKey = c.req.header("x-api-key");
+	if (!apiKey || apiKey !== c.env.SECRET) {
+		return c.json({ error: "Unauthorized" }, 401);
+	}
+
+	const photoId = c.req.param("id");
+	const db = createDb(c.env.DB);
+
+	const photo = await db.query.photoUploads.findFirst({
+		where: (t, { eq }) => eq(t.id, photoId),
+	});
+
+	if (!photo) {
+		return c.json({ error: "Photo not found" }, 404);
+	}
+
+	const formData = await c.req.formData();
+	const webpFile = formData.get("file") as File | null;
+	if (!webpFile) {
+		return c.json({ error: "No file provided" }, 400);
+	}
+
+	// Upload new WebP to R2 with a new key
+	const newR2Key = photo.r2Key.replace(/\.(heic|heif)$/i, ".webp");
+	await c.env.BUCKET.put(newR2Key, await webpFile.arrayBuffer(), {
+		httpMetadata: { contentType: "image/webp" },
+	});
+
+	// Update DB record
+	await db
+		.update(photoUploads)
+		.set({
+			mimeType: "image/webp",
+			r2Key: newR2Key,
+			fileName: photo.fileName.replace(/\.(heic|heif)$/i, ".webp"),
+			fileSize: webpFile.size,
+		})
+		.where(eq(photoUploads.id, photoId));
+
+	// Delete old HEIC from R2
+	await c.env.BUCKET.delete(photo.r2Key);
+
+	// Purge edge cache for this photo
+	const cache = (caches as unknown as { default: Cache }).default;
+	const baseUrl = new URL(c.req.url).origin;
+	await cache.delete(new Request(`${baseUrl}/api/photos/${photoId}/thumbnail`));
+	await cache.delete(new Request(`${baseUrl}/api/photos/${photoId}/full`));
+
+	console.log(`✅ Converted HEIC → WebP: ${photo.r2Key} → ${newR2Key}`);
+	return c.json({ success: true, oldKey: photo.r2Key, newKey: newR2Key });
+});
+
+// HEIC Migration page - open in Safari to convert existing HEIC files
+app.get("/admin/migrate-heic", async (c) => {
+	const secret = c.req.query("secret");
+	if (!secret || secret !== c.env.SECRET) {
+		return c.text("Unauthorized", 401);
+	}
+
+	const { renderHeicMigrationPage } = await import("@/heic-migration-template");
+	return c.html(renderHeicMigrationPage(secret));
+});
+
 // Serve static assets and handle SPA routing
 app.get("/*", async (c) => {
 	const url = new URL(c.req.url);
