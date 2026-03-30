@@ -52,7 +52,7 @@ export async function fetchGalleryMedia(db: Database): Promise<GalleryGroup[]> {
 			};
 		})
 		.filter((group) => group.mediaCount > 0)
-		.sort((a, b) => a.groupName.localeCompare(b.groupName));
+		.sort((a, b) => a.groupName.localeCompare(b.groupName, "sk"));
 
 	return result;
 }

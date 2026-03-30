@@ -309,13 +309,7 @@ app.get("/api/gallery/media", async (c) => {
 		});
 	} catch (error) {
 		console.error("Gallery media fetch error:", error);
-		return c.json(
-			{
-				details: error instanceof Error ? error.message : String(error),
-				error: "Failed to fetch gallery media",
-			},
-			500,
-		);
+		return c.json({ error: "Failed to fetch gallery media" }, 500);
 	}
 });
 
