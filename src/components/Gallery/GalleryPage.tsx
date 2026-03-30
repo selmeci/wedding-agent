@@ -1,7 +1,9 @@
 import {
 	ArrowLeftIcon,
 	ArrowRightIcon,
+	DownloadSimpleIcon,
 	Play,
+	UploadSimpleIcon,
 	XIcon,
 } from "@phosphor-icons/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -45,6 +47,8 @@ export function GalleryPage({ token }: GalleryPageProps) {
 	const [currentIndex, setCurrentIndex] = useState(0);
 	const [fullImageLoaded, setFullImageLoaded] = useState(false);
 	const [fullImageError, setFullImageError] = useState(false);
+	const [isReuploading, setIsReuploading] = useState(false);
+	const reuploadInputRef = useRef<HTMLInputElement>(null);
 	const previouslyFocusedRef = useRef<HTMLElement | null>(null);
 	const lightboxRef = useRef<HTMLDivElement>(null);
 
@@ -168,6 +172,72 @@ export function GalleryPage({ token }: GalleryPageProps) {
 		setFullImageError(false);
 		setCurrentIndex((i) => Math.min(allMedia.length - 1, i + 1));
 	}, [allMedia.length]);
+
+	// Download current media file
+	const handleDownload = useCallback(async () => {
+		if (!currentMedia) return;
+		const url = `/api/photos/${currentMedia.id}/file`;
+		const a = document.createElement("a");
+		a.href = url;
+		a.download = currentMedia.fileName;
+		document.body.appendChild(a);
+		a.click();
+		document.body.removeChild(a);
+	}, [currentMedia]);
+
+	// Re-upload file for current media (replaces R2 version with CF)
+	const handleReupload = useCallback(
+		async (e: React.ChangeEvent<HTMLInputElement>) => {
+			const file = e.target.files?.[0];
+			if (!file || !currentMedia) return;
+			setIsReuploading(true);
+			try {
+				const formData = new FormData();
+				formData.append("file", file, file.name);
+				const res = await fetch(
+					`/api/gallery/reupload/${currentMedia.id}?token=${encodeURIComponent(token)}`,
+					{ body: formData, method: "POST" },
+				);
+				if (!res.ok) {
+					const body = (await res.json()) as { error?: string };
+					throw new Error(body.error || `HTTP ${res.status}`);
+				}
+				const data = (await res.json()) as {
+					cloudflareImageId?: string;
+					streamVideoUid?: string;
+				};
+
+				// Update local state — replace the media item with new CF IDs
+				setGroups((prev) =>
+					prev.map((g) => ({
+						...g,
+						media: g.media.map((m) =>
+							m.id === currentMedia.id
+								? {
+										...m,
+										cloudflareImageId: data.cloudflareImageId ?? null,
+										fileName: file.name,
+										streamReady: data.streamVideoUid ? false : null,
+										streamVideoUid: data.streamVideoUid ?? null,
+									}
+								: m,
+						),
+					})),
+				);
+				setFullImageLoaded(false);
+				setFullImageError(false);
+			} catch (err) {
+				console.error("Reupload failed:", err);
+				alert(
+					`Nahrávanie zlyhalo: ${err instanceof Error ? err.message : "Neznáma chyba"}`,
+				);
+			} finally {
+				setIsReuploading(false);
+				if (reuploadInputRef.current) reuploadInputRef.current.value = "";
+			}
+		},
+		[currentMedia, token],
+	);
 
 	// Keyboard navigation
 	useEffect(() => {
@@ -433,6 +503,44 @@ export function GalleryPage({ token }: GalleryPageProps) {
 						{currentIndex + 1} / {allMedia.length}
 					</div>
 
+					{/* Download + Re-upload buttons */}
+					<div className="absolute bottom-4 right-4 flex gap-2 z-10">
+						<button
+							type="button"
+							onClick={handleDownload}
+							className="flex items-center gap-1.5 text-white bg-white/10 hover:bg-white/25 rounded-full px-3 py-2 text-sm transition-all ring-1 ring-white/20"
+							aria-label="Stiahnuť"
+						>
+							<DownloadSimpleIcon size={18} weight="bold" />
+							<span className="hidden sm:inline">Stiahnuť</span>
+						</button>
+						<label
+							className={`flex items-center gap-1.5 text-white rounded-full px-3 py-2 text-sm transition-all ring-1 ring-white/20 cursor-pointer ${
+								isReuploading
+									? "bg-white/5 opacity-50 pointer-events-none"
+									: "bg-pink-500/80 hover:bg-pink-500"
+							}`}
+							aria-label="Nahrať náhradu"
+						>
+							{isReuploading ? (
+								<div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+							) : (
+								<UploadSimpleIcon size={18} weight="bold" />
+							)}
+							<span className="hidden sm:inline">
+								{isReuploading ? "Nahráva sa..." : "Nahradiť"}
+							</span>
+							<input
+								ref={reuploadInputRef}
+								type="file"
+								accept="image/jpeg,image/png,image/heic,image/heif,image/webp,video/mp4,video/quicktime,video/webm,video/x-m4v"
+								className="hidden"
+								onChange={handleReupload}
+								disabled={isReuploading}
+							/>
+						</label>
+					</div>
+
 					{/* Media content */}
 					<div className="max-w-[90vw] max-h-[85vh] flex items-center justify-center p-4">
 						{currentMedia.mediaType === "video" ? (
@@ -456,7 +564,7 @@ export function GalleryPage({ token }: GalleryPageProps) {
 										src={getFullUrl(currentMedia)}
 										title={currentMedia.fileName}
 										className="w-full h-full max-w-[90vw] max-h-[80vh]"
-										style={{ minWidth: "70vw", minHeight: "60vh" }}
+										style={{ minHeight: "60vh", minWidth: "70vw" }}
 										allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
 										allowFullScreen
 										onClick={(e) => e.stopPropagation()}

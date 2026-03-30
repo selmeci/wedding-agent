@@ -396,6 +396,112 @@ app.get("/api/photos", async (c) => {
 	}
 });
 
+// POST /api/gallery/reupload/:id - Re-upload a media file via CF Images/Stream (replaces R2 version)
+app.post("/api/gallery/reupload/:id", async (c) => {
+	const token = c.req.query("token");
+	const expectedToken = c.env.SECRET_REPORT_TOKEN;
+	if (!token || !expectedToken || !secureTokenEquals(token, expectedToken)) {
+		return c.json({ error: "Unauthorized" }, 401);
+	}
+
+	const photoId = c.req.param("id");
+	const db = createDb(c.env.DB);
+	const photo = await db.query.photoUploads.findFirst({
+		where: (t, { eq: colEq }) => colEq(t.id, photoId),
+	});
+	if (!photo) return c.json({ error: "Photo not found" }, 404);
+
+	const formData = await c.req.formData();
+	const file = formData.get("file") as File | null;
+	if (!file) return c.json({ error: "No file provided" }, 400);
+
+	const cfAccountId = c.env.CF_ACCOUNT_ID;
+	const cfToken = c.env.CF_IMAGE_TOKEN;
+
+	const isVideo = file.type.startsWith("video/");
+
+	try {
+		if (isVideo) {
+			// Upload to CF Stream
+			const streamForm = new FormData();
+			streamForm.append("file", file, file.name);
+			const cfRes = await fetch(
+				`https://api.cloudflare.com/client/v4/accounts/${cfAccountId}/stream`,
+				{
+					method: "POST",
+					headers: { Authorization: `Bearer ${cfToken}` },
+					body: streamForm,
+				},
+			);
+			if (!cfRes.ok) {
+				const err = await cfRes.text();
+				return c.json({ error: `Stream upload failed: ${err}` }, 500);
+			}
+			const cfData = await cfRes.json<{ result: { uid: string } }>();
+
+			await db
+				.update(photoUploads)
+				.set({
+					streamVideoUid: cfData.result.uid,
+					streamReady: false,
+					cloudflareImageId: null,
+					mimeType: file.type,
+					fileName: file.name,
+					fileSize: file.size,
+				})
+				.where(eq(photoUploads.id, photoId));
+
+			// Delete old R2 object if exists
+			if (photo.r2Key) await c.env.BUCKET.delete(photo.r2Key);
+			if (photo.thumbnailR2Key) await c.env.BUCKET.delete(photo.thumbnailR2Key);
+
+			return c.json({ success: true, streamVideoUid: cfData.result.uid });
+		}
+
+		// Upload to CF Images
+		const imgForm = new FormData();
+		imgForm.append("file", file, file.name);
+		imgForm.append(
+			"metadata",
+			JSON.stringify({ guestId: photo.guestId, reuploadedFrom: photo.id }),
+		);
+
+		const cfRes = await fetch(
+			`https://api.cloudflare.com/client/v4/accounts/${cfAccountId}/images/v1`,
+			{
+				method: "POST",
+				headers: { Authorization: `Bearer ${cfToken}` },
+				body: imgForm,
+			},
+		);
+		if (!cfRes.ok) {
+			const err = await cfRes.text();
+			return c.json({ error: `Images upload failed: ${err}` }, 500);
+		}
+		const cfData = await cfRes.json<{ result: { id: string } }>();
+
+		await db
+			.update(photoUploads)
+			.set({
+				cloudflareImageId: cfData.result.id,
+				streamVideoUid: null,
+				mimeType: file.type,
+				fileName: file.name,
+				fileSize: file.size,
+			})
+			.where(eq(photoUploads.id, photoId));
+
+		// Delete old R2 object if exists
+		if (photo.r2Key) await c.env.BUCKET.delete(photo.r2Key);
+		if (photo.thumbnailR2Key) await c.env.BUCKET.delete(photo.thumbnailR2Key);
+
+		return c.json({ success: true, cloudflareImageId: cfData.result.id });
+	} catch (error) {
+		console.error(`❌ Reupload error for ${photoId}:`, error);
+		return c.json({ error: "Reupload failed" }, 500);
+	}
+});
+
 // GET /api/photos/:id/file - R2 fallback for unmigrated/skipped files
 app.get("/api/photos/:id/file", async (c) => {
 	const photoId = c.req.param("id");
