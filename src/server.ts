@@ -1102,6 +1102,21 @@ app.delete("/api/audio/:id", async (c) => {
 	}
 });
 
+// Internal: serve R2 object raw (used by migration for CF Image Resizing conversion)
+app.get("/api/admin/migrate-raw/:id", async (c) => {
+	const photoId = c.req.param("id");
+	const db = createDb(c.env.DB);
+	const photo = await db.query.photoUploads.findFirst({
+		where: (t, { eq: colEq }) => colEq(t.id, photoId),
+	});
+	if (!photo?.r2Key) return c.json({ error: "Not found" }, 404);
+	const obj = await c.env.BUCKET.get(photo.r2Key);
+	if (!obj) return c.json({ error: "Not found" }, 404);
+	return new Response(obj.body, {
+		headers: { "Content-Type": photo.mimeType, "Cache-Control": "no-store" },
+	});
+});
+
 // POST /api/admin/migrate-media - Migrate existing R2 media to CF Images/Stream
 app.post("/api/admin/migrate-media", async (c) => {
 	const apiKey = c.req.header("x-api-key");
@@ -1158,9 +1173,38 @@ app.post("/api/admin/migrate-media", async (c) => {
 				}
 
 				// Upload to CF Images
+				let uploadBlob = await r2Object.blob();
+				let uploadFileName = image.fileName;
+
+				// For HEIC/HEIF: convert to WebP via CF Image Resizing first
+				// CF Images cannot decode some HEIC variants (HDR, ProRAW)
+				const heicTypes = ["image/heic", "image/heif"];
+				if (heicTypes.includes(image.mimeType)) {
+					try {
+						const origin = new URL(c.req.url).origin;
+						const transformed = await fetch(
+							`${origin}/api/admin/migrate-raw/${image.id}`,
+							{ cf: { image: { format: "webp" as const } } },
+						);
+						if (transformed.ok) {
+							uploadBlob = await transformed.blob();
+							uploadFileName = image.fileName.replace(
+								/\.(heic|heif)$/i,
+								".webp",
+							);
+							console.log(
+								`✅ HEIC→WebP conversion for ${image.id}: ${(uploadBlob.size / 1024).toFixed(0)} KB`,
+							);
+						}
+					} catch (convertError) {
+						console.log(
+							`⚠️ HEIC conversion failed for ${image.id}, uploading original`,
+						);
+					}
+				}
+
 				const formData = new FormData();
-				const blob = await r2Object.blob();
-				formData.append("file", blob, image.fileName);
+				formData.append("file", uploadBlob, uploadFileName);
 				formData.append(
 					"metadata",
 					JSON.stringify({
