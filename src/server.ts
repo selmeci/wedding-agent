@@ -382,12 +382,14 @@ app.post("/api/photos", async (c) => {
 			"video/x-m4v",
 		];
 		const allowedTypes = [...imageTypes, ...videoTypes];
-		if (!allowedTypes.includes(file.type)) {
+		// Strip codec parameters (e.g., "video/mp4;codecs=hev1" -> "video/mp4")
+		const baseType = file.type.split(";")[0].trim();
+		if (!allowedTypes.includes(baseType)) {
 			console.log(`❌ POST /api/photos - Invalid file type: ${file.type}`);
 			return c.json({ error: "Invalid file type" }, 400);
 		}
 
-		const isVideo = videoTypes.includes(file.type);
+		const isVideo = videoTypes.includes(baseType);
 		const mediaType = isVideo ? "video" : "image";
 
 		// Validate file size (100MB max - Cloudflare Workers limit)
@@ -787,7 +789,9 @@ app.post("/api/media/presign", async (c) => {
 		];
 		const allowedTypes = [...imageTypes, ...videoTypes];
 
-		if (!allowedTypes.includes(contentType)) {
+		// Strip codec parameters (e.g., "video/mp4;codecs=hev1" -> "video/mp4")
+		const baseContentType = contentType.split(";")[0].trim();
+		if (!allowedTypes.includes(baseContentType)) {
 			return c.json({ error: "Nepovolený typ súboru" }, 400);
 		}
 
@@ -801,7 +805,7 @@ app.post("/api/media/presign", async (c) => {
 		const mediaId = crypto.randomUUID();
 		const fileExtension = fileName.split(".").pop()?.toLowerCase() || "bin";
 		const r2Key = `groups/${group.id}/photos/${mediaId}.${fileExtension}`;
-		const isVideo = videoTypes.includes(contentType);
+		const isVideo = videoTypes.includes(baseContentType);
 
 		// Create R2 client and generate presigned URL
 		const { createR2Client, generatePresignedPutUrl } = await import(
@@ -1035,7 +1039,9 @@ app.post("/api/media/multipart/create", async (c) => {
 		];
 		const allowedTypes = [...imageTypes, ...videoTypes];
 
-		if (!allowedTypes.includes(contentType)) {
+		// Strip codec parameters (e.g., "video/mp4;codecs=hev1" -> "video/mp4")
+		const baseContentType = contentType.split(";")[0].trim();
+		if (!allowedTypes.includes(baseContentType)) {
 			return c.json({ error: "Nepovolený typ súboru" }, 400);
 		}
 
@@ -1047,7 +1053,7 @@ app.post("/api/media/multipart/create", async (c) => {
 		const mediaId = crypto.randomUUID();
 		const fileExtension = fileName.split(".").pop()?.toLowerCase() || "bin";
 		const r2Key = `groups/${group.id}/photos/${mediaId}.${fileExtension}`;
-		const isVideo = videoTypes.includes(contentType);
+		const isVideo = videoTypes.includes(baseContentType);
 
 		const PART_SIZE = 10 * 1024 * 1024; // 10MB
 		const partCount = Math.ceil(fileSize / PART_SIZE);
