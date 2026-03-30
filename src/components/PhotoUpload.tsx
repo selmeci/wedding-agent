@@ -1,7 +1,7 @@
 import { Play, TrashIcon, XIcon } from "@phosphor-icons/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { BrokenHeart, PhotoUploadAnimation } from "@/components/PixelArt";
-import { type UploadProgress, uploadFile } from "@/utils/media-upload";
+import { type UploadProgress, uploadMediaViaCF } from "@/utils/media-upload";
 
 interface Media {
 	id: string;
@@ -11,127 +11,9 @@ interface Media {
 	fullUrl: string;
 	mediaType: "image" | "video";
 	duration?: number;
-}
-
-// Convert HEIC/HEIF images to WebP using canvas (Safari supports HEIC natively)
-async function convertHeicToWebP(file: File): Promise<File> {
-	const heicTypes = ["image/heic", "image/heif"];
-	if (!heicTypes.includes(file.type)) return file;
-
-	try {
-		const bitmap = await createImageBitmap(file);
-		const canvas = document.createElement("canvas");
-		canvas.width = bitmap.width;
-		canvas.height = bitmap.height;
-		const ctx = canvas.getContext("2d");
-		if (!ctx) return file;
-		ctx.drawImage(bitmap, 0, 0);
-		const blob = await new Promise<Blob | null>((resolve) =>
-			canvas.toBlob(resolve, "image/webp", 0.9),
-		);
-		if (!blob) return file;
-		const newName = file.name.replace(/\.(heic|heif)$/i, ".webp");
-		return new File([blob], newName, { type: "image/webp" });
-	} catch {
-		// Browser can't decode HEIC (Chrome/Firefox) — upload original
-		return file;
-	}
-}
-
-// Wrap a promise with a timeout — resolves with fallback if it takes too long
-function withTimeout<T>(
-	promise: Promise<T>,
-	ms: number,
-	fallback: T,
-): Promise<T> {
-	return Promise.race([
-		promise,
-		new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
-	]);
-}
-
-// Generate thumbnail from video file using canvas (10s timeout)
-async function generateVideoThumbnail(file: File): Promise<Blob | null> {
-	const inner = new Promise<Blob | null>((resolve) => {
-		const video = document.createElement("video");
-		video.preload = "metadata";
-		video.muted = true;
-		video.playsInline = true;
-
-		video.onloadeddata = () => {
-			// Seek to 1 second or 10% of duration, whichever is less
-			video.currentTime = Math.min(1, video.duration * 0.1);
-		};
-
-		video.onseeked = () => {
-			const canvas = document.createElement("canvas");
-			canvas.width = 400;
-			canvas.height = 400;
-
-			const ctx = canvas.getContext("2d");
-			if (!ctx) {
-				resolve(null);
-				return;
-			}
-
-			// Calculate cover dimensions
-			const videoAspect = video.videoWidth / video.videoHeight;
-			let sx = 0,
-				sy = 0,
-				sw = video.videoWidth,
-				sh = video.videoHeight;
-
-			if (videoAspect > 1) {
-				sw = video.videoHeight;
-				sx = (video.videoWidth - sw) / 2;
-			} else {
-				sh = video.videoWidth;
-				sy = (video.videoHeight - sh) / 2;
-			}
-
-			ctx.drawImage(video, sx, sy, sw, sh, 0, 0, 400, 400);
-
-			canvas.toBlob(
-				(blob) => {
-					URL.revokeObjectURL(video.src);
-					resolve(blob);
-				},
-				"image/webp",
-				0.8,
-			);
-		};
-
-		video.onerror = () => {
-			URL.revokeObjectURL(video.src);
-			resolve(null);
-		};
-
-		video.src = URL.createObjectURL(file);
-	});
-
-	return withTimeout(inner, 10_000, null);
-}
-
-// Get video duration in seconds (5s timeout)
-async function getVideoDuration(file: File): Promise<number> {
-	const inner = new Promise<number>((resolve) => {
-		const video = document.createElement("video");
-		video.preload = "metadata";
-
-		video.onloadedmetadata = () => {
-			URL.revokeObjectURL(video.src);
-			resolve(Math.round(video.duration));
-		};
-
-		video.onerror = () => {
-			URL.revokeObjectURL(video.src);
-			resolve(0);
-		};
-
-		video.src = URL.createObjectURL(file);
-	});
-
-	return withTimeout(inner, 5_000, 0);
+	cloudflareImageId?: string | null;
+	streamVideoUid?: string | null;
+	streamReady?: boolean | null;
 }
 
 // Format duration as mm:ss
@@ -163,6 +45,8 @@ export function PhotoUpload({
 	const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(
 		null,
 	);
+	const [cfImagesHash, setCfImagesHash] = useState<string>("");
+	const [cfStreamCode, setCfStreamCode] = useState<string>("");
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
 	// Always use presigned URLs for all uploads (better progress tracking, no Worker size limits)
@@ -184,13 +68,34 @@ export function PhotoUpload({
 					return;
 				}
 
-				const data = await response.json<{ photos: Media[] }>();
+				const data = await response.json<{
+					photos: Media[];
+					cfImagesHash?: string;
+					cfStreamCode?: string;
+				}>();
+
+				// Store CF config for URL construction
+				if (data.cfImagesHash) setCfImagesHash(data.cfImagesHash);
+				if (data.cfStreamCode) setCfStreamCode(data.cfStreamCode);
+
 				setMediaList(
-					data.photos.map((p: Media) => ({
-						...p,
-						mediaType: p.mediaType || "image",
-						uploadedAt: new Date(p.uploadedAt),
-					})),
+					data.photos.map((p: Media) => {
+						const item: Media = {
+							...p,
+							mediaType: p.mediaType || "image",
+							uploadedAt: new Date(p.uploadedAt),
+						};
+
+						// Construct CF delivery URLs if CF IDs are available
+						if (p.cloudflareImageId && data.cfImagesHash) {
+							item.thumbnailUrl = `https://imagedelivery.net/${data.cfImagesHash}/${p.cloudflareImageId}/thumbnail`;
+							item.fullUrl = `https://imagedelivery.net/${data.cfImagesHash}/${p.cloudflareImageId}/public`;
+						} else if (p.streamVideoUid && data.cfStreamCode) {
+							item.thumbnailUrl = `https://customer-${data.cfStreamCode}.cloudflarestream.com/${p.streamVideoUid}/thumbnails/thumbnail.jpg`;
+							item.fullUrl = `https://customer-${data.cfStreamCode}.cloudflarestream.com/${p.streamVideoUid}/iframe?autoplay=true&muted=true`;
+						}
+						return item;
+					}),
 				);
 			} catch (error) {
 				console.error("Error fetching media:", error);
@@ -209,58 +114,50 @@ export function PhotoUpload({
 			setTotalUploads(files.length);
 			setCurrentUpload(0);
 
-			const videoTypes = [
-				"video/mp4",
-				"video/quicktime",
-				"video/webm",
-				"video/x-m4v",
-			];
-
 			let uploaded = 0;
-			for (let file of Array.from(files)) {
+			for (const file of Array.from(files)) {
 				try {
-					// Convert HEIC/HEIF to WebP before upload
-					file = await convertHeicToWebP(file);
-
-					const isVideo = videoTypes.includes(file.type);
-
-					// Generate thumbnail and duration for videos
-					let thumbnail: Blob | null = null;
-					let duration: number | null = null;
-
-					if (isVideo) {
-						setUploadProgress({ phase: "preparing", percent: 10 });
-						const [thumb, dur] = await Promise.all([
-							generateVideoThumbnail(file),
-							getVideoDuration(file),
-						]);
-						thumbnail = thumb;
-						duration = dur;
-					}
-
-					// Upload file (auto-selects single PUT vs multipart)
-					const result = await uploadFile(
+					// Upload file via CF Images (images) or CF Stream (videos)
+					// No client-side HEIC conversion needed — CF Images handles HEIC natively
+					// No client-side thumbnail/duration extraction needed — CF handles both
+					const result = await uploadMediaViaCF(
 						file,
 						qrToken,
 						guestId,
 						(progress) => setUploadProgress(progress),
-						thumbnail,
-						duration,
 					);
 
-					// Add to media list
-					setMediaList((prev) => [
-						{
-							duration: duration ?? undefined,
-							fileName: file.name,
-							fullUrl: `/api/photos/${result.id}/full`,
-							id: result.id,
-							mediaType: result.mediaType || "image",
-							thumbnailUrl: `/api/photos/${result.id}/thumbnail`,
-							uploadedAt: new Date(),
-						},
-						...prev,
-					]);
+					// Add to media list with CF URLs
+					const newMedia: Media = {
+						fileName: file.name,
+						fullUrl: "",
+						id: result.id,
+						mediaType: result.mediaType || "image",
+						thumbnailUrl: "",
+						uploadedAt: new Date(),
+					};
+
+					if (
+						result.mediaType === "image" ||
+						(!result.mediaType && !file.type.startsWith("video/"))
+					) {
+						// CF Images upload — the mediaId IS the cloudflareImageId
+						if (cfImagesHash) {
+							newMedia.cloudflareImageId = result.id;
+							newMedia.thumbnailUrl = `https://imagedelivery.net/${cfImagesHash}/${result.id}/thumbnail`;
+							newMedia.fullUrl = `https://imagedelivery.net/${cfImagesHash}/${result.id}/public`;
+						}
+					} else if (result.mediaType === "video") {
+						// CF Stream upload — the mediaId IS the streamVideoUid
+						if (cfStreamCode) {
+							newMedia.streamVideoUid = result.id;
+							newMedia.streamReady = false;
+							newMedia.thumbnailUrl = `https://customer-${cfStreamCode}.cloudflarestream.com/${result.id}/thumbnails/thumbnail.jpg`;
+							newMedia.fullUrl = `https://customer-${cfStreamCode}.cloudflarestream.com/${result.id}/iframe?autoplay=true&muted=true`;
+						}
+					}
+
+					setMediaList((prev) => [newMedia, ...prev]);
 
 					uploaded++;
 					setCurrentUpload(uploaded);
@@ -282,7 +179,7 @@ export function PhotoUpload({
 				fileInputRef.current.value = "";
 			}
 		},
-		[qrToken, guestId],
+		[qrToken, guestId, cfImagesHash, cfStreamCode],
 	);
 
 	const openDeleteModal = useCallback((mediaId: string) => {
@@ -457,9 +354,22 @@ export function PhotoUpload({
 								{media.mediaType === "video" && (
 									<>
 										<div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-											<div className="bg-black/50 rounded-full p-3">
-												<Play size={24} weight="fill" className="text-white" />
-											</div>
+											{media.streamVideoUid && media.streamReady === false ? (
+												<div className="bg-black/60 rounded-lg px-3 py-2 text-center">
+													<div className="w-6 h-6 border-2 border-white/40 border-t-white rounded-full animate-spin mx-auto mb-1" />
+													<span className="text-white text-xs">
+														Spracuva sa...
+													</span>
+												</div>
+											) : (
+												<div className="bg-black/50 rounded-full p-3">
+													<Play
+														size={24}
+														weight="fill"
+														className="text-white"
+													/>
+												</div>
+											)}
 										</div>
 										{media.duration && (
 											<div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded">
@@ -539,15 +449,44 @@ export function PhotoUpload({
 					</button>
 
 					{selectedMedia.mediaType === "video" ? (
-						// biome-ignore lint/a11y/useKeyWithClickEvents: Video stopPropagation prevents overlay close
-						<video
-							src={selectedMedia.fullUrl}
-							controls
-							autoPlay
-							playsInline
-							className="max-w-full max-h-full"
-							onClick={(e) => e.stopPropagation()}
-						/>
+						selectedMedia.streamVideoUid ? (
+							selectedMedia.streamReady === false ? (
+								// Stream video still processing
+								// biome-ignore lint/a11y/useKeyWithClickEvents: Processing indicator stopPropagation prevents overlay close
+								<div
+									className="text-center text-white p-8"
+									onClick={(e) => e.stopPropagation()}
+								>
+									<div className="w-12 h-12 border-4 border-white/30 border-t-white rounded-full animate-spin mx-auto mb-4" />
+									<p className="text-lg">Spracuva sa...</p>
+									<p className="text-sm text-white/60 mt-2">
+										Video sa este spracuvava, skuste to neskor.
+									</p>
+								</div>
+							) : (
+								// CF Stream iframe player
+								// biome-ignore lint/a11y/useKeyWithClickEvents: Iframe stopPropagation prevents overlay close
+								<iframe
+									src={selectedMedia.fullUrl}
+									title={selectedMedia.fileName}
+									className="w-full h-full max-w-[90vw] max-h-[80vh]"
+									allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
+									allowFullScreen
+									onClick={(e) => e.stopPropagation()}
+								/>
+							)
+						) : (
+							// Legacy R2 video — <video> element
+							// biome-ignore lint/a11y/useKeyWithClickEvents: Video stopPropagation prevents overlay close
+							<video
+								src={selectedMedia.fullUrl}
+								controls
+								autoPlay
+								playsInline
+								className="max-w-full max-h-full"
+								onClick={(e) => e.stopPropagation()}
+							/>
+						)
 					) : (
 						// biome-ignore lint/a11y/useKeyWithClickEvents: Image stopPropagation prevents overlay close
 						<img

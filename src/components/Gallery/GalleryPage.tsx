@@ -15,6 +15,9 @@ interface GalleryMedia {
 	mediaType: string;
 	duration: number | null;
 	uploadedAt: string;
+	cloudflareImageId?: string | null;
+	streamVideoUid?: string | null;
+	streamReady?: boolean | null;
 }
 
 interface GalleryPageProps {
@@ -34,6 +37,8 @@ export function GalleryPage({ token }: GalleryPageProps) {
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [isUnauthorized, setIsUnauthorized] = useState(false);
+	const [cfImagesHash, setCfImagesHash] = useState<string>("");
+	const [cfStreamCode, setCfStreamCode] = useState<string>("");
 
 	// Lightbox state
 	const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -55,6 +60,34 @@ export function GalleryPage({ token }: GalleryPageProps) {
 		return map;
 	}, [groups]);
 	const currentMedia = allMedia[currentIndex] ?? null;
+
+	// Construct the correct thumbnail URL for a media item
+	const getThumbnailUrl = useCallback(
+		(media: GalleryMedia) => {
+			if (media.cloudflareImageId && cfImagesHash) {
+				return `https://imagedelivery.net/${cfImagesHash}/${media.cloudflareImageId}/thumbnail`;
+			}
+			if (media.streamVideoUid && cfStreamCode) {
+				return `https://customer-${cfStreamCode}.cloudflarestream.com/${media.streamVideoUid}/thumbnails/thumbnail.jpg`;
+			}
+			return "";
+		},
+		[cfImagesHash, cfStreamCode],
+	);
+
+	// Construct the correct full-resolution URL for a media item
+	const getFullUrl = useCallback(
+		(media: GalleryMedia) => {
+			if (media.cloudflareImageId && cfImagesHash) {
+				return `https://imagedelivery.net/${cfImagesHash}/${media.cloudflareImageId}/public`;
+			}
+			if (media.streamVideoUid && cfStreamCode) {
+				return `https://customer-${cfStreamCode}.cloudflarestream.com/${media.streamVideoUid}/iframe?autoplay=true&muted=true`;
+			}
+			return "";
+		},
+		[cfImagesHash, cfStreamCode],
+	);
 
 	const fetchMedia = useCallback(async () => {
 		setIsLoading(true);
@@ -80,7 +113,11 @@ export function GalleryPage({ token }: GalleryPageProps) {
 			}
 			const data = (await res.json()) as {
 				groups: (Omit<GalleryGroup, "media"> & { media: GalleryMedia[] })[];
+				cfImagesHash?: string;
+				cfStreamCode?: string;
 			};
+			if (data.cfImagesHash) setCfImagesHash(data.cfImagesHash);
+			if (data.cfStreamCode) setCfStreamCode(data.cfStreamCode);
 			setGroups(data.groups ?? []);
 		} catch (error) {
 			console.error("Gallery fetch failed:", error);
@@ -289,7 +326,7 @@ export function GalleryPage({ token }: GalleryPageProps) {
 													aria-label={`Otvoriť ${media.fileName}`}
 												>
 													<img
-														src={`/api/photos/${media.id}/thumbnail`}
+														src={getThumbnailUrl(media)}
 														alt={media.fileName}
 														className="w-full h-full object-cover"
 														loading="lazy"
@@ -301,13 +338,23 @@ export function GalleryPage({ token }: GalleryPageProps) {
 													{media.mediaType === "video" && (
 														<>
 															<div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-																<div className="bg-black/50 rounded-full p-3">
-																	<Play
-																		size={24}
-																		weight="fill"
-																		className="text-white"
-																	/>
-																</div>
+																{media.streamVideoUid &&
+																media.streamReady === false ? (
+																	<div className="bg-black/60 rounded-lg px-3 py-2 text-center">
+																		<div className="w-6 h-6 border-2 border-white/40 border-t-white rounded-full animate-spin mx-auto mb-1" />
+																		<span className="text-white text-xs">
+																			Spracuva sa...
+																		</span>
+																	</div>
+																) : (
+																	<div className="bg-black/50 rounded-full p-3">
+																		<Play
+																			size={24}
+																			weight="fill"
+																			className="text-white"
+																		/>
+																	</div>
+																)}
 															</div>
 															{media.duration != null && (
 																<div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded">
@@ -379,24 +426,53 @@ export function GalleryPage({ token }: GalleryPageProps) {
 					{/* Media content */}
 					<div className="max-w-[90vw] max-h-[85vh] flex items-center justify-center p-4">
 						{currentMedia.mediaType === "video" ? (
-							<video
-								key={currentMedia.id}
-								src={`/api/photos/${currentMedia.id}/full`}
-								controls
-								autoPlay
-								muted
-								playsInline
-								className="max-w-full max-h-[80vh] rounded-lg"
-								onClick={(e) => e.stopPropagation()}
-								onError={() => setFullImageError(true)}
-							/>
+							currentMedia.streamVideoUid ? (
+								currentMedia.streamReady === false ? (
+									// Stream video still processing
+									<div
+										className="text-center text-white p-8"
+										onClick={(e) => e.stopPropagation()}
+									>
+										<div className="w-12 h-12 border-4 border-white/30 border-t-white rounded-full animate-spin mx-auto mb-4" />
+										<p className="text-lg">Spracuva sa...</p>
+										<p className="text-sm text-white/60 mt-2">
+											Video sa este spracuvava, skuste to neskor.
+										</p>
+									</div>
+								) : (
+									// CF Stream iframe player
+									<iframe
+										key={currentMedia.id}
+										src={getFullUrl(currentMedia)}
+										title={currentMedia.fileName}
+										className="w-full h-full max-w-[90vw] max-h-[80vh]"
+										style={{ minWidth: "70vw", minHeight: "60vh" }}
+										allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
+										allowFullScreen
+										onClick={(e) => e.stopPropagation()}
+									/>
+								)
+							) : (
+								// Legacy R2 video — <video> element
+								<video
+									key={currentMedia.id}
+									src={getFullUrl(currentMedia)}
+									controls
+									autoPlay
+									muted
+									playsInline
+									className="max-w-full max-h-[80vh] rounded-lg"
+									onClick={(e) => e.stopPropagation()}
+									onError={() => setFullImageError(true)}
+								/>
+							)
 						) : (
 							<>
 								{/* Thumbnail as placeholder while full loads */}
 								{!fullImageLoaded && !fullImageError && (
 									<div className="relative">
 										<img
-											src={`/api/photos/${currentMedia.id}/thumbnail`}
+											src={getThumbnailUrl(currentMedia)}
 											alt={currentMedia.fileName}
 											className="max-w-full max-h-[80vh] object-contain rounded-lg opacity-50"
 										/>
@@ -414,7 +490,7 @@ export function GalleryPage({ token }: GalleryPageProps) {
 								{/* biome-ignore lint/a11y/useKeyWithClickEvents: stopPropagation prevents overlay close */}
 								<img
 									key={currentMedia.id}
-									src={`/api/photos/${currentMedia.id}/full`}
+									src={getFullUrl(currentMedia)}
 									alt={currentMedia.fileName}
 									className={`max-w-full max-h-[80vh] object-contain rounded-lg ${fullImageLoaded ? "" : "hidden"}`}
 									onLoad={() => setFullImageLoaded(true)}

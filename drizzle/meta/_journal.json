@@ -50,13 +50,6 @@
       "when": 1774898815845,
       "tag": "0006_thankful_hellfire_club",
       "breakpoints": true
-    },
-    {
-      "idx": 7,
-      "version": "6",
-      "when": 1774922400000,
-      "tag": "0007_fix_cf_columns_data",
-      "breakpoints": true
     }
   ]
 }

@@ -6,6 +6,7 @@ import { guests } from "./guests";
  * Photo uploads table - Tracks wedding photos uploaded by guests
  */
 export const photoUploads = sqliteTable("photo_uploads", {
+	cloudflareImageId: text("cloudflare_image_id"), // CF Images UUID (for images)
 	duration: integer("duration"), // Video duration in seconds
 	fileName: text("file_name").notNull(),
 	fileSize: integer("file_size").notNull(), // Size in bytes
@@ -19,8 +20,10 @@ export const photoUploads = sqliteTable("photo_uploads", {
 		.notNull()
 		.default("image"),
 	mimeType: text("mime_type").notNull(),
-	r2Key: text("r2_key").notNull().unique(), // R2 object key
-	thumbnailR2Key: text("thumbnail_r2_key"), // For video thumbnails
+	r2Key: text("r2_key"), // R2 object key (nullable — deprecated, used during migration)
+	streamReady: integer("stream_ready", { mode: "boolean" }).default(false), // Stream processing complete
+	streamVideoUid: text("stream_video_uid"), // CF Stream UID (for videos)
+	thumbnailR2Key: text("thumbnail_r2_key"), // For video thumbnails (deprecated)
 	uploadedAt: integer("uploaded_at", { mode: "timestamp" })
 		.notNull()
 		.default(sql`(unixepoch())`),
