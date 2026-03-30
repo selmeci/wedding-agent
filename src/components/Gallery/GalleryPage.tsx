@@ -64,13 +64,18 @@ export function GalleryPage({ token }: GalleryPageProps) {
 	// Construct the correct thumbnail URL for a media item
 	const getThumbnailUrl = useCallback(
 		(media: GalleryMedia) => {
-			if (media.cloudflareImageId && cfImagesHash) {
+			if (
+				media.cloudflareImageId &&
+				!media.cloudflareImageId.startsWith("migration_skipped") &&
+				cfImagesHash
+			) {
 				return `https://imagedelivery.net/${cfImagesHash}/${media.cloudflareImageId}/thumbnail`;
 			}
 			if (media.streamVideoUid && cfStreamCode) {
 				return `https://customer-${cfStreamCode}.cloudflarestream.com/${media.streamVideoUid}/thumbnails/thumbnail.jpg`;
 			}
-			return "";
+			// R2 fallback for unmigrated or skipped files
+			return `/api/photos/${media.id}/file`;
 		},
 		[cfImagesHash, cfStreamCode],
 	);
@@ -78,13 +83,18 @@ export function GalleryPage({ token }: GalleryPageProps) {
 	// Construct the correct full-resolution URL for a media item
 	const getFullUrl = useCallback(
 		(media: GalleryMedia) => {
-			if (media.cloudflareImageId && cfImagesHash) {
+			if (
+				media.cloudflareImageId &&
+				!media.cloudflareImageId.startsWith("migration_skipped") &&
+				cfImagesHash
+			) {
 				return `https://imagedelivery.net/${cfImagesHash}/${media.cloudflareImageId}/public`;
 			}
 			if (media.streamVideoUid && cfStreamCode) {
 				return `https://customer-${cfStreamCode}.cloudflarestream.com/${media.streamVideoUid}/iframe?autoplay=true&muted=true`;
 			}
-			return "";
+			// R2 fallback
+			return `/api/photos/${media.id}/file`;
 		},
 		[cfImagesHash, cfStreamCode],
 	);

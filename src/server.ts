@@ -396,6 +396,24 @@ app.get("/api/photos", async (c) => {
 	}
 });
 
+// GET /api/photos/:id/file - R2 fallback for unmigrated/skipped files
+app.get("/api/photos/:id/file", async (c) => {
+	const photoId = c.req.param("id");
+	const db = createDb(c.env.DB);
+	const photo = await db.query.photoUploads.findFirst({
+		where: (t, { eq: colEq }) => colEq(t.id, photoId),
+	});
+	if (!photo?.r2Key) return c.json({ error: "Not found" }, 404);
+	const obj = await c.env.BUCKET.get(photo.r2Key);
+	if (!obj) return c.json({ error: "File not found in R2" }, 404);
+	return new Response(obj.body, {
+		headers: {
+			"Cache-Control": "public, max-age=31536000",
+			"Content-Type": photo.mimeType,
+		},
+	});
+});
+
 // DELETE /api/photos/:id - Delete photo/video
 app.delete("/api/photos/:id", async (c) => {
 	const photoId = c.req.param("id");
@@ -1176,51 +1194,19 @@ app.post("/api/admin/migrate-media", async (c) => {
 				let uploadBlob = await r2Object.blob();
 				let uploadFileName = image.fileName;
 
-				// For HEIC/HEIF: convert to WebP via CF Image Resizing first
-				// CF Images cannot decode some HEIC variants (HDR, ProRAW)
+				// HEIC/HEIF: skip — CF Images can't decode these variants.
+				// Mark in DB so migration doesn't retry them. User can re-upload via web.
 				const heicTypes = ["image/heic", "image/heif"];
 				if (heicTypes.includes(image.mimeType)) {
-					let converted = false;
-					try {
-						const origin = new URL(c.req.url).origin;
-						const rawUrl = `${origin}/api/admin/migrate-raw/${image.id}`;
-						console.log(`🔄 HEIC conversion: fetching ${rawUrl} with cf.image`);
-						const transformed = await fetch(rawUrl, {
-							cf: { image: { format: "webp" as const } },
-						});
-						console.log(
-							`🔄 HEIC conversion response: status=${transformed.status}, type=${transformed.headers.get("content-type")}, size=${transformed.headers.get("content-length")}`,
-						);
-						if (
-							transformed.ok &&
-							transformed.headers.get("content-type")?.includes("image/webp")
-						) {
-							uploadBlob = await transformed.blob();
-							uploadFileName = image.fileName.replace(
-								/\.(heic|heif)$/i,
-								".webp",
-							);
-							converted = true;
-							console.log(
-								`✅ HEIC→WebP for ${image.id}: ${(uploadBlob.size / 1024).toFixed(0)} KB`,
-							);
-						} else {
-							console.log(
-								`⚠️ HEIC conversion returned non-webp: status=${transformed.status}, type=${transformed.headers.get("content-type")}`,
-							);
-						}
-					} catch (convertError) {
-						console.log(
-							`⚠️ HEIC conversion exception for ${image.id}: ${convertError}`,
-						);
-					}
-					if (!converted) {
-						errors.push({
-							id: image.id,
-							error: `HEIC conversion failed — cannot upload to CF Images. File: ${image.fileName}`,
-						});
-						continue;
-					}
+					await db
+						.update(photoUploads)
+						.set({ cloudflareImageId: "migration_skipped_heic" })
+						.where(eq(photoUploads.id, image.id));
+					errors.push({
+						id: image.id,
+						error: `HEIC skipped — needs manual re-upload: ${image.fileName}`,
+					});
+					continue;
 				}
 
 				const formData = new FormData();

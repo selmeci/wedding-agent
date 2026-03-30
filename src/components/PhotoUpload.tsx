@@ -87,12 +87,21 @@ export function PhotoUpload({
 						};
 
 						// Construct CF delivery URLs if CF IDs are available
-						if (p.cloudflareImageId && data.cfImagesHash) {
+						// Skip "migration_skipped_heic" — those need R2 fallback
+						if (
+							p.cloudflareImageId &&
+							!p.cloudflareImageId.startsWith("migration_skipped") &&
+							data.cfImagesHash
+						) {
 							item.thumbnailUrl = `https://imagedelivery.net/${data.cfImagesHash}/${p.cloudflareImageId}/thumbnail`;
 							item.fullUrl = `https://imagedelivery.net/${data.cfImagesHash}/${p.cloudflareImageId}/public`;
 						} else if (p.streamVideoUid && data.cfStreamCode) {
 							item.thumbnailUrl = `https://customer-${data.cfStreamCode}.cloudflarestream.com/${p.streamVideoUid}/thumbnails/thumbnail.jpg`;
 							item.fullUrl = `https://customer-${data.cfStreamCode}.cloudflarestream.com/${p.streamVideoUid}/iframe?autoplay=true&muted=true`;
+						} else {
+							// R2 fallback for unmigrated or skipped files
+							item.thumbnailUrl = `/api/photos/${p.id}/file`;
+							item.fullUrl = `/api/photos/${p.id}/file`;
 						}
 						return item;
 					}),
