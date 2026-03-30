@@ -1119,6 +1119,13 @@ app.post("/api/admin/migrate-media", async (c) => {
 	const cfToken = c.env.CF_IMAGE_TOKEN;
 
 	try {
+		// Debug: check total records and their state
+		const allPhotos = await db.query.photoUploads.findMany();
+		console.log(`[migrate] Total photo_uploads records: ${allPhotos.length}`);
+		for (const p of allPhotos.slice(0, 5)) {
+			console.log(`[migrate] Record id=${p.id}, mediaType=${p.mediaType}, r2Key=${p.r2Key}, cloudflareImageId=${p.cloudflareImageId}, streamVideoUid=${p.streamVideoUid}`);
+		}
+
 		// Find unmigrated images
 		const unmigratedImages = await db.query.photoUploads.findMany({
 			where: (t, { and, isNull, isNotNull, eq: colEq }) =>
