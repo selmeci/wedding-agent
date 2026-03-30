@@ -1,5 +1,6 @@
 import "./styles.css";
 import { createRoot } from "react-dom/client";
+import { GalleryPage } from "@/components/Gallery";
 import { UnauthorizedPage } from "@/components/UnauthorizedPage";
 import { Providers } from "@/providers";
 import App from "./app";
@@ -16,14 +17,31 @@ function checkAuthorization() {
 	return !!(qrToken || qrTokenCookie);
 }
 
+// Returns the gallery token if on /gallery path, null otherwise
+function getGalleryToken(): string | null {
+	if (window.location.pathname !== "/gallery") return null;
+	return new URLSearchParams(window.location.search).get("token");
+}
+
 // biome-ignore lint/style/noNonNullAssertion: It is ok here
 const root = createRoot(document.getElementById("app")!);
-const isAuthorized = checkAuthorization();
+
+function AppRoot() {
+	// Gallery route: /gallery?token=...
+	const galleryToken = getGalleryToken();
+	if (galleryToken !== null) {
+		return <GalleryPage token={galleryToken} />;
+	}
+
+	// Normal app route
+	const isAuthorized = checkAuthorization();
+	return isAuthorized ? <App /> : <UnauthorizedPage />;
+}
 
 root.render(
 	<Providers>
 		<div className="bg-neutral-50 text-base text-neutral-900 antialiased transition-colors selection:bg-blue-700 selection:text-white dark:bg-neutral-950 dark:text-neutral-100">
-			{isAuthorized ? <App /> : <UnauthorizedPage />}
+			<AppRoot />
 		</div>
 	</Providers>,
 );

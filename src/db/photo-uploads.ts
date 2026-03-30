@@ -1,4 +1,4 @@
-import { sql } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 import { guests } from "./guests";
 
@@ -25,6 +25,13 @@ export const photoUploads = sqliteTable("photo_uploads", {
 		.notNull()
 		.default(sql`(unixepoch())`),
 });
+
+export const photoUploadsRelations = relations(photoUploads, ({ one }) => ({
+	guest: one(guests, {
+		fields: [photoUploads.guestId],
+		references: [guests.id],
+	}),
+}));
 
 export type PhotoUpload = typeof photoUploads.$inferSelect;
 export type NewPhotoUpload = typeof photoUploads.$inferInsert;

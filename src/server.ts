@@ -16,6 +16,7 @@ import {
 	guests,
 	photoUploads,
 } from "@/db";
+import { fetchGalleryMedia } from "@/db/queries/gallery-media";
 
 export * from "@/agents";
 
@@ -277,6 +278,47 @@ app.get("/agents/report/:qrToken/reset", async (c) => {
 	return c.json({ message: "Report agent history cleared successfully" }, 200);
 });
 
+// Constant-time token comparison for gallery/report endpoints
+function secureTokenEquals(token: string, expected: string): boolean {
+	const encoder = new TextEncoder();
+	const a = encoder.encode(token);
+	const b = encoder.encode(expected);
+	if (a.byteLength !== b.byteLength) return false;
+	// timingSafeEqual is available in Cloudflare Workers runtime
+	return (
+		crypto.subtle as unknown as {
+			timingSafeEqual(a: BufferSource, b: BufferSource): boolean;
+		}
+	).timingSafeEqual(a, b);
+}
+
+// Gallery API - Token-protected media listing
+app.get("/api/gallery/media", async (c) => {
+	const token = c.req.query("token");
+	const expectedToken = c.env.SECRET_REPORT_TOKEN;
+
+	if (!expectedToken) {
+		console.error(
+			"GET /api/gallery/media - SECRET_REPORT_TOKEN is not configured",
+		);
+		return c.json({ error: "Gallery is not configured" }, 500);
+	}
+	if (!token || !secureTokenEquals(token, expectedToken)) {
+		return c.json({ error: "Unauthorized" }, 401);
+	}
+
+	try {
+		const db = createDb(c.env.DB);
+		const groups = await fetchGalleryMedia(db);
+		return c.json({ groups }, 200, {
+			"Cache-Control": "private, max-age=60",
+		});
+	} catch (error) {
+		console.error("Gallery media fetch error:", error);
+		return c.json({ error: "Failed to fetch gallery media" }, 500);
+	}
+});
+
 // Photo upload API
 // POST /api/photos - Upload photo (direct, max 100MB)
 app.post("/api/photos", async (c) => {
@@ -340,12 +382,14 @@ app.post("/api/photos", async (c) => {
 			"video/x-m4v",
 		];
 		const allowedTypes = [...imageTypes, ...videoTypes];
-		if (!allowedTypes.includes(file.type)) {
+		// Strip codec parameters (e.g., "video/mp4;codecs=hev1" -> "video/mp4")
+		const baseType = file.type.split(";")[0].trim();
+		if (!allowedTypes.includes(baseType)) {
 			console.log(`❌ POST /api/photos - Invalid file type: ${file.type}`);
 			return c.json({ error: "Invalid file type" }, 400);
 		}
 
-		const isVideo = videoTypes.includes(file.type);
+		const isVideo = videoTypes.includes(baseType);
 		const mediaType = isVideo ? "video" : "image";
 
 		// Validate file size (100MB max - Cloudflare Workers limit)
@@ -745,7 +789,9 @@ app.post("/api/media/presign", async (c) => {
 		];
 		const allowedTypes = [...imageTypes, ...videoTypes];
 
-		if (!allowedTypes.includes(contentType)) {
+		// Strip codec parameters (e.g., "video/mp4;codecs=hev1" -> "video/mp4")
+		const baseContentType = contentType.split(";")[0].trim();
+		if (!allowedTypes.includes(baseContentType)) {
 			return c.json({ error: "Nepovolený typ súboru" }, 400);
 		}
 
@@ -759,7 +805,7 @@ app.post("/api/media/presign", async (c) => {
 		const mediaId = crypto.randomUUID();
 		const fileExtension = fileName.split(".").pop()?.toLowerCase() || "bin";
 		const r2Key = `groups/${group.id}/photos/${mediaId}.${fileExtension}`;
-		const isVideo = videoTypes.includes(contentType);
+		const isVideo = videoTypes.includes(baseContentType);
 
 		// Create R2 client and generate presigned URL
 		const { createR2Client, generatePresignedPutUrl } = await import(
@@ -993,7 +1039,9 @@ app.post("/api/media/multipart/create", async (c) => {
 		];
 		const allowedTypes = [...imageTypes, ...videoTypes];
 
-		if (!allowedTypes.includes(contentType)) {
+		// Strip codec parameters (e.g., "video/mp4;codecs=hev1" -> "video/mp4")
+		const baseContentType = contentType.split(";")[0].trim();
+		if (!allowedTypes.includes(baseContentType)) {
 			return c.json({ error: "Nepovolený typ súboru" }, 400);
 		}
 
@@ -1005,7 +1053,7 @@ app.post("/api/media/multipart/create", async (c) => {
 		const mediaId = crypto.randomUUID();
 		const fileExtension = fileName.split(".").pop()?.toLowerCase() || "bin";
 		const r2Key = `groups/${group.id}/photos/${mediaId}.${fileExtension}`;
-		const isVideo = videoTypes.includes(contentType);
+		const isVideo = videoTypes.includes(baseContentType);
 
 		const PART_SIZE = 10 * 1024 * 1024; // 10MB
 		const partCount = Math.ceil(fileSize / PART_SIZE);

@@ -1,6 +1,7 @@
 import { relations, sql } from "drizzle-orm";
 import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 import { guestGroups } from "./guest-groups";
+import { photoUploads } from "./photo-uploads";
 
 /**
  * Guests table - Stores information about wedding guests
@@ -26,11 +27,12 @@ export const guests = sqliteTable("guests", {
 	relationship: text("relationship").notNull(), // e.g., "rodina nevesty", "priatelia zenicha"
 });
 
-export const guestsRelations = relations(guests, ({ one }) => ({
+export const guestsRelations = relations(guests, ({ one, many }) => ({
 	group: one(guestGroups, {
 		fields: [guests.groupId],
 		references: [guestGroups.id],
 	}),
+	photoUploads: many(photoUploads),
 }));
 
 export type Guest = typeof guests.$inferSelect;
