@@ -778,6 +778,7 @@ app.post("/api/media/presign", async (c) => {
 			r2Key,
 			contentType,
 			3600, // 1 hour expiry
+			fileSize,
 		);
 
 		console.log(
@@ -931,6 +932,244 @@ app.post("/api/media/confirm", async (c) => {
 		return c.json(
 			{
 				error: "Failed to confirm upload",
+				details: error instanceof Error ? error.message : String(error),
+			},
+			500,
+		);
+	}
+});
+
+// Multipart upload API for large files (>10MB)
+// POST /api/media/multipart/create - Initiate multipart upload
+app.post("/api/media/multipart/create", async (c) => {
+	console.log("🔑 POST /api/media/multipart/create - Request started");
+	try {
+		const qrToken = c.req.header("x-qr-token");
+		if (!qrToken) {
+			return c.json({ error: "Missing QR token" }, 401);
+		}
+
+		const db = createDb(c.env.DB);
+		const group = await db.query.guestGroups.findFirst({
+			where: (t, { eq }) => eq(t.qrToken, qrToken),
+			with: { guests: true },
+		});
+
+		if (!group) {
+			return c.json({ error: "Invalid QR token" }, 403);
+		}
+
+		let guestId = c.req.header("x-guest-id");
+		if (!guestId && group.guests.length > 0) {
+			guestId = group.guests[0].id;
+		}
+		if (!guestId) {
+			return c.json({ error: "No guest available in group" }, 400);
+		}
+
+		const { fileName, contentType, fileSize } = await c.req.json<{
+			fileName: string;
+			contentType: string;
+			fileSize: number;
+		}>();
+
+		console.log(
+			`📁 POST /api/media/multipart/create - File: ${fileName}, Size: ${(fileSize / 1024 / 1024).toFixed(2)}MB, Type: ${contentType}`,
+		);
+
+		// Allowed MIME types
+		const imageTypes = [
+			"image/jpeg",
+			"image/png",
+			"image/heic",
+			"image/heif",
+			"image/webp",
+		];
+		const videoTypes = [
+			"video/mp4",
+			"video/quicktime",
+			"video/webm",
+			"video/x-m4v",
+		];
+		const allowedTypes = [...imageTypes, ...videoTypes];
+
+		if (!allowedTypes.includes(contentType)) {
+			return c.json({ error: "Nepovolený typ súboru" }, 400);
+		}
+
+		const MAX_FILE_SIZE = 1024 * 1024 * 1024; // 1GB
+		if (fileSize > MAX_FILE_SIZE) {
+			return c.json({ error: "Súbor je príliš veľký (max 1GB)" }, 400);
+		}
+
+		const mediaId = crypto.randomUUID();
+		const fileExtension = fileName.split(".").pop()?.toLowerCase() || "bin";
+		const r2Key = `groups/${group.id}/photos/${mediaId}.${fileExtension}`;
+		const isVideo = videoTypes.includes(contentType);
+
+		const PART_SIZE = 10 * 1024 * 1024; // 10MB
+		const partCount = Math.ceil(fileSize / PART_SIZE);
+
+		const { createR2Client, createMultipartUpload, generatePresignedPartUrls } =
+			await import("@/utils/r2-presign");
+
+		const r2Client = createR2Client({
+			endpoint: c.env.R2_ENDPOINT,
+			accessKeyId: c.env.R2_ACCESS_KEY_ID,
+			secretAccessKey: c.env.R2_SECRET_ACCESS_KEY,
+		});
+
+		const uploadId = await createMultipartUpload(
+			r2Client,
+			"wedding-photos",
+			r2Key,
+			contentType,
+		);
+
+		const parts = await generatePresignedPartUrls(
+			r2Client,
+			"wedding-photos",
+			r2Key,
+			uploadId,
+			partCount,
+			3600,
+		);
+
+		console.log(
+			`✅ POST /api/media/multipart/create - Success: ${mediaId}, ${partCount} parts, uploadId: ${uploadId.substring(0, 8)}...`,
+		);
+
+		return c.json({
+			uploadId,
+			mediaId,
+			r2Key,
+			mediaType: isVideo ? "video" : "image",
+			guestId,
+			partSize: PART_SIZE,
+			parts,
+		});
+	} catch (error) {
+		console.error("❌ POST /api/media/multipart/create - Error:", error);
+		return c.json(
+			{
+				error: "Failed to create multipart upload",
+				details: error instanceof Error ? error.message : String(error),
+			},
+			500,
+		);
+	}
+});
+
+// POST /api/media/multipart/complete - Complete multipart upload
+app.post("/api/media/multipart/complete", async (c) => {
+	console.log("✔️ POST /api/media/multipart/complete - Request started");
+	try {
+		const qrToken = c.req.header("x-qr-token");
+		if (!qrToken) {
+			return c.json({ error: "Missing QR token" }, 401);
+		}
+
+		const db = createDb(c.env.DB);
+		const group = await db.query.guestGroups.findFirst({
+			where: (t, { eq }) => eq(t.qrToken, qrToken),
+		});
+
+		if (!group) {
+			return c.json({ error: "Invalid QR token" }, 403);
+		}
+
+		const { uploadId, r2Key, parts } = await c.req.json<{
+			uploadId: string;
+			r2Key: string;
+			parts: { partNumber: number; etag: string }[];
+		}>();
+
+		if (!uploadId || !r2Key || !parts || parts.length === 0) {
+			return c.json({ error: "Missing required fields" }, 400);
+		}
+
+		console.log(
+			`📋 POST /api/media/multipart/complete - uploadId: ${uploadId.substring(0, 8)}..., ${parts.length} parts`,
+		);
+
+		const { createR2Client, completeMultipartUpload } = await import(
+			"@/utils/r2-presign"
+		);
+
+		const r2Client = createR2Client({
+			endpoint: c.env.R2_ENDPOINT,
+			accessKeyId: c.env.R2_ACCESS_KEY_ID,
+			secretAccessKey: c.env.R2_SECRET_ACCESS_KEY,
+		});
+
+		await completeMultipartUpload(
+			r2Client,
+			"wedding-photos",
+			r2Key,
+			uploadId,
+			parts,
+		);
+
+		console.log(`✅ POST /api/media/multipart/complete - Success: ${r2Key}`);
+		return c.json({ success: true });
+	} catch (error) {
+		console.error("❌ POST /api/media/multipart/complete - Error:", error);
+		return c.json(
+			{
+				error: "Failed to complete multipart upload",
+				details: error instanceof Error ? error.message : String(error),
+			},
+			500,
+		);
+	}
+});
+
+// POST /api/media/multipart/abort - Abort multipart upload (cleanup)
+app.post("/api/media/multipart/abort", async (c) => {
+	console.log("🗑️ POST /api/media/multipart/abort - Request started");
+	try {
+		const qrToken = c.req.header("x-qr-token");
+		if (!qrToken) {
+			return c.json({ error: "Missing QR token" }, 401);
+		}
+
+		const db = createDb(c.env.DB);
+		const group = await db.query.guestGroups.findFirst({
+			where: (t, { eq }) => eq(t.qrToken, qrToken),
+		});
+
+		if (!group) {
+			return c.json({ error: "Invalid QR token" }, 403);
+		}
+
+		const { uploadId, r2Key } = await c.req.json<{
+			uploadId: string;
+			r2Key: string;
+		}>();
+
+		if (!uploadId || !r2Key) {
+			return c.json({ error: "Missing required fields" }, 400);
+		}
+
+		const { createR2Client, abortMultipartUpload } = await import(
+			"@/utils/r2-presign"
+		);
+
+		const r2Client = createR2Client({
+			endpoint: c.env.R2_ENDPOINT,
+			accessKeyId: c.env.R2_ACCESS_KEY_ID,
+			secretAccessKey: c.env.R2_SECRET_ACCESS_KEY,
+		});
+
+		await abortMultipartUpload(r2Client, "wedding-photos", r2Key, uploadId);
+
+		console.log(`✅ POST /api/media/multipart/abort - Success: ${r2Key}`);
+		return c.json({ success: true });
+	} catch (error) {
+		console.error("❌ POST /api/media/multipart/abort - Error:", error);
+		return c.json(
+			{
+				error: "Failed to abort multipart upload",
 				details: error instanceof Error ? error.message : String(error),
 			},
 			500,
