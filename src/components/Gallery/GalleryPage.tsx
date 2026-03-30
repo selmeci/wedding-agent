@@ -4,7 +4,7 @@ import {
 	Play,
 	XIcon,
 } from "@phosphor-icons/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Header } from "@/components/Header";
 import { Container } from "@/components/ui";
 import type { GalleryGroup } from "@/db/queries/gallery-media";
@@ -39,16 +39,27 @@ export function GalleryPage({ token }: GalleryPageProps) {
 	const [lightboxOpen, setLightboxOpen] = useState(false);
 	const [currentIndex, setCurrentIndex] = useState(0);
 	const [fullImageLoaded, setFullImageLoaded] = useState(false);
+	const [fullImageError, setFullImageError] = useState(false);
 	const previouslyFocusedRef = useRef<HTMLElement | null>(null);
 	const lightboxRef = useRef<HTMLDivElement>(null);
 
 	// Flat list of all media for lightbox navigation
-	const allMedia = groups.flatMap((g) => g.media);
+	const allMedia = useMemo(() => groups.flatMap((g) => g.media), [groups]);
+	const flatStartByGroup = useMemo(() => {
+		const map = new Map<string, number>();
+		let offset = 0;
+		for (const g of groups) {
+			map.set(g.groupId, offset);
+			offset += g.media.length;
+		}
+		return map;
+	}, [groups]);
 	const currentMedia = allMedia[currentIndex] ?? null;
 
 	const fetchMedia = useCallback(async () => {
 		setIsLoading(true);
 		setError(null);
+		setIsUnauthorized(false);
 		try {
 			const res = await fetch(
 				`/api/gallery/media?token=${encodeURIComponent(token)}`,
@@ -57,12 +68,22 @@ export function GalleryPage({ token }: GalleryPageProps) {
 				setIsUnauthorized(true);
 				return;
 			}
-			if (!res.ok) throw new Error("Chyba pri načítaní");
+			if (!res.ok) {
+				let serverMessage = `HTTP ${res.status}`;
+				try {
+					const body = (await res.json()) as { error?: string };
+					if (body.error) serverMessage = body.error;
+				} catch {
+					// Response body wasn't JSON
+				}
+				throw new Error(serverMessage);
+			}
 			const data = (await res.json()) as {
 				groups: (Omit<GalleryGroup, "media"> & { media: GalleryMedia[] })[];
 			};
 			setGroups(data.groups ?? []);
-		} catch {
+		} catch (error) {
+			console.error("Gallery fetch failed:", error);
 			setError("Nepodarilo sa načítať galériu. Skúste to znova.");
 		} finally {
 			setIsLoading(false);
@@ -78,22 +99,26 @@ export function GalleryPage({ token }: GalleryPageProps) {
 		previouslyFocusedRef.current = document.activeElement as HTMLElement | null;
 		setCurrentIndex(flatIndex);
 		setFullImageLoaded(false);
+		setFullImageError(false);
 		setLightboxOpen(true);
 	}, []);
 
 	const closeLightbox = useCallback(() => {
 		setLightboxOpen(false);
 		setFullImageLoaded(false);
+		setFullImageError(false);
 		previouslyFocusedRef.current?.focus();
 	}, []);
 
 	const goToPrev = useCallback(() => {
 		setFullImageLoaded(false);
+		setFullImageError(false);
 		setCurrentIndex((i) => Math.max(0, i - 1));
 	}, []);
 
 	const goToNext = useCallback(() => {
 		setFullImageLoaded(false);
+		setFullImageError(false);
 		setCurrentIndex((i) => Math.min(allMedia.length - 1, i + 1));
 	}, [allMedia.length]);
 
@@ -109,7 +134,8 @@ export function GalleryPage({ token }: GalleryPageProps) {
 		return () => document.removeEventListener("keydown", handler);
 	}, [lightboxOpen, closeLightbox, goToPrev, goToNext]);
 
-	// Focus trap
+	// Focus trap — re-runs on currentIndex to re-query when nav buttons appear/disappear
+	// biome-ignore lint/correctness/useExhaustiveDependencies: currentIndex triggers re-query of focusable elements
 	useEffect(() => {
 		if (!lightboxOpen || !lightboxRef.current) return;
 		const el = lightboxRef.current;
@@ -132,7 +158,7 @@ export function GalleryPage({ token }: GalleryPageProps) {
 		};
 		document.addEventListener("keydown", trapHandler);
 		return () => document.removeEventListener("keydown", trapHandler);
-	}, [lightboxOpen]);
+	}, [lightboxOpen, currentIndex]);
 
 	// Touch swipe
 	const touchStartX = useRef(0);
@@ -240,12 +266,7 @@ export function GalleryPage({ token }: GalleryPageProps) {
 						{!isLoading &&
 							!error &&
 							groups.map((group) => {
-								// Calculate flat start index for this group
-								let flatStart = 0;
-								for (const g of groups) {
-									if (g.groupId === group.groupId) break;
-									flatStart += g.media.length;
-								}
+								const flatStart = flatStartByGroup.get(group.groupId) ?? 0;
 
 								return (
 									<section key={group.groupId} className="mb-8 md:mb-10">
@@ -272,6 +293,10 @@ export function GalleryPage({ token }: GalleryPageProps) {
 														alt={media.fileName}
 														className="w-full h-full object-cover"
 														loading="lazy"
+														onError={(e) => {
+															(e.target as HTMLImageElement).style.opacity =
+																"0.3";
+														}}
 													/>
 													{media.mediaType === "video" && (
 														<>
@@ -363,11 +388,12 @@ export function GalleryPage({ token }: GalleryPageProps) {
 								playsInline
 								className="max-w-full max-h-[80vh] rounded-lg"
 								onClick={(e) => e.stopPropagation()}
+								onError={() => setFullImageError(true)}
 							/>
 						) : (
 							<>
 								{/* Thumbnail as placeholder while full loads */}
-								{!fullImageLoaded && (
+								{!fullImageLoaded && !fullImageError && (
 									<div className="relative">
 										<img
 											src={`/api/photos/${currentMedia.id}/thumbnail`}
@@ -379,6 +405,12 @@ export function GalleryPage({ token }: GalleryPageProps) {
 										</div>
 									</div>
 								)}
+								{fullImageError && (
+									<div className="text-center text-white/70 py-12">
+										<div className="text-4xl mb-3">😔</div>
+										<p>Obrázok sa nepodarilo načítať</p>
+									</div>
+								)}
 								{/* biome-ignore lint/a11y/useKeyWithClickEvents: stopPropagation prevents overlay close */}
 								<img
 									key={currentMedia.id}
@@ -386,6 +418,7 @@ export function GalleryPage({ token }: GalleryPageProps) {
 									alt={currentMedia.fileName}
 									className={`max-w-full max-h-[80vh] object-contain rounded-lg ${fullImageLoaded ? "" : "hidden"}`}
 									onLoad={() => setFullImageLoaded(true)}
+									onError={() => setFullImageError(true)}
 									onClick={(e) => e.stopPropagation()}
 								/>
 							</>

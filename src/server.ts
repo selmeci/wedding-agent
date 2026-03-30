@@ -297,7 +297,13 @@ app.get("/api/gallery/media", async (c) => {
 	const token = c.req.query("token");
 	const expectedToken = c.env.SECRET_REPORT_TOKEN;
 
-	if (!token || !expectedToken || !secureTokenEquals(token, expectedToken)) {
+	if (!expectedToken) {
+		console.error(
+			"GET /api/gallery/media - SECRET_REPORT_TOKEN is not configured",
+		);
+		return c.json({ error: "Gallery is not configured" }, 500);
+	}
+	if (!token || !secureTokenEquals(token, expectedToken)) {
 		return c.json({ error: "Unauthorized" }, 401);
 	}
 

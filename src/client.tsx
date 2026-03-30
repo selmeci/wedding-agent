@@ -17,12 +17,9 @@ function checkAuthorization() {
 	return !!(qrToken || qrTokenCookie);
 }
 
-// Check if this is the gallery page
-function isGalleryRoute() {
-	return window.location.pathname === "/gallery";
-}
-
-function getGalleryToken() {
+// Returns the gallery token if on /gallery path, null otherwise
+function getGalleryToken(): string | null {
+	if (window.location.pathname !== "/gallery") return null;
 	return new URLSearchParams(window.location.search).get("token");
 }
 
@@ -31,9 +28,8 @@ const root = createRoot(document.getElementById("app")!);
 
 function AppRoot() {
 	// Gallery route: /gallery?token=...
-	if (isGalleryRoute()) {
-		const galleryToken = getGalleryToken();
-		if (!galleryToken) return <UnauthorizedPage />;
+	const galleryToken = getGalleryToken();
+	if (galleryToken !== null) {
 		return <GalleryPage token={galleryToken} />;
 	}
 
