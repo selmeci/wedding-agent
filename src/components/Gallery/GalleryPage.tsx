@@ -70,8 +70,7 @@ export function GalleryPage({ token }: GalleryPageProps) {
 			if (media.streamVideoUid && cfStreamCode) {
 				return `https://customer-${cfStreamCode}.cloudflarestream.com/${media.streamVideoUid}/thumbnails/thumbnail.jpg`;
 			}
-			// Fallback to Worker endpoint for unmigrated items
-			return `/api/photos/${media.id}/thumbnail`;
+			return "";
 		},
 		[cfImagesHash, cfStreamCode],
 	);
@@ -85,8 +84,7 @@ export function GalleryPage({ token }: GalleryPageProps) {
 			if (media.streamVideoUid && cfStreamCode) {
 				return `https://customer-${cfStreamCode}.cloudflarestream.com/${media.streamVideoUid}/iframe?autoplay=true&muted=true`;
 			}
-			// Fallback to Worker endpoint for unmigrated items
-			return `/api/photos/${media.id}/full`;
+			return "";
 		},
 		[cfImagesHash, cfStreamCode],
 	);

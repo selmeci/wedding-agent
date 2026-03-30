@@ -15,9 +15,6 @@ declare namespace Cloudflare {
 		FIREWORKS_API_KEY: string;
 		BREVO_API_KEY: string;
 		ANTHROPIC_API_KEY: string;
-		R2_ACCESS_KEY_ID: string;
-		R2_SECRET_ACCESS_KEY: string;
-		R2_ENDPOINT: string;
 		CF_ACCOUNT_ID: string;
 		CF_IMAGES_ACCOUNT_HASH: string;
 		CF_STREAM_CUSTOMER_CODE: string;
@@ -35,5 +32,5 @@ type StringifyValues<EnvType extends Record<string, unknown>> = {
 	[Binding in keyof EnvType]: EnvType[Binding] extends string ? EnvType[Binding] : string;
 };
 declare namespace NodeJS {
-	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "BREVO_SENDER_EMAIL" | "BREVO_SENDER_NAME" | "OPENAI_API_KEY" | "SECRET" | "SECRET_REPORT_TOKEN" | "COUPLE_SECRET" | "FIREWORKS_API_KEY" | "BREVO_API_KEY" | "ANTHROPIC_API_KEY" | "R2_ACCESS_KEY_ID" | "R2_SECRET_ACCESS_KEY" | "R2_ENDPOINT">> {}
+	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "BREVO_SENDER_EMAIL" | "BREVO_SENDER_NAME" | "OPENAI_API_KEY" | "SECRET" | "SECRET_REPORT_TOKEN" | "COUPLE_SECRET" | "FIREWORKS_API_KEY" | "BREVO_API_KEY" | "ANTHROPIC_API_KEY">> {}
 }

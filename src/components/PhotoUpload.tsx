@@ -94,8 +94,6 @@ export function PhotoUpload({
 							item.thumbnailUrl = `https://customer-${data.cfStreamCode}.cloudflarestream.com/${p.streamVideoUid}/thumbnails/thumbnail.jpg`;
 							item.fullUrl = `https://customer-${data.cfStreamCode}.cloudflarestream.com/${p.streamVideoUid}/iframe?autoplay=true&muted=true`;
 						}
-						// Otherwise, keep the default /api/photos/... fallback URLs from the server
-
 						return item;
 					}),
 				);
@@ -129,13 +127,13 @@ export function PhotoUpload({
 						(progress) => setUploadProgress(progress),
 					);
 
-					// Add to media list with CF URLs when available
+					// Add to media list with CF URLs
 					const newMedia: Media = {
 						fileName: file.name,
-						fullUrl: `/api/photos/${result.id}/full`,
+						fullUrl: "",
 						id: result.id,
 						mediaType: result.mediaType || "image",
-						thumbnailUrl: `/api/photos/${result.id}/thumbnail`,
+						thumbnailUrl: "",
 						uploadedAt: new Date(),
 					};
 
