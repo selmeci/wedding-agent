@@ -11,6 +11,9 @@ interface Media {
 	fullUrl: string;
 	mediaType: "image" | "video";
 	duration?: number;
+	cloudflareImageId?: string | null;
+	streamVideoUid?: string | null;
+	streamReady?: boolean | null;
 }
 
 // Format duration as mm:ss
@@ -42,6 +45,8 @@ export function PhotoUpload({
 	const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(
 		null,
 	);
+	const [cfImagesHash, setCfImagesHash] = useState<string>("");
+	const [cfStreamCode, setCfStreamCode] = useState<string>("");
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
 	// Always use presigned URLs for all uploads (better progress tracking, no Worker size limits)
@@ -63,13 +68,36 @@ export function PhotoUpload({
 					return;
 				}
 
-				const data = await response.json<{ photos: Media[] }>();
+				const data = await response.json<{
+					photos: Media[];
+					cfImagesHash?: string;
+					cfStreamCode?: string;
+				}>();
+
+				// Store CF config for URL construction
+				if (data.cfImagesHash) setCfImagesHash(data.cfImagesHash);
+				if (data.cfStreamCode) setCfStreamCode(data.cfStreamCode);
+
 				setMediaList(
-					data.photos.map((p: Media) => ({
-						...p,
-						mediaType: p.mediaType || "image",
-						uploadedAt: new Date(p.uploadedAt),
-					})),
+					data.photos.map((p: Media) => {
+						const item: Media = {
+							...p,
+							mediaType: p.mediaType || "image",
+							uploadedAt: new Date(p.uploadedAt),
+						};
+
+						// Construct CF delivery URLs if CF IDs are available
+						if (p.cloudflareImageId && data.cfImagesHash) {
+							item.thumbnailUrl = `https://imagedelivery.net/${data.cfImagesHash}/${p.cloudflareImageId}/thumbnail`;
+							item.fullUrl = `https://imagedelivery.net/${data.cfImagesHash}/${p.cloudflareImageId}/public`;
+						} else if (p.streamVideoUid && data.cfStreamCode) {
+							item.thumbnailUrl = `https://customer-${data.cfStreamCode}.cloudflarestream.com/${p.streamVideoUid}/thumbnails/thumbnail.jpg`;
+							item.fullUrl = `https://customer-${data.cfStreamCode}.cloudflarestream.com/${p.streamVideoUid}/iframe?autoplay=true&muted=true`;
+						}
+						// Otherwise, keep the default /api/photos/... fallback URLs from the server
+
+						return item;
+					}),
 				);
 			} catch (error) {
 				console.error("Error fetching media:", error);
@@ -101,18 +129,37 @@ export function PhotoUpload({
 						(progress) => setUploadProgress(progress),
 					);
 
-					// Add to media list
-					setMediaList((prev) => [
-						{
-							fileName: file.name,
-							fullUrl: `/api/photos/${result.id}/full`,
-							id: result.id,
-							mediaType: result.mediaType || "image",
-							thumbnailUrl: `/api/photos/${result.id}/thumbnail`,
-							uploadedAt: new Date(),
-						},
-						...prev,
-					]);
+					// Add to media list with CF URLs when available
+					const newMedia: Media = {
+						fileName: file.name,
+						fullUrl: `/api/photos/${result.id}/full`,
+						id: result.id,
+						mediaType: result.mediaType || "image",
+						thumbnailUrl: `/api/photos/${result.id}/thumbnail`,
+						uploadedAt: new Date(),
+					};
+
+					if (
+						result.mediaType === "image" ||
+						(!result.mediaType && !file.type.startsWith("video/"))
+					) {
+						// CF Images upload — the mediaId IS the cloudflareImageId
+						if (cfImagesHash) {
+							newMedia.cloudflareImageId = result.id;
+							newMedia.thumbnailUrl = `https://imagedelivery.net/${cfImagesHash}/${result.id}/thumbnail`;
+							newMedia.fullUrl = `https://imagedelivery.net/${cfImagesHash}/${result.id}/public`;
+						}
+					} else if (result.mediaType === "video") {
+						// CF Stream upload — the mediaId IS the streamVideoUid
+						if (cfStreamCode) {
+							newMedia.streamVideoUid = result.id;
+							newMedia.streamReady = false;
+							newMedia.thumbnailUrl = `https://customer-${cfStreamCode}.cloudflarestream.com/${result.id}/thumbnails/thumbnail.jpg`;
+							newMedia.fullUrl = `https://customer-${cfStreamCode}.cloudflarestream.com/${result.id}/iframe?autoplay=true&muted=true`;
+						}
+					}
+
+					setMediaList((prev) => [newMedia, ...prev]);
 
 					uploaded++;
 					setCurrentUpload(uploaded);
@@ -134,7 +181,7 @@ export function PhotoUpload({
 				fileInputRef.current.value = "";
 			}
 		},
-		[qrToken, guestId],
+		[qrToken, guestId, cfImagesHash, cfStreamCode],
 	);
 
 	const openDeleteModal = useCallback((mediaId: string) => {
@@ -309,9 +356,22 @@ export function PhotoUpload({
 								{media.mediaType === "video" && (
 									<>
 										<div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-											<div className="bg-black/50 rounded-full p-3">
-												<Play size={24} weight="fill" className="text-white" />
-											</div>
+											{media.streamVideoUid && media.streamReady === false ? (
+												<div className="bg-black/60 rounded-lg px-3 py-2 text-center">
+													<div className="w-6 h-6 border-2 border-white/40 border-t-white rounded-full animate-spin mx-auto mb-1" />
+													<span className="text-white text-xs">
+														Spracuva sa...
+													</span>
+												</div>
+											) : (
+												<div className="bg-black/50 rounded-full p-3">
+													<Play
+														size={24}
+														weight="fill"
+														className="text-white"
+													/>
+												</div>
+											)}
 										</div>
 										{media.duration && (
 											<div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded">
@@ -391,15 +451,44 @@ export function PhotoUpload({
 					</button>
 
 					{selectedMedia.mediaType === "video" ? (
-						// biome-ignore lint/a11y/useKeyWithClickEvents: Video stopPropagation prevents overlay close
-						<video
-							src={selectedMedia.fullUrl}
-							controls
-							autoPlay
-							playsInline
-							className="max-w-full max-h-full"
-							onClick={(e) => e.stopPropagation()}
-						/>
+						selectedMedia.streamVideoUid ? (
+							selectedMedia.streamReady === false ? (
+								// Stream video still processing
+								// biome-ignore lint/a11y/useKeyWithClickEvents: Processing indicator stopPropagation prevents overlay close
+								<div
+									className="text-center text-white p-8"
+									onClick={(e) => e.stopPropagation()}
+								>
+									<div className="w-12 h-12 border-4 border-white/30 border-t-white rounded-full animate-spin mx-auto mb-4" />
+									<p className="text-lg">Spracuva sa...</p>
+									<p className="text-sm text-white/60 mt-2">
+										Video sa este spracuvava, skuste to neskor.
+									</p>
+								</div>
+							) : (
+								// CF Stream iframe player
+								// biome-ignore lint/a11y/useKeyWithClickEvents: Iframe stopPropagation prevents overlay close
+								<iframe
+									src={selectedMedia.fullUrl}
+									title={selectedMedia.fileName}
+									className="w-full h-full max-w-[90vw] max-h-[80vh]"
+									allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
+									allowFullScreen
+									onClick={(e) => e.stopPropagation()}
+								/>
+							)
+						) : (
+							// Legacy R2 video — <video> element
+							// biome-ignore lint/a11y/useKeyWithClickEvents: Video stopPropagation prevents overlay close
+							<video
+								src={selectedMedia.fullUrl}
+								controls
+								autoPlay
+								playsInline
+								className="max-w-full max-h-full"
+								onClick={(e) => e.stopPropagation()}
+							/>
+						)
 					) : (
 						// biome-ignore lint/a11y/useKeyWithClickEvents: Image stopPropagation prevents overlay close
 						<img

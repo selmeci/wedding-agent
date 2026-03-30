@@ -310,9 +310,17 @@ app.get("/api/gallery/media", async (c) => {
 	try {
 		const db = createDb(c.env.DB);
 		const groups = await fetchGalleryMedia(db);
-		return c.json({ groups }, 200, {
-			"Cache-Control": "private, max-age=60",
-		});
+		return c.json(
+			{
+				cfImagesHash: c.env.CF_IMAGES_ACCOUNT_HASH,
+				cfStreamCode: c.env.CF_STREAM_CUSTOMER_CODE,
+				groups,
+			},
+			200,
+			{
+				"Cache-Control": "private, max-age=60",
+			},
+		);
 	} catch (error) {
 		console.error("Gallery media fetch error:", error);
 		return c.json({ error: "Failed to fetch gallery media" }, 500);
@@ -504,13 +512,16 @@ app.get("/api/photos", async (c) => {
 				guestIds.length > 0 ? inArray(t.guestId, guestIds) : undefined,
 		});
 
-		// Return photos with thumbnail and full URLs
+		// Return photos with thumbnail and full URLs + CF IDs for direct CDN delivery
 		const photosWithUrls = photos.map((photo) => ({
+			cloudflareImageId: photo.cloudflareImageId,
 			duration: photo.duration,
 			fileName: photo.fileName,
 			fullUrl: `/api/photos/${photo.id}/full`,
 			id: photo.id,
 			mediaType: photo.mediaType,
+			streamReady: photo.streamReady,
+			streamVideoUid: photo.streamVideoUid,
 			thumbnailUrl: `/api/photos/${photo.id}/thumbnail`,
 			uploadedAt: photo.uploadedAt,
 		}));
@@ -518,7 +529,11 @@ app.get("/api/photos", async (c) => {
 		console.log(
 			`✅ GET /api/photos - Found ${photos.length} items (${photos.filter((p) => p.mediaType === "video").length} videos, ${photos.filter((p) => p.mediaType === "image").length} images)`,
 		);
-		return c.json({ photos: photosWithUrls });
+		return c.json({
+			cfImagesHash: c.env.CF_IMAGES_ACCOUNT_HASH,
+			cfStreamCode: c.env.CF_STREAM_CUSTOMER_CODE,
+			photos: photosWithUrls,
+		});
 	} catch (error) {
 		console.error("❌ GET /api/photos - Error:", error);
 		return c.json(
