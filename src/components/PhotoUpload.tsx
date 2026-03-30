@@ -1,7 +1,7 @@
 import { Play, TrashIcon, XIcon } from "@phosphor-icons/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { BrokenHeart, PhotoUploadAnimation } from "@/components/PixelArt";
-import { type UploadProgress, uploadFile } from "@/utils/media-upload";
+import { type UploadProgress, uploadMediaViaCF } from "@/utils/media-upload";
 
 interface Media {
 	id: string;
@@ -11,127 +11,6 @@ interface Media {
 	fullUrl: string;
 	mediaType: "image" | "video";
 	duration?: number;
-}
-
-// Convert HEIC/HEIF images to WebP using canvas (Safari supports HEIC natively)
-async function convertHeicToWebP(file: File): Promise<File> {
-	const heicTypes = ["image/heic", "image/heif"];
-	if (!heicTypes.includes(file.type)) return file;
-
-	try {
-		const bitmap = await createImageBitmap(file);
-		const canvas = document.createElement("canvas");
-		canvas.width = bitmap.width;
-		canvas.height = bitmap.height;
-		const ctx = canvas.getContext("2d");
-		if (!ctx) return file;
-		ctx.drawImage(bitmap, 0, 0);
-		const blob = await new Promise<Blob | null>((resolve) =>
-			canvas.toBlob(resolve, "image/webp", 0.9),
-		);
-		if (!blob) return file;
-		const newName = file.name.replace(/\.(heic|heif)$/i, ".webp");
-		return new File([blob], newName, { type: "image/webp" });
-	} catch {
-		// Browser can't decode HEIC (Chrome/Firefox) — upload original
-		return file;
-	}
-}
-
-// Wrap a promise with a timeout — resolves with fallback if it takes too long
-function withTimeout<T>(
-	promise: Promise<T>,
-	ms: number,
-	fallback: T,
-): Promise<T> {
-	return Promise.race([
-		promise,
-		new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
-	]);
-}
-
-// Generate thumbnail from video file using canvas (10s timeout)
-async function generateVideoThumbnail(file: File): Promise<Blob | null> {
-	const inner = new Promise<Blob | null>((resolve) => {
-		const video = document.createElement("video");
-		video.preload = "metadata";
-		video.muted = true;
-		video.playsInline = true;
-
-		video.onloadeddata = () => {
-			// Seek to 1 second or 10% of duration, whichever is less
-			video.currentTime = Math.min(1, video.duration * 0.1);
-		};
-
-		video.onseeked = () => {
-			const canvas = document.createElement("canvas");
-			canvas.width = 400;
-			canvas.height = 400;
-
-			const ctx = canvas.getContext("2d");
-			if (!ctx) {
-				resolve(null);
-				return;
-			}
-
-			// Calculate cover dimensions
-			const videoAspect = video.videoWidth / video.videoHeight;
-			let sx = 0,
-				sy = 0,
-				sw = video.videoWidth,
-				sh = video.videoHeight;
-
-			if (videoAspect > 1) {
-				sw = video.videoHeight;
-				sx = (video.videoWidth - sw) / 2;
-			} else {
-				sh = video.videoWidth;
-				sy = (video.videoHeight - sh) / 2;
-			}
-
-			ctx.drawImage(video, sx, sy, sw, sh, 0, 0, 400, 400);
-
-			canvas.toBlob(
-				(blob) => {
-					URL.revokeObjectURL(video.src);
-					resolve(blob);
-				},
-				"image/webp",
-				0.8,
-			);
-		};
-
-		video.onerror = () => {
-			URL.revokeObjectURL(video.src);
-			resolve(null);
-		};
-
-		video.src = URL.createObjectURL(file);
-	});
-
-	return withTimeout(inner, 10_000, null);
-}
-
-// Get video duration in seconds (5s timeout)
-async function getVideoDuration(file: File): Promise<number> {
-	const inner = new Promise<number>((resolve) => {
-		const video = document.createElement("video");
-		video.preload = "metadata";
-
-		video.onloadedmetadata = () => {
-			URL.revokeObjectURL(video.src);
-			resolve(Math.round(video.duration));
-		};
-
-		video.onerror = () => {
-			URL.revokeObjectURL(video.src);
-			resolve(0);
-		};
-
-		video.src = URL.createObjectURL(file);
-	});
-
-	return withTimeout(inner, 5_000, 0);
 }
 
 // Format duration as mm:ss
@@ -209,49 +88,22 @@ export function PhotoUpload({
 			setTotalUploads(files.length);
 			setCurrentUpload(0);
 
-			const videoTypes = [
-				"video/mp4",
-				"video/quicktime",
-				"video/webm",
-				"video/x-m4v",
-			];
-
 			let uploaded = 0;
-			for (let file of Array.from(files)) {
+			for (const file of Array.from(files)) {
 				try {
-					// Convert HEIC/HEIF to WebP before upload
-					file = await convertHeicToWebP(file);
-
-					const isVideo = videoTypes.includes(file.type);
-
-					// Generate thumbnail and duration for videos
-					let thumbnail: Blob | null = null;
-					let duration: number | null = null;
-
-					if (isVideo) {
-						setUploadProgress({ phase: "preparing", percent: 10 });
-						const [thumb, dur] = await Promise.all([
-							generateVideoThumbnail(file),
-							getVideoDuration(file),
-						]);
-						thumbnail = thumb;
-						duration = dur;
-					}
-
-					// Upload file (auto-selects single PUT vs multipart)
-					const result = await uploadFile(
+					// Upload file via CF Images (images) or CF Stream (videos)
+					// No client-side HEIC conversion needed — CF Images handles HEIC natively
+					// No client-side thumbnail/duration extraction needed — CF handles both
+					const result = await uploadMediaViaCF(
 						file,
 						qrToken,
 						guestId,
 						(progress) => setUploadProgress(progress),
-						thumbnail,
-						duration,
 					);
 
 					// Add to media list
 					setMediaList((prev) => [
 						{
-							duration: duration ?? undefined,
 							fileName: file.name,
 							fullUrl: `/api/photos/${result.id}/full`,
 							id: result.id,
