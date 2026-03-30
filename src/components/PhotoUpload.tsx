@@ -1,12 +1,7 @@
 import { Play, TrashIcon, XIcon } from "@phosphor-icons/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { BrokenHeart, PhotoUploadAnimation } from "@/components/PixelArt";
-import {
-	type UploadProgress,
-	confirmUpload,
-	getPresignedUrl,
-	uploadToR2,
-} from "@/utils/media-upload";
+import { type UploadProgress, uploadFile } from "@/utils/media-upload";
 
 interface Media {
 	id: string;
@@ -185,18 +180,12 @@ export function PhotoUpload({
 				try {
 					const isVideo = videoTypes.includes(file.type);
 
-					// === PRESIGNED URL FLOW (for all uploads) ===
-					setUploadProgress({ phase: "preparing", percent: 0 });
-
-					// 1. Get presigned URL
-					const presignData = await getPresignedUrl(file, qrToken, guestId);
-
-					// 2. Generate thumbnail and duration for videos
+					// Generate thumbnail and duration for videos
 					let thumbnail: Blob | null = null;
 					let duration: number | null = null;
 
 					if (isVideo) {
-						setUploadProgress({ phase: "preparing", percent: 25 });
+						setUploadProgress({ phase: "preparing", percent: 10 });
 						const [thumb, dur] = await Promise.all([
 							generateVideoThumbnail(file),
 							getVideoDuration(file),
@@ -205,33 +194,20 @@ export function PhotoUpload({
 						duration = dur;
 					}
 
-					// 3. Upload directly to R2
-					setUploadProgress({ phase: "uploading", percent: 0 });
-					await uploadToR2(presignData.uploadUrl, file, (percent) => {
-						setUploadProgress({ phase: "uploading", percent });
-					});
-
-					// 4. Confirm upload
-					setUploadProgress({ phase: "confirming", percent: 100 });
-					const confirmed = await confirmUpload(
-						presignData,
+					// Upload file (auto-selects single PUT vs multipart)
+					const result = await uploadFile(
 						file,
 						qrToken,
+						guestId,
+						(progress) => setUploadProgress(progress),
 						thumbnail,
 						duration,
 					);
 
-					const result = {
-						id: confirmed.id,
-						mediaType: confirmed.mediaType,
-						duration: duration ?? undefined,
-					};
-
 					// Add to media list
-					setUploadProgress({ phase: "done", percent: 100 });
 					setMediaList((prev) => [
 						{
-							duration: result.duration,
+							duration: duration ?? undefined,
 							fileName: file.name,
 							fullUrl: `/api/photos/${result.id}/full`,
 							id: result.id,
