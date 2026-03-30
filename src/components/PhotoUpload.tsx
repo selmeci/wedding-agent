@@ -13,9 +13,21 @@ interface Media {
 	duration?: number;
 }
 
-// Generate thumbnail from video file using canvas
+// Wrap a promise with a timeout — resolves with fallback if it takes too long
+function withTimeout<T>(
+	promise: Promise<T>,
+	ms: number,
+	fallback: T,
+): Promise<T> {
+	return Promise.race([
+		promise,
+		new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
+	]);
+}
+
+// Generate thumbnail from video file using canvas (10s timeout)
 async function generateVideoThumbnail(file: File): Promise<Blob | null> {
-	return new Promise((resolve) => {
+	const inner = new Promise<Blob | null>((resolve) => {
 		const video = document.createElement("video");
 		video.preload = "metadata";
 		video.muted = true;
@@ -71,11 +83,13 @@ async function generateVideoThumbnail(file: File): Promise<Blob | null> {
 
 		video.src = URL.createObjectURL(file);
 	});
+
+	return withTimeout(inner, 10_000, null);
 }
 
-// Get video duration in seconds
+// Get video duration in seconds (5s timeout)
 async function getVideoDuration(file: File): Promise<number> {
-	return new Promise((resolve) => {
+	const inner = new Promise<number>((resolve) => {
 		const video = document.createElement("video");
 		video.preload = "metadata";
 
@@ -91,6 +105,8 @@ async function getVideoDuration(file: File): Promise<number> {
 
 		video.src = URL.createObjectURL(file);
 	});
+
+	return withTimeout(inner, 5_000, 0);
 }
 
 // Format duration as mm:ss
