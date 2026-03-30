@@ -173,29 +173,11 @@ export function GalleryPage({ token }: GalleryPageProps) {
 		setCurrentIndex((i) => Math.min(allMedia.length - 1, i + 1));
 	}, [allMedia.length]);
 
-	// Download current media file
+	// Download current media file (original from R2)
 	const handleDownload = useCallback(async () => {
 		if (!currentMedia) return;
-
-		// Determine download URL based on storage location
-		let url: string;
-		if (
-			currentMedia.cloudflareImageId &&
-			!currentMedia.cloudflareImageId.startsWith("migration_skipped") &&
-			cfImagesHash
-		) {
-			// CF Images — use public variant (full resolution)
-			url = `https://imagedelivery.net/${cfImagesHash}/${currentMedia.cloudflareImageId}/public`;
-		} else if (currentMedia.streamVideoUid && cfStreamCode) {
-			// CF Stream — direct download not easily available via iframe URL
-			// Use R2 fallback if still there, otherwise skip
-			url = `/api/photos/${currentMedia.id}/file`;
-		} else {
-			// R2 fallback
-			url = `/api/photos/${currentMedia.id}/file`;
-		}
-
-		// Fetch and trigger download (needed for cross-origin CF URLs)
+		// All uploads (new + migrated) have originals stored in R2 via /api/photos/:id/file
+		const url = `/api/photos/${currentMedia.id}/file`;
 		try {
 			const res = await fetch(url);
 			if (!res.ok) throw new Error("Download failed");
@@ -209,10 +191,9 @@ export function GalleryPage({ token }: GalleryPageProps) {
 			document.body.removeChild(a);
 			URL.revokeObjectURL(blobUrl);
 		} catch {
-			// Fallback: open in new tab
 			window.open(url, "_blank");
 		}
-	}, [currentMedia, cfImagesHash, cfStreamCode]);
+	}, [currentMedia]);
 
 	// Re-upload file for current media (replaces R2 version with CF)
 	const handleReupload = useCallback(

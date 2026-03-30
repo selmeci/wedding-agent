@@ -158,22 +158,21 @@ export async function uploadMediaViaCF(
 		},
 	);
 
-	// Step 3: Confirm upload with our Worker (saves metadata to D1)
+	// Step 3: Confirm upload with our Worker (saves metadata to D1 + original to R2)
 	onProgress?.({ phase: "confirming", percent: 100 });
 
-	const confirmBody: Record<string, unknown> = {
-		mediaId: uploadUrlData.mediaId,
-		fileName: file.name,
-		guestId: resolvedGuestId,
-		mediaType,
-		fileSize: file.size,
-		mimeType: file.type,
-	};
-
+	const confirmForm = new FormData();
+	confirmForm.append("originalFile", file, file.name);
+	confirmForm.append("mediaId", uploadUrlData.mediaId);
+	confirmForm.append("fileName", file.name);
+	confirmForm.append("guestId", resolvedGuestId || "");
+	confirmForm.append("mediaType", mediaType);
+	confirmForm.append("fileSize", String(file.size));
+	confirmForm.append("mimeType", file.type);
 	if (mediaType === "image") {
-		confirmBody.cloudflareImageId = uploadUrlData.mediaId;
+		confirmForm.append("cloudflareImageId", uploadUrlData.mediaId);
 	} else {
-		confirmBody.streamVideoUid = uploadUrlData.mediaId;
+		confirmForm.append("streamVideoUid", uploadUrlData.mediaId);
 	}
 
 	const result = await retryWithBackoff(
@@ -181,10 +180,9 @@ export async function uploadMediaViaCF(
 			const response = await fetch("/api/media/confirm", {
 				method: "POST",
 				headers: {
-					"Content-Type": "application/json",
 					"x-qr-token": qrToken,
 				},
-				body: JSON.stringify(confirmBody),
+				body: confirmForm,
 			});
 
 			if (!response.ok) {

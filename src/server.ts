@@ -822,18 +822,19 @@ app.post("/api/media/confirm", async (c) => {
 			return c.json({ error: "Invalid QR token" }, 403);
 		}
 
-		const body = await c.req.json<{
-			mediaId: string;
-			cloudflareImageId?: string;
-			streamVideoUid?: string;
-			fileName: string;
-			guestId: string;
-			mediaType: "image" | "video";
-			fileSize?: number;
-			mimeType?: string;
-		}>();
-
-		const { mediaId, fileName, guestId, mediaType } = body;
+		const formData = await c.req.formData();
+		const mediaId = formData.get("mediaId") as string;
+		const fileName = formData.get("fileName") as string;
+		const guestId = formData.get("guestId") as string;
+		const mediaType = formData.get("mediaType") as "image" | "video";
+		const fileSize = Number(formData.get("fileSize") || 0);
+		const mimeType =
+			(formData.get("mimeType") as string) || "application/octet-stream";
+		const cloudflareImageId = formData.get("cloudflareImageId") as
+			| string
+			| null;
+		const streamVideoUid = formData.get("streamVideoUid") as string | null;
+		const originalFile = formData.get("originalFile") as File | null;
 
 		if (!mediaId || !fileName || !guestId || !mediaType) {
 			console.log("❌ POST /api/media/confirm - Missing required fields");
@@ -849,53 +850,64 @@ app.post("/api/media/confirm", async (c) => {
 			return c.json({ error: "Invalid guest ID" }, 403);
 		}
 
-		if (body.cloudflareImageId) {
-			// CF Images upload confirm
+		// Store original file in R2 for download/backup
+		let r2Key: string | null = null;
+		if (originalFile && originalFile.size > 0) {
+			const ext = fileName.split(".").pop()?.toLowerCase() || "bin";
+			r2Key = `groups/${group.id}/originals/${mediaId}.${ext}`;
+			await c.env.BUCKET.put(r2Key, await originalFile.arrayBuffer(), {
+				httpMetadata: { contentType: mimeType },
+			});
 			console.log(
-				`💾 POST /api/media/confirm - CF Images: id=${mediaId}, cfImageId=${body.cloudflareImageId}`,
+				`📦 Original stored in R2: ${r2Key} (${(originalFile.size / 1024 / 1024).toFixed(2)} MB)`,
+			);
+		}
+
+		if (cloudflareImageId) {
+			console.log(
+				`💾 POST /api/media/confirm - CF Images: id=${mediaId}, cfImageId=${cloudflareImageId}`,
 			);
 			await db.insert(photoUploads).values({
 				id: mediaId,
 				fileName,
-				fileSize: body.fileSize || 0,
-				mimeType: body.mimeType || "image/jpeg",
+				fileSize,
+				mimeType,
 				mediaType: "image",
-				cloudflareImageId: body.cloudflareImageId,
+				cloudflareImageId,
+				r2Key,
 				guestId,
 			});
 
-			console.log(`✅ POST /api/media/confirm - CF Images success: ${mediaId}`);
 			return c.json({
-				success: true,
 				id: mediaId,
 				mediaType: "image",
 				fileName,
+				success: true,
 				uploadedAt: new Date().toISOString(),
 			});
 		}
 
-		if (body.streamVideoUid) {
-			// CF Stream upload confirm
+		if (streamVideoUid) {
 			console.log(
-				`💾 POST /api/media/confirm - CF Stream: id=${mediaId}, streamUid=${body.streamVideoUid}`,
+				`💾 POST /api/media/confirm - CF Stream: id=${mediaId}, streamUid=${streamVideoUid}`,
 			);
 			await db.insert(photoUploads).values({
 				id: mediaId,
 				fileName,
-				fileSize: body.fileSize || 0,
-				mimeType: body.mimeType || "video/mp4",
+				fileSize,
+				mimeType,
 				mediaType: "video",
-				streamVideoUid: body.streamVideoUid,
+				streamVideoUid,
 				streamReady: false,
+				r2Key,
 				guestId,
 			});
 
-			console.log(`✅ POST /api/media/confirm - CF Stream success: ${mediaId}`);
 			return c.json({
-				success: true,
 				id: mediaId,
 				mediaType: "video",
 				fileName,
+				success: true,
 				uploadedAt: new Date().toISOString(),
 			});
 		}
