@@ -532,6 +532,28 @@ app.get("/api/photos", async (c) => {
 });
 
 // GET /api/photos/:id/thumbnail - Get thumbnail (edge-cached)
+// Internal raw image endpoint — serves original R2 bytes (used by Image Resizing)
+app.get("/api/photos/:id/raw", async (c) => {
+	const photoId = c.req.param("id");
+	const db = createDb(c.env.DB);
+
+	const media = await db.query.photoUploads.findFirst({
+		where: (t, { eq }) => eq(t.id, photoId),
+	});
+	if (!media) return c.json({ error: "Not found" }, 404);
+
+	const object = await c.env.BUCKET.get(media.r2Key);
+	if (!object) return c.json({ error: "File not found" }, 404);
+
+	return new Response(object.body, {
+		headers: {
+			"Content-Type": media.mimeType,
+			"Cache-Control": "public, max-age=31536000",
+		},
+	});
+});
+
+// GET /api/photos/:id/thumbnail - Resized thumbnail via CF Image Resizing (edge-cached)
 app.get("/api/photos/:id/thumbnail", async (c) => {
 	const photoId = c.req.param("id");
 
@@ -558,7 +580,7 @@ app.get("/api/photos/:id/thumbnail", async (c) => {
 
 		let response: Response;
 
-		// For videos, return the stored thumbnail
+		// For videos, return the stored thumbnail (already WebP)
 		if (media.mediaType === "video" && media.thumbnailR2Key) {
 			const thumbnail = await c.env.BUCKET.get(media.thumbnailR2Key);
 			if (!thumbnail) {
@@ -572,18 +594,42 @@ app.get("/api/photos/:id/thumbnail", async (c) => {
 				},
 			});
 		} else {
-			// For images, serve from R2
-			const object = await c.env.BUCKET.get(media.r2Key);
-			if (!object) {
-				return c.json({ error: "Photo file not found in storage" }, 404);
-			}
-
-			response = new Response(object.body, {
-				headers: {
-					"Cache-Control": "public, max-age=31536000",
-					"Content-Type": media.mimeType,
+			// For images, use CF Image Resizing to create real thumbnails
+			// This handles HEIC, HEIF, JPEG, PNG → optimized WebP at 400x400
+			const origin = new URL(c.req.url).origin;
+			const rawUrl = `${origin}/api/photos/${photoId}/raw`;
+			response = await fetch(rawUrl, {
+				cf: {
+					image: {
+						width: 400,
+						height: 400,
+						fit: "cover" as const,
+						format: "webp" as const,
+					},
 				},
 			});
+
+			if (!response.ok) {
+				// Fallback: serve original from R2 if Image Resizing fails
+				const object = await c.env.BUCKET.get(media.r2Key);
+				if (!object) {
+					return c.json({ error: "Photo file not found in storage" }, 404);
+				}
+				response = new Response(object.body, {
+					headers: {
+						"Cache-Control": "public, max-age=31536000",
+						"Content-Type": media.mimeType,
+					},
+				});
+			} else {
+				// Ensure cache headers on transformed response
+				response = new Response(response.body, {
+					headers: {
+						"Cache-Control": "public, max-age=31536000",
+						"Content-Type": "image/webp",
+					},
+				});
+			}
 		}
 
 		// Store in edge cache (non-blocking)
@@ -595,7 +641,7 @@ app.get("/api/photos/:id/thumbnail", async (c) => {
 	}
 });
 
-// GET /api/photos/:id/full - Get full resolution (edge-cached)
+// GET /api/photos/:id/full - Get full resolution (edge-cached, HEIC auto-converted)
 app.get("/api/photos/:id/full", async (c) => {
 	const photoId = c.req.param("id");
 
@@ -620,18 +666,52 @@ app.get("/api/photos/:id/full", async (c) => {
 			return c.json({ error: "Photo not found" }, 404);
 		}
 
-		const object = await c.env.BUCKET.get(photo.r2Key);
-		if (!object) {
-			return c.json({ error: "Photo file not found in storage" }, 404);
-		}
+		let response: Response;
+		const heicTypes = ["image/heic", "image/heif"];
 
-		const response = new Response(object.body, {
-			headers: {
-				"Cache-Control": "public, max-age=31536000",
-				"Content-Disposition": `inline; filename="${photo.fileName}"`,
-				"Content-Type": photo.mimeType,
-			},
-		});
+		if (photo.mediaType === "image" && heicTypes.includes(photo.mimeType)) {
+			// Convert HEIC/HEIF to WebP via CF Image Resizing (preserves full resolution)
+			const origin = new URL(c.req.url).origin;
+			const rawUrl = `${origin}/api/photos/${photoId}/raw`;
+			response = await fetch(rawUrl, {
+				cf: { image: { format: "webp" as const } },
+			});
+
+			if (response.ok) {
+				response = new Response(response.body, {
+					headers: {
+						"Cache-Control": "public, max-age=31536000",
+						"Content-Disposition": `inline; filename="${photo.fileName.replace(/\.(heic|heif)$/i, ".webp")}"`,
+						"Content-Type": "image/webp",
+					},
+				});
+			} else {
+				// Fallback to raw R2 if Image Resizing fails
+				const object = await c.env.BUCKET.get(photo.r2Key);
+				if (!object) return c.json({ error: "File not found" }, 404);
+				response = new Response(object.body, {
+					headers: {
+						"Cache-Control": "public, max-age=31536000",
+						"Content-Disposition": `inline; filename="${photo.fileName}"`,
+						"Content-Type": photo.mimeType,
+					},
+				});
+			}
+		} else {
+			// Non-HEIC: serve original from R2
+			const object = await c.env.BUCKET.get(photo.r2Key);
+			if (!object) {
+				return c.json({ error: "Photo file not found in storage" }, 404);
+			}
+
+			response = new Response(object.body, {
+				headers: {
+					"Cache-Control": "public, max-age=31536000",
+					"Content-Disposition": `inline; filename="${photo.fileName}"`,
+					"Content-Type": photo.mimeType,
+				},
+			});
+		}
 
 		// Store in edge cache (non-blocking)
 		c.executionCtx.waitUntil(cache.put(cacheKey, response.clone()));
