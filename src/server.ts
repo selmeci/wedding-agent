@@ -16,6 +16,7 @@ import {
 	guests,
 	photoUploads,
 } from "@/db";
+import { fetchGalleryMedia } from "@/db/queries/gallery-media";
 
 export * from "@/agents";
 
@@ -275,6 +276,65 @@ app.get("/agents/report/:qrToken/reset", async (c) => {
 	await agent.fetch(resetRequest);
 
 	return c.json({ message: "Report agent history cleared successfully" }, 200);
+});
+
+// Constant-time token comparison for gallery/report endpoints
+function secureTokenEquals(token: string, expected: string): boolean {
+	const encoder = new TextEncoder();
+	const a = encoder.encode(token);
+	const b = encoder.encode(expected);
+	if (a.byteLength !== b.byteLength) return false;
+	// timingSafeEqual is available in Cloudflare Workers runtime
+	return (
+		crypto.subtle as unknown as {
+			timingSafeEqual(a: BufferSource, b: BufferSource): boolean;
+		}
+	).timingSafeEqual(a, b);
+}
+
+// Gallery API - Token-protected media listing
+app.get("/api/gallery/media", async (c) => {
+	const token = c.req.query("token");
+	const expectedToken = c.env.SECRET_REPORT_TOKEN;
+
+	if (!token || !expectedToken || !secureTokenEquals(token, expectedToken)) {
+		return c.json({ error: "Unauthorized" }, 401);
+	}
+
+	try {
+		const db = createDb(c.env.DB);
+		const groups = await fetchGalleryMedia(db);
+		return c.json({ groups }, 200, {
+			"Cache-Control": "private, max-age=60",
+		});
+	} catch (error) {
+		console.error("Gallery media fetch error:", error);
+		return c.json(
+			{
+				details: error instanceof Error ? error.message : String(error),
+				error: "Failed to fetch gallery media",
+			},
+			500,
+		);
+	}
+});
+
+// Gallery page - Token-protected media gallery
+app.get("/gallery", async (c) => {
+	const token = c.req.query("token");
+	const expectedToken = c.env.SECRET_REPORT_TOKEN;
+
+	if (!token || !expectedToken || !secureTokenEquals(token, expectedToken)) {
+		return c.text("Unauthorized", 401);
+	}
+
+	const { renderGalleryPage } = await import("@/gallery-template");
+	const html = renderGalleryPage(token);
+
+	return c.html(html, 200, {
+		"Cache-Control": "private, no-store",
+		"Referrer-Policy": "no-referrer",
+	});
 });
 
 // Photo upload API

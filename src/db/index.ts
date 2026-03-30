@@ -1,6 +1,7 @@
 import type { DrizzleD1Database } from "drizzle-orm/d1";
 import { drizzle } from "drizzle-orm/d1";
 import { accommodations } from "./accommodations";
+import { audioRecordings } from "./audio-recordings";
 import { chatMessages } from "./chat-messages";
 import { chatSessions } from "./chat-sessions";
 import {
@@ -10,10 +11,10 @@ import {
 import { guestGroups, guestGroupsRelations } from "./guest-groups";
 import { guestResponses } from "./guest-responses";
 import { guests, guestsRelations } from "./guests";
-import { photoUploads } from "./photo-uploads";
-import { audioRecordings } from "./audio-recordings";
+import { photoUploads, photoUploadsRelations } from "./photo-uploads";
 
 export * from "./accommodations";
+export * from "./audio-recordings";
 export * from "./chat-messages";
 export * from "./chat-sessions";
 export * from "./guest-group-responses";
@@ -21,10 +22,10 @@ export * from "./guest-groups";
 export * from "./guest-responses";
 export * from "./guests";
 export * from "./photo-uploads";
-export * from "./audio-recordings";
 
 export const schema = {
 	accommodations,
+	audioRecordings,
 	chatMessages,
 	chatSessions,
 	guestGroupResponses,
@@ -35,7 +36,7 @@ export const schema = {
 	guests,
 	guestsRelations,
 	photoUploads,
-	audioRecordings,
+	photoUploadsRelations,
 } as const;
 
 export type Schema = typeof schema;
