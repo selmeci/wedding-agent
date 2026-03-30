@@ -13,10 +13,9 @@
     "mode": "smart"
   },
   "ai": {
-    "binding": "AI",
-    "remote": true
+    "binding": "AI"
   },
-  "r2_buckets": [{ "binding": "BUCKET", "bucket_name": "wedding-photos", "remote": true }],
+  "r2_buckets": [{ "binding": "BUCKET", "bucket_name": "wedding-photos" }],
   "d1_databases": [
     {
       "binding": "DB",
@@ -27,7 +26,8 @@
   ],
   "assets": {
     "binding": "ASSETS",
-    "directory": "dist/client"
+    "directory": "dist/client",
+    "not_found_handling": "single-page-application"
   },
   "durable_objects": {
     "bindings": [
