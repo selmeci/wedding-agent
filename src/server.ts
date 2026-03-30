@@ -1088,6 +1088,11 @@ app.post("/api/media/multipart/complete", async (c) => {
 			return c.json({ error: "Missing required fields" }, 400);
 		}
 
+		// Verify r2Key belongs to this group
+		if (!r2Key.startsWith(`groups/${group.id}/`)) {
+			return c.json({ error: "Unauthorized access to resource" }, 403);
+		}
+
 		console.log(
 			`📋 POST /api/media/multipart/complete - uploadId: ${uploadId.substring(0, 8)}..., ${parts.length} parts`,
 		);
@@ -1149,6 +1154,11 @@ app.post("/api/media/multipart/abort", async (c) => {
 
 		if (!uploadId || !r2Key) {
 			return c.json({ error: "Missing required fields" }, 400);
+		}
+
+		// Verify r2Key belongs to this group
+		if (!r2Key.startsWith(`groups/${group.id}/`)) {
+			return c.json({ error: "Unauthorized access to resource" }, 403);
 		}
 
 		const { createR2Client, abortMultipartUpload } = await import(

@@ -225,6 +225,7 @@ async function uploadPartsWithConcurrency(
 	const completedParts: { partNumber: number; etag: string }[] = [];
 	let completedCount = 0;
 	const totalParts = multipart.parts.length;
+	let cancelled = false;
 
 	// Process parts with limited concurrency
 	const queue = [...multipart.parts];
@@ -233,29 +234,41 @@ async function uploadPartsWithConcurrency(
 	for (let i = 0; i < Math.min(MAX_CONCURRENT_PARTS, queue.length); i++) {
 		workers.push(
 			(async () => {
-				while (queue.length > 0) {
+				while (queue.length > 0 && !cancelled) {
 					const part = queue.shift();
 					if (!part) break;
 
-					const start = (part.partNumber - 1) * multipart.partSize;
-					const end = Math.min(start + multipart.partSize, file.size);
-					const blob = file.slice(start, end);
+					try {
+						const start = (part.partNumber - 1) * multipart.partSize;
+						const end = Math.min(start + multipart.partSize, file.size);
+						const blob = file.slice(start, end);
 
-					const etag = await uploadPart(part.uploadUrl, blob, file.type);
+						const etag = await uploadPart(part.uploadUrl, blob, file.type);
 
-					completedParts.push({
-						partNumber: part.partNumber,
-						etag,
-					});
+						completedParts.push({
+							partNumber: part.partNumber,
+							etag,
+						});
 
-					completedCount++;
-					onProgress?.(Math.round((completedCount / totalParts) * 100));
+						completedCount++;
+						onProgress?.(Math.round((completedCount / totalParts) * 100));
+					} catch (error) {
+						cancelled = true;
+						throw error;
+					}
 				}
 			})(),
 		);
 	}
 
-	await Promise.all(workers);
+	const results = await Promise.allSettled(workers);
+	const firstError = results.find(
+		(r): r is PromiseRejectedResult => r.status === "rejected",
+	);
+	if (firstError) {
+		throw firstError.reason;
+	}
+
 	return completedParts;
 }
 
