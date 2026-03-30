@@ -27,14 +27,23 @@ function getGalleryToken(): string | null {
 const root = createRoot(document.getElementById("app")!);
 
 function AppRoot() {
+	// DEBUG: Log routing decision
+	console.log("[Gallery Debug] pathname:", window.location.pathname);
+	console.log("[Gallery Debug] search:", window.location.search);
+	console.log("[Gallery Debug] full href:", window.location.href);
+
 	// Gallery route: /gallery?token=...
 	const galleryToken = getGalleryToken();
+	console.log("[Gallery Debug] getGalleryToken() returned:", galleryToken);
+
 	if (galleryToken !== null) {
+		console.log("[Gallery Debug] Rendering GalleryPage");
 		return <GalleryPage token={galleryToken} />;
 	}
 
 	// Normal app route
 	const isAuthorized = checkAuthorization();
+	console.log("[Gallery Debug] checkAuthorization() returned:", isAuthorized);
 	return isAuthorized ? <App /> : <UnauthorizedPage />;
 }
 

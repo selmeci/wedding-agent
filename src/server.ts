@@ -1522,8 +1522,14 @@ app.get("/api/couple/verify", async (c) => {
 app.get("/*", async (c) => {
 	const url = new URL(c.req.url);
 
+	console.log(`[SPA] Catch-all hit: ${url.pathname}${url.search}`);
+
 	// Try to fetch the requested asset
 	const assetResponse = await c.env.ASSETS.fetch(c.req.raw);
+
+	console.log(
+		`[SPA] ASSETS response for ${url.pathname}: status=${assetResponse.status}, ok=${assetResponse.ok}, type=${assetResponse.headers.get("content-type")}, location=${assetResponse.headers.get("location")}`,
+	);
 
 	// If asset exists and is a real file (not a redirect/404), return it
 	if (assetResponse.ok) {
@@ -1531,11 +1537,16 @@ app.get("/*", async (c) => {
 	}
 
 	// Otherwise, serve index.html for SPA routing (gallery, etc.)
+	console.log(`[SPA] Serving index.html for SPA route: ${url.pathname}`);
 	const indexRequest = new Request(
 		new URL("/index.html", url.origin),
 		c.req.raw,
 	);
-	return await c.env.ASSETS.fetch(indexRequest);
+	const indexResponse = await c.env.ASSETS.fetch(indexRequest);
+	console.log(
+		`[SPA] index.html response: status=${indexResponse.status}, ok=${indexResponse.ok}, type=${indexResponse.headers.get("content-type")}`,
+	);
+	return indexResponse;
 });
 
 app.get("/version", (c) => {
