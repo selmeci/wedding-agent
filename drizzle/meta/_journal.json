@@ -43,6 +43,13 @@
       "when": 1769261714247,
       "tag": "0005_old_jamie_braddock",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1774898815845,
+      "tag": "0006_thankful_hellfire_club",
+      "breakpoints": true
     }
   ]
 }

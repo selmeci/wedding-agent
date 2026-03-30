@@ -56,7 +56,10 @@
   },
   "vars": {
     "BREVO_SENDER_EMAIL": "noreply@ivonka-roman-forever.love",
-    "BREVO_SENDER_NAME": "Wedding RSVP Bot"
+    "BREVO_SENDER_NAME": "Wedding RSVP Bot",
+    "CF_ACCOUNT_ID": "fb0866add4b7bc5813b01a16ce090bfc",
+    "CF_IMAGES_ACCOUNT_HASH": "RGjy3nJORK4YV7rkav2-Zg",
+    "CF_STREAM_CUSTOMER_CODE": "fb0866add4b7bc5813b01a16ce090bfc"
   }
   /**
    * Smart Placement
