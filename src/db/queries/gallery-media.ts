@@ -10,9 +10,6 @@ export type GalleryGroup = {
 		mediaType: string;
 		duration: number | null;
 		uploadedAt: Date;
-		cloudflareImageId: string | null;
-		streamVideoUid: string | null;
-		streamReady: boolean | null;
 	}[];
 };
 
@@ -39,13 +36,10 @@ export async function fetchGalleryMedia(db: Database): Promise<GalleryGroup[]> {
 			const media = group.guests
 				.flatMap((guest) => guest.photoUploads)
 				.map((upload) => ({
-					cloudflareImageId: upload.cloudflareImageId,
 					duration: upload.duration,
 					fileName: upload.fileName,
 					id: upload.id,
 					mediaType: upload.mediaType,
-					streamReady: upload.streamReady,
-					streamVideoUid: upload.streamVideoUid,
 					uploadedAt: upload.uploadedAt,
 				}))
 				.sort((a, b) => b.uploadedAt.getTime() - a.uploadedAt.getTime());

@@ -310,20 +310,160 @@ app.get("/api/gallery/media", async (c) => {
 	try {
 		const db = createDb(c.env.DB);
 		const groups = await fetchGalleryMedia(db);
-		return c.json(
-			{
-				cfImagesHash: c.env.CF_IMAGES_ACCOUNT_HASH,
-				cfStreamCode: c.env.CF_STREAM_CUSTOMER_CODE,
-				groups,
-			},
-			200,
-			{
-				"Cache-Control": "private, max-age=60",
-			},
-		);
+		return c.json({ groups }, 200, {
+			"Cache-Control": "private, max-age=60",
+		});
 	} catch (error) {
 		console.error("Gallery media fetch error:", error);
 		return c.json({ error: "Failed to fetch gallery media" }, 500);
+	}
+});
+
+// Photo upload API
+// POST /api/photos - Upload photo (direct, max 100MB)
+app.post("/api/photos", async (c) => {
+	console.log("📤 POST /api/photos - Direct upload started");
+	try {
+		// Get QR token from header for auth
+		const qrToken = c.req.header("x-qr-token");
+		if (!qrToken) {
+			console.log("❌ POST /api/photos - Missing QR token");
+			return c.json({ error: "Missing QR token" }, 401);
+		}
+
+		const db = createDb(c.env.DB);
+
+		// Validate QR token and get group
+		const group = await db.query.guestGroups.findFirst({
+			where: (t, { eq }) => eq(t.qrToken, qrToken),
+			with: { guests: true },
+		});
+
+		if (!group) {
+			return c.json({ error: "Invalid QR token" }, 403);
+		}
+
+		// Get guestId from header, or use first guest from group
+		let guestId = c.req.header("x-guest-id");
+
+		if (!guestId && group.guests.length > 0) {
+			guestId = group.guests[0].id;
+		}
+
+		if (!guestId) {
+			return c.json({ error: "No guest available in group" }, 400);
+		}
+
+		// Parse multipart form data
+		const formData = await c.req.formData();
+		const file = formData.get("file") as File | null;
+
+		if (!file) {
+			console.log("❌ POST /api/photos - No file provided");
+			return c.json({ error: "No file provided" }, 400);
+		}
+
+		console.log(
+			`📁 POST /api/photos - File: ${file.name}, Size: ${(file.size / 1024 / 1024).toFixed(2)}MB, Type: ${file.type}`,
+		);
+
+		// Validate file type
+		const imageTypes = [
+			"image/jpeg",
+			"image/png",
+			"image/heic",
+			"image/heif",
+			"image/webp",
+		];
+		const videoTypes = [
+			"video/mp4",
+			"video/quicktime",
+			"video/webm",
+			"video/x-m4v",
+		];
+		const allowedTypes = [...imageTypes, ...videoTypes];
+		// Strip codec parameters (e.g., "video/mp4;codecs=hev1" -> "video/mp4")
+		const baseType = file.type.split(";")[0].trim();
+		if (!allowedTypes.includes(baseType)) {
+			console.log(`❌ POST /api/photos - Invalid file type: ${file.type}`);
+			return c.json({ error: "Invalid file type" }, 400);
+		}
+
+		const isVideo = videoTypes.includes(baseType);
+		const mediaType = isVideo ? "video" : "image";
+
+		// Validate file size (100MB max - Cloudflare Workers limit)
+		const maxSize = 100 * 1024 * 1024;
+		if (file.size > maxSize) {
+			console.log(
+				`❌ POST /api/photos - File too large: ${(file.size / 1024 / 1024).toFixed(2)}MB > 100MB`,
+			);
+			return c.json({ error: "Súbor je príliš veľký (max 100MB)" }, 400);
+		}
+
+		// Get thumbnail and duration for videos
+		const thumbnailFile = formData.get("thumbnail") as File | null;
+		const durationStr = formData.get("duration") as string | null;
+		const duration = durationStr ? Number.parseInt(durationStr, 10) : null;
+
+		// Generate media ID and R2 key
+		const mediaId = crypto.randomUUID();
+		const fileExtension =
+			file.name.split(".").pop() || (isVideo ? "mp4" : "jpg");
+		const r2Key = `groups/${group.id}/photos/${mediaId}.${fileExtension}`;
+
+		// Upload to R2
+		console.log(`⬆️ POST /api/photos - Uploading to R2: ${r2Key}`);
+		await c.env.BUCKET.put(r2Key, file.stream(), {
+			httpMetadata: {
+				contentType: file.type,
+			},
+		});
+		console.log(`✅ POST /api/photos - R2 upload complete: ${r2Key}`);
+
+		// Upload thumbnail for videos
+		let thumbnailR2Key: string | null = null;
+		if (isVideo && thumbnailFile) {
+			thumbnailR2Key = `groups/${group.id}/photos/${mediaId}_thumb.webp`;
+			await c.env.BUCKET.put(thumbnailR2Key, thumbnailFile.stream(), {
+				httpMetadata: {
+					contentType: "image/webp",
+				},
+			});
+		}
+
+		// Save metadata to D1
+		await db.insert(photoUploads).values({
+			duration: isVideo && duration ? duration : null,
+			fileName: file.name,
+			fileSize: file.size,
+			guestId,
+			id: mediaId,
+			mediaType,
+			mimeType: file.type,
+			r2Key,
+			thumbnailR2Key,
+		});
+
+		console.log(
+			`✅ POST /api/photos - Success: ${mediaId} (${mediaType}, ${(file.size / 1024 / 1024).toFixed(2)}MB)`,
+		);
+		return c.json({
+			duration: isVideo && duration ? duration : undefined,
+			fileName: file.name,
+			id: mediaId,
+			mediaType,
+			uploadedAt: new Date().toISOString(),
+		});
+	} catch (error) {
+		console.error("❌ POST /api/photos - Error:", error);
+		return c.json(
+			{
+				details: error instanceof Error ? error.message : String(error),
+				error: "Failed to upload photo",
+			},
+			500,
+		);
 	}
 });
 
@@ -364,26 +504,21 @@ app.get("/api/photos", async (c) => {
 				guestIds.length > 0 ? inArray(t.guestId, guestIds) : undefined,
 		});
 
-		// Return photos with CF IDs for direct CDN delivery
+		// Return photos with thumbnail and full URLs
 		const photosWithUrls = photos.map((photo) => ({
-			cloudflareImageId: photo.cloudflareImageId,
 			duration: photo.duration,
 			fileName: photo.fileName,
+			fullUrl: `/api/photos/${photo.id}/full`,
 			id: photo.id,
 			mediaType: photo.mediaType,
-			streamReady: photo.streamReady,
-			streamVideoUid: photo.streamVideoUid,
+			thumbnailUrl: `/api/photos/${photo.id}/thumbnail`,
 			uploadedAt: photo.uploadedAt,
 		}));
 
 		console.log(
 			`✅ GET /api/photos - Found ${photos.length} items (${photos.filter((p) => p.mediaType === "video").length} videos, ${photos.filter((p) => p.mediaType === "image").length} images)`,
 		);
-		return c.json({
-			cfImagesHash: c.env.CF_IMAGES_ACCOUNT_HASH,
-			cfStreamCode: c.env.CF_STREAM_CUSTOMER_CODE,
-			photos: photosWithUrls,
-		});
+		return c.json({ photos: photosWithUrls });
 	} catch (error) {
 		console.error("❌ GET /api/photos - Error:", error);
 		return c.json(
@@ -396,7 +531,198 @@ app.get("/api/photos", async (c) => {
 	}
 });
 
-// DELETE /api/photos/:id - Delete photo/video
+// GET /api/photos/:id/thumbnail - Get thumbnail (edge-cached)
+// Internal raw image endpoint — serves original R2 bytes (used by Image Resizing)
+app.get("/api/photos/:id/raw", async (c) => {
+	const photoId = c.req.param("id");
+	const db = createDb(c.env.DB);
+
+	const media = await db.query.photoUploads.findFirst({
+		where: (t, { eq }) => eq(t.id, photoId),
+	});
+	if (!media) return c.json({ error: "Not found" }, 404);
+
+	const object = await c.env.BUCKET.get(media.r2Key);
+	if (!object) return c.json({ error: "File not found" }, 404);
+
+	return new Response(object.body, {
+		headers: {
+			"Content-Type": media.mimeType,
+			"Cache-Control": "public, max-age=31536000",
+		},
+	});
+});
+
+// GET /api/photos/:id/thumbnail - Resized thumbnail via CF Image Resizing (edge-cached)
+app.get("/api/photos/:id/thumbnail", async (c) => {
+	const photoId = c.req.param("id");
+
+	// Check Cloudflare edge cache first
+	const cache = (caches as unknown as { default: Cache }).default;
+	const cacheKey = new Request(new URL(c.req.url).toString(), {
+		method: "GET",
+	});
+	const cachedResponse = await cache.match(cacheKey);
+	if (cachedResponse) {
+		return cachedResponse;
+	}
+
+	try {
+		const db = createDb(c.env.DB);
+
+		const media = await db.query.photoUploads.findFirst({
+			where: (t, { eq }) => eq(t.id, photoId),
+		});
+
+		if (!media) {
+			return c.json({ error: "Media not found" }, 404);
+		}
+
+		let response: Response;
+
+		// For videos, return the stored thumbnail (already WebP)
+		if (media.mediaType === "video" && media.thumbnailR2Key) {
+			const thumbnail = await c.env.BUCKET.get(media.thumbnailR2Key);
+			if (!thumbnail) {
+				return c.json({ error: "Video thumbnail not found in storage" }, 404);
+			}
+
+			response = new Response(thumbnail.body, {
+				headers: {
+					"Cache-Control": "public, max-age=31536000",
+					"Content-Type": "image/webp",
+				},
+			});
+		} else {
+			// For images, use CF Image Resizing to create real thumbnails
+			// This handles HEIC, HEIF, JPEG, PNG → optimized WebP at 400x400
+			const origin = new URL(c.req.url).origin;
+			const rawUrl = `${origin}/api/photos/${photoId}/raw`;
+			response = await fetch(rawUrl, {
+				cf: {
+					image: {
+						width: 400,
+						height: 400,
+						fit: "cover" as const,
+						format: "webp" as const,
+					},
+				},
+			});
+
+			if (!response.ok) {
+				// Fallback: serve original from R2 if Image Resizing fails
+				const object = await c.env.BUCKET.get(media.r2Key);
+				if (!object) {
+					return c.json({ error: "Photo file not found in storage" }, 404);
+				}
+				response = new Response(object.body, {
+					headers: {
+						"Cache-Control": "public, max-age=31536000",
+						"Content-Type": media.mimeType,
+					},
+				});
+			} else {
+				// Ensure cache headers on transformed response
+				response = new Response(response.body, {
+					headers: {
+						"Cache-Control": "public, max-age=31536000",
+						"Content-Type": "image/webp",
+					},
+				});
+			}
+		}
+
+		// Store in edge cache (non-blocking)
+		c.executionCtx.waitUntil(cache.put(cacheKey, response.clone()));
+		return response;
+	} catch (error) {
+		console.error(`❌ GET /api/photos/${photoId}/thumbnail - Error:`, error);
+		return c.json({ error: "Failed to get thumbnail" }, 500);
+	}
+});
+
+// GET /api/photos/:id/full - Get full resolution (edge-cached, HEIC auto-converted)
+app.get("/api/photos/:id/full", async (c) => {
+	const photoId = c.req.param("id");
+
+	// Check Cloudflare edge cache first
+	const cache = (caches as unknown as { default: Cache }).default;
+	const cacheKey = new Request(new URL(c.req.url).toString(), {
+		method: "GET",
+	});
+	const cachedResponse = await cache.match(cacheKey);
+	if (cachedResponse) {
+		return cachedResponse;
+	}
+
+	try {
+		const db = createDb(c.env.DB);
+
+		const photo = await db.query.photoUploads.findFirst({
+			where: (t, { eq }) => eq(t.id, photoId),
+		});
+
+		if (!photo) {
+			return c.json({ error: "Photo not found" }, 404);
+		}
+
+		let response: Response;
+		const heicTypes = ["image/heic", "image/heif"];
+
+		if (photo.mediaType === "image" && heicTypes.includes(photo.mimeType)) {
+			// Convert HEIC/HEIF to WebP via CF Image Resizing (preserves full resolution)
+			const origin = new URL(c.req.url).origin;
+			const rawUrl = `${origin}/api/photos/${photoId}/raw`;
+			response = await fetch(rawUrl, {
+				cf: { image: { format: "webp" as const } },
+			});
+
+			if (response.ok) {
+				response = new Response(response.body, {
+					headers: {
+						"Cache-Control": "public, max-age=31536000",
+						"Content-Disposition": `inline; filename="${photo.fileName.replace(/\.(heic|heif)$/i, ".webp")}"`,
+						"Content-Type": "image/webp",
+					},
+				});
+			} else {
+				// Fallback to raw R2 if Image Resizing fails
+				const object = await c.env.BUCKET.get(photo.r2Key);
+				if (!object) return c.json({ error: "File not found" }, 404);
+				response = new Response(object.body, {
+					headers: {
+						"Cache-Control": "public, max-age=31536000",
+						"Content-Disposition": `inline; filename="${photo.fileName}"`,
+						"Content-Type": photo.mimeType,
+					},
+				});
+			}
+		} else {
+			// Non-HEIC: serve original from R2
+			const object = await c.env.BUCKET.get(photo.r2Key);
+			if (!object) {
+				return c.json({ error: "Photo file not found in storage" }, 404);
+			}
+
+			response = new Response(object.body, {
+				headers: {
+					"Cache-Control": "public, max-age=31536000",
+					"Content-Disposition": `inline; filename="${photo.fileName}"`,
+					"Content-Type": photo.mimeType,
+				},
+			});
+		}
+
+		// Store in edge cache (non-blocking)
+		c.executionCtx.waitUntil(cache.put(cacheKey, response.clone()));
+		return response;
+	} catch (error) {
+		console.error(`❌ GET /api/photos/${photoId}/full - Error:`, error);
+		return c.json({ error: "Failed to get photo" }, 500);
+	}
+});
+
+// DELETE /api/photos/:id - Delete photo
 app.delete("/api/photos/:id", async (c) => {
 	const photoId = c.req.param("id");
 	console.log(`🗑️ DELETE /api/photos/${photoId} - Request started`);
@@ -437,49 +763,10 @@ app.delete("/api/photos/:id", async (c) => {
 			return c.json({ error: "Cannot delete photo from another group" }, 403);
 		}
 
-		const cfAccountId = c.env.CF_ACCOUNT_ID;
-		const cfToken = c.env.CF_IMAGE_TOKEN;
+		// Delete from R2
+		await c.env.BUCKET.delete(photo.r2Key);
 
-		// Delete from CF Images (if stored there)
-		if (photo.cloudflareImageId) {
-			try {
-				await fetch(
-					`https://api.cloudflare.com/client/v4/accounts/${cfAccountId}/images/v1/${photo.cloudflareImageId}`,
-					{
-						method: "DELETE",
-						headers: { Authorization: `Bearer ${cfToken}` },
-					},
-				);
-			} catch (err) {
-				console.error(
-					`⚠️ Failed to delete CF Image ${photo.cloudflareImageId}:`,
-					err,
-				);
-			}
-		}
-
-		// Delete from CF Stream (if stored there)
-		if (photo.streamVideoUid) {
-			try {
-				await fetch(
-					`https://api.cloudflare.com/client/v4/accounts/${cfAccountId}/stream/${photo.streamVideoUid}`,
-					{
-						method: "DELETE",
-						headers: { Authorization: `Bearer ${cfToken}` },
-					},
-				);
-			} catch (err) {
-				console.error(
-					`⚠️ Failed to delete CF Stream ${photo.streamVideoUid}:`,
-					err,
-				);
-			}
-		}
-
-		// Delete from R2 (backward compat for partially migrated items)
-		if (photo.r2Key) {
-			await c.env.BUCKET.delete(photo.r2Key);
-		}
+		// Delete thumbnail if exists (for videos)
 		if (photo.thumbnailR2Key) {
 			await c.env.BUCKET.delete(photo.thumbnailR2Key);
 		}
@@ -501,18 +788,273 @@ app.delete("/api/photos/:id", async (c) => {
 	}
 });
 
-// POST /api/media/upload-url - Get CF Images or CF Stream Direct Creator Upload URL
-app.post("/api/media/upload-url", async (c) => {
-	console.log("🔑 POST /api/media/upload-url - Request started");
+// Presigned URL API for large file uploads
+// POST /api/media/presign - Get presigned URL for direct R2 upload
+app.post("/api/media/presign", async (c) => {
+	console.log("🔑 POST /api/media/presign - Presign request started");
 	try {
+		// Get QR token from header for auth
 		const qrToken = c.req.header("x-qr-token");
 		if (!qrToken) {
-			console.log("❌ POST /api/media/upload-url - Missing QR token");
+			console.log("❌ POST /api/media/presign - Missing QR token");
 			return c.json({ error: "Missing QR token" }, 401);
 		}
 
 		const db = createDb(c.env.DB);
 
+		// Validate QR token and get group
+		const group = await db.query.guestGroups.findFirst({
+			where: (t, { eq }) => eq(t.qrToken, qrToken),
+			with: { guests: true },
+		});
+
+		if (!group) {
+			return c.json({ error: "Invalid QR token" }, 403);
+		}
+
+		// Get guestId from header, or use first guest from group
+		let guestId = c.req.header("x-guest-id");
+		if (!guestId && group.guests.length > 0) {
+			guestId = group.guests[0].id;
+		}
+		if (!guestId) {
+			return c.json({ error: "No guest available in group" }, 400);
+		}
+
+		// Parse request body
+		const { fileName, contentType, fileSize } = await c.req.json<{
+			fileName: string;
+			contentType: string;
+			fileSize: number;
+		}>();
+
+		console.log(
+			`📁 POST /api/media/presign - File: ${fileName}, Size: ${(fileSize / 1024 / 1024).toFixed(2)}MB, Type: ${contentType}`,
+		);
+
+		// Allowed MIME types
+		const imageTypes = [
+			"image/jpeg",
+			"image/png",
+			"image/heic",
+			"image/heif",
+			"image/webp",
+		];
+		const videoTypes = [
+			"video/mp4",
+			"video/quicktime",
+			"video/webm",
+			"video/x-m4v",
+		];
+		const allowedTypes = [...imageTypes, ...videoTypes];
+
+		// Strip codec parameters (e.g., "video/mp4;codecs=hev1" -> "video/mp4")
+		const baseContentType = contentType.split(";")[0].trim();
+		if (!allowedTypes.includes(baseContentType)) {
+			return c.json({ error: "Nepovolený typ súboru" }, 400);
+		}
+
+		// Validate file size (1GB max for presigned uploads)
+		const MAX_FILE_SIZE = 1024 * 1024 * 1024; // 1GB
+		if (fileSize > MAX_FILE_SIZE) {
+			return c.json({ error: "Súbor je príliš veľký (max 1GB)" }, 400);
+		}
+
+		// Generate media ID and R2 key
+		const mediaId = crypto.randomUUID();
+		const fileExtension = fileName.split(".").pop()?.toLowerCase() || "bin";
+		const r2Key = `groups/${group.id}/photos/${mediaId}.${fileExtension}`;
+		const isVideo = videoTypes.includes(baseContentType);
+
+		// Create R2 client and generate presigned URL
+		const { createR2Client, generatePresignedPutUrl } = await import(
+			"@/utils/r2-presign"
+		);
+
+		const r2Client = createR2Client({
+			endpoint: c.env.R2_ENDPOINT,
+			accessKeyId: c.env.R2_ACCESS_KEY_ID,
+			secretAccessKey: c.env.R2_SECRET_ACCESS_KEY,
+		});
+
+		const uploadUrl = await generatePresignedPutUrl(
+			r2Client,
+			"wedding-photos",
+			r2Key,
+			contentType,
+			3600, // 1 hour expiry
+			fileSize,
+		);
+
+		console.log(
+			`✅ POST /api/media/presign - Success: ${mediaId}, r2Key: ${r2Key}`,
+		);
+		return c.json({
+			mediaId,
+			uploadUrl,
+			r2Key,
+			mediaType: isVideo ? "video" : "image",
+			guestId,
+		});
+	} catch (error) {
+		console.error("❌ POST /api/media/presign - Error:", error);
+		return c.json(
+			{
+				error: "Failed to generate upload URL",
+				details: error instanceof Error ? error.message : String(error),
+			},
+			500,
+		);
+	}
+});
+
+// POST /api/media/confirm - Confirm upload and save metadata
+app.post("/api/media/confirm", async (c) => {
+	console.log("✔️ POST /api/media/confirm - Confirm request started");
+	try {
+		// Get QR token from header for auth
+		const qrToken = c.req.header("x-qr-token");
+		if (!qrToken) {
+			console.log("❌ POST /api/media/confirm - Missing QR token");
+			return c.json({ error: "Missing QR token" }, 401);
+		}
+
+		const db = createDb(c.env.DB);
+
+		// Validate QR token and get group
+		const group = await db.query.guestGroups.findFirst({
+			where: (t, { eq }) => eq(t.qrToken, qrToken),
+			with: { guests: true },
+		});
+
+		if (!group) {
+			console.log("❌ POST /api/media/confirm - Invalid QR token");
+			return c.json({ error: "Invalid QR token" }, 403);
+		}
+
+		// Parse form data
+		console.log("📋 POST /api/media/confirm - Parsing form data...");
+		const formData = await c.req.formData();
+		const mediaId = formData.get("mediaId") as string;
+		const r2Key = formData.get("r2Key") as string;
+		const fileName = formData.get("fileName") as string;
+		const guestId = formData.get("guestId") as string;
+		const mediaType = formData.get("mediaType") as "image" | "video";
+		const durationStr = formData.get("duration") as string | null;
+		const thumbnailFile = formData.get("thumbnail") as File | null;
+
+		console.log(
+			`📋 POST /api/media/confirm - Data: mediaId=${mediaId}, r2Key=${r2Key}, fileName=${fileName}, mediaType=${mediaType}, duration=${durationStr}, hasThumbnail=${!!thumbnailFile}`,
+		);
+
+		if (!mediaId || !r2Key || !fileName || !guestId || !mediaType) {
+			console.log(
+				`❌ POST /api/media/confirm - Missing required fields: mediaId=${!!mediaId}, r2Key=${!!r2Key}, fileName=${!!fileName}, guestId=${!!guestId}, mediaType=${!!mediaType}`,
+			);
+			return c.json({ error: "Missing required fields" }, 400);
+		}
+
+		// Verify guest belongs to group
+		const guestBelongsToGroup = group.guests.some((g) => g.id === guestId);
+		if (!guestBelongsToGroup) {
+			console.log(
+				`❌ POST /api/media/confirm - Guest ${guestId} does not belong to group`,
+			);
+			return c.json({ error: "Invalid guest ID" }, 403);
+		}
+
+		// Verify file exists in R2
+		console.log(`🔍 POST /api/media/confirm - Verifying file in R2: ${r2Key}`);
+		const { createR2Client, verifyObjectExists } = await import(
+			"@/utils/r2-presign"
+		);
+
+		const r2Client = createR2Client({
+			endpoint: c.env.R2_ENDPOINT,
+			accessKeyId: c.env.R2_ACCESS_KEY_ID,
+			secretAccessKey: c.env.R2_SECRET_ACCESS_KEY,
+		});
+
+		const verification = await verifyObjectExists(
+			r2Client,
+			"wedding-photos",
+			r2Key,
+		);
+		console.log(
+			`🔍 POST /api/media/confirm - R2 verification: exists=${verification.exists}, size=${verification.size}, contentType=${verification.contentType}`,
+		);
+		if (!verification.exists) {
+			console.log(
+				`❌ POST /api/media/confirm - File not found in R2: ${r2Key}`,
+			);
+			return c.json({ error: "File not found in storage", r2Key }, 400);
+		}
+
+		// Upload thumbnail for videos (via Worker binding - small file)
+		let thumbnailR2Key: string | null = null;
+		if (mediaType === "video" && thumbnailFile) {
+			thumbnailR2Key = `groups/${group.id}/photos/${mediaId}_thumb.webp`;
+			console.log(
+				`🖼️ POST /api/media/confirm - Uploading thumbnail: ${thumbnailR2Key}`,
+			);
+			await c.env.BUCKET.put(thumbnailR2Key, thumbnailFile.stream(), {
+				httpMetadata: { contentType: "image/webp" },
+			});
+			console.log(`✅ POST /api/media/confirm - Thumbnail uploaded`);
+		}
+
+		// Save metadata to D1
+		const duration = durationStr ? Number.parseInt(durationStr, 10) : null;
+
+		console.log(
+			`💾 POST /api/media/confirm - Saving to DB: id=${mediaId}, size=${verification.size}, duration=${duration}`,
+		);
+		await db.insert(photoUploads).values({
+			id: mediaId,
+			fileName,
+			fileSize: verification.size || 0,
+			mimeType: verification.contentType || "application/octet-stream",
+			mediaType,
+			duration,
+			r2Key,
+			thumbnailR2Key,
+			guestId,
+		});
+
+		console.log(
+			`✅ POST /api/media/confirm - Success: ${mediaId} (${mediaType}, ${(verification.size || 0) / 1024 / 1024}MB)`,
+		);
+		return c.json({
+			success: true,
+			id: mediaId,
+			mediaType,
+			fileName,
+			duration,
+			uploadedAt: new Date().toISOString(),
+		});
+	} catch (error) {
+		console.error("❌ POST /api/media/confirm - Error:", error);
+		return c.json(
+			{
+				error: "Failed to confirm upload",
+				details: error instanceof Error ? error.message : String(error),
+			},
+			500,
+		);
+	}
+});
+
+// Multipart upload API for large files (>10MB)
+// POST /api/media/multipart/create - Initiate multipart upload
+app.post("/api/media/multipart/create", async (c) => {
+	console.log("🔑 POST /api/media/multipart/create - Request started");
+	try {
+		const qrToken = c.req.header("x-qr-token");
+		if (!qrToken) {
+			return c.json({ error: "Missing QR token" }, 401);
+		}
+
+		const db = createDb(c.env.DB);
 		const group = await db.query.guestGroups.findFirst({
 			where: (t, { eq }) => eq(t.qrToken, qrToken),
 			with: { guests: true },
@@ -530,17 +1072,17 @@ app.post("/api/media/upload-url", async (c) => {
 			return c.json({ error: "No guest available in group" }, 400);
 		}
 
-		const { fileName, contentType, mediaType } = await c.req.json<{
+		const { fileName, contentType, fileSize } = await c.req.json<{
 			fileName: string;
 			contentType: string;
-			mediaType: "image" | "video";
+			fileSize: number;
 		}>();
 
-		if (!fileName || !contentType || !mediaType) {
-			return c.json({ error: "Missing required fields" }, 400);
-		}
+		console.log(
+			`📁 POST /api/media/multipart/create - File: ${fileName}, Size: ${(fileSize / 1024 / 1024).toFixed(2)}MB, Type: ${contentType}`,
+		);
 
-		// Validate content type
+		// Allowed MIME types
 		const imageTypes = [
 			"image/jpeg",
 			"image/png",
@@ -554,121 +1096,70 @@ app.post("/api/media/upload-url", async (c) => {
 			"video/webm",
 			"video/x-m4v",
 		];
+		const allowedTypes = [...imageTypes, ...videoTypes];
+
+		// Strip codec parameters (e.g., "video/mp4;codecs=hev1" -> "video/mp4")
 		const baseContentType = contentType.split(";")[0].trim();
-
-		if (mediaType === "image" && !imageTypes.includes(baseContentType)) {
-			return c.json({ error: "Nepovolený typ súboru pre obrázok" }, 400);
-		}
-		if (mediaType === "video" && !videoTypes.includes(baseContentType)) {
-			return c.json({ error: "Nepovolený typ súboru pre video" }, 400);
+		if (!allowedTypes.includes(baseContentType)) {
+			return c.json({ error: "Nepovolený typ súboru" }, 400);
 		}
 
-		console.log(
-			`📁 POST /api/media/upload-url - File: ${fileName}, Type: ${contentType}, MediaType: ${mediaType}`,
+		const MAX_FILE_SIZE = 1024 * 1024 * 1024; // 1GB
+		if (fileSize > MAX_FILE_SIZE) {
+			return c.json({ error: "Súbor je príliš veľký (max 1GB)" }, 400);
+		}
+
+		const mediaId = crypto.randomUUID();
+		const fileExtension = fileName.split(".").pop()?.toLowerCase() || "bin";
+		const r2Key = `groups/${group.id}/photos/${mediaId}.${fileExtension}`;
+		const isVideo = videoTypes.includes(baseContentType);
+
+		const PART_SIZE = 10 * 1024 * 1024; // 10MB
+		const partCount = Math.ceil(fileSize / PART_SIZE);
+
+		const { createR2Client, createMultipartUpload, generatePresignedPartUrls } =
+			await import("@/utils/r2-presign");
+
+		const r2Client = createR2Client({
+			endpoint: c.env.R2_ENDPOINT,
+			accessKeyId: c.env.R2_ACCESS_KEY_ID,
+			secretAccessKey: c.env.R2_SECRET_ACCESS_KEY,
+		});
+
+		const uploadId = await createMultipartUpload(
+			r2Client,
+			"wedding-photos",
+			r2Key,
+			contentType,
 		);
 
-		const cfAccountId = c.env.CF_ACCOUNT_ID;
-		const cfToken = c.env.CF_IMAGE_TOKEN;
-
-		if (mediaType === "image") {
-			// CF Images Direct Creator Upload
-			const cfResponse = await fetch(
-				`https://api.cloudflare.com/client/v4/accounts/${cfAccountId}/images/v2/direct_upload`,
-				{
-					method: "POST",
-					headers: {
-						Authorization: `Bearer ${cfToken}`,
-						"Content-Type": "application/json",
-					},
-					body: JSON.stringify({
-						metadata: {
-							guestId,
-							groupId: group.id,
-							fileName,
-						},
-					}),
-				},
-			);
-
-			if (!cfResponse.ok) {
-				const errorBody = await cfResponse.text();
-				console.error(
-					`❌ POST /api/media/upload-url - CF Images API error: ${cfResponse.status} ${errorBody}`,
-				);
-				return c.json(
-					{ error: "Failed to create upload URL from Cloudflare Images" },
-					500,
-				);
-			}
-
-			const cfData = await cfResponse.json<{
-				result: { id: string; uploadURL: string };
-				success: boolean;
-			}>();
-
-			console.log(
-				`✅ POST /api/media/upload-url - CF Images upload URL created: ${cfData.result.id}`,
-			);
-
-			return c.json({
-				uploadURL: cfData.result.uploadURL,
-				mediaId: cfData.result.id,
-				mediaType: "image" as const,
-				guestId,
-			});
-		}
-
-		// CF Stream Direct Creator Upload (video)
-		const cfResponse = await fetch(
-			`https://api.cloudflare.com/client/v4/accounts/${cfAccountId}/stream/direct_upload`,
-			{
-				method: "POST",
-				headers: {
-					Authorization: `Bearer ${cfToken}`,
-					"Content-Type": "application/json",
-				},
-				body: JSON.stringify({
-					maxDurationSeconds: 600,
-					meta: {
-						guestId,
-						groupId: group.id,
-						fileName,
-					},
-				}),
-			},
+		const parts = await generatePresignedPartUrls(
+			r2Client,
+			"wedding-photos",
+			r2Key,
+			uploadId,
+			partCount,
+			3600,
 		);
 
-		if (!cfResponse.ok) {
-			const errorBody = await cfResponse.text();
-			console.error(
-				`❌ POST /api/media/upload-url - CF Stream API error: ${cfResponse.status} ${errorBody}`,
-			);
-			return c.json(
-				{ error: "Failed to create upload URL from Cloudflare Stream" },
-				500,
-			);
-		}
-
-		const cfData = await cfResponse.json<{
-			result: { uid: string; uploadURL: string };
-			success: boolean;
-		}>();
-
 		console.log(
-			`✅ POST /api/media/upload-url - CF Stream upload URL created: ${cfData.result.uid}`,
+			`✅ POST /api/media/multipart/create - Success: ${mediaId}, ${partCount} parts, uploadId: ${uploadId.substring(0, 8)}...`,
 		);
 
 		return c.json({
-			uploadURL: cfData.result.uploadURL,
-			mediaId: cfData.result.uid,
-			mediaType: "video" as const,
+			uploadId,
+			mediaId,
+			r2Key,
+			mediaType: isVideo ? "video" : "image",
 			guestId,
+			partSize: PART_SIZE,
+			parts,
 		});
 	} catch (error) {
-		console.error("❌ POST /api/media/upload-url - Error:", error);
+		console.error("❌ POST /api/media/multipart/create - Error:", error);
 		return c.json(
 			{
-				error: "Failed to create upload URL",
+				error: "Failed to create multipart upload",
 				details: error instanceof Error ? error.message : String(error),
 			},
 			500,
@@ -676,115 +1167,68 @@ app.post("/api/media/upload-url", async (c) => {
 	}
 });
 
-// POST /api/media/confirm - Confirm CF Images/Stream upload and save metadata
-app.post("/api/media/confirm", async (c) => {
-	console.log("✔️ POST /api/media/confirm - Confirm request started");
+// POST /api/media/multipart/complete - Complete multipart upload
+app.post("/api/media/multipart/complete", async (c) => {
+	console.log("✔️ POST /api/media/multipart/complete - Request started");
 	try {
 		const qrToken = c.req.header("x-qr-token");
 		if (!qrToken) {
-			console.log("❌ POST /api/media/confirm - Missing QR token");
 			return c.json({ error: "Missing QR token" }, 401);
 		}
 
 		const db = createDb(c.env.DB);
-
 		const group = await db.query.guestGroups.findFirst({
 			where: (t, { eq }) => eq(t.qrToken, qrToken),
-			with: { guests: true },
 		});
 
 		if (!group) {
-			console.log("❌ POST /api/media/confirm - Invalid QR token");
 			return c.json({ error: "Invalid QR token" }, 403);
 		}
 
-		const body = await c.req.json<{
-			mediaId: string;
-			cloudflareImageId?: string;
-			streamVideoUid?: string;
-			fileName: string;
-			guestId: string;
-			mediaType: "image" | "video";
-			fileSize?: number;
-			mimeType?: string;
+		const { uploadId, r2Key, parts } = await c.req.json<{
+			uploadId: string;
+			r2Key: string;
+			parts: { partNumber: number; etag: string }[];
 		}>();
 
-		const { mediaId, fileName, guestId, mediaType } = body;
-
-		if (!mediaId || !fileName || !guestId || !mediaType) {
-			console.log("❌ POST /api/media/confirm - Missing required fields");
+		if (!uploadId || !r2Key || !parts || parts.length === 0) {
 			return c.json({ error: "Missing required fields" }, 400);
 		}
 
-		// Verify guest belongs to group
-		const guestBelongsToGroup = group.guests.some((g) => g.id === guestId);
-		if (!guestBelongsToGroup) {
-			console.log(
-				`❌ POST /api/media/confirm - Guest ${guestId} does not belong to group`,
-			);
-			return c.json({ error: "Invalid guest ID" }, 403);
+		// Verify r2Key belongs to this group
+		if (!r2Key.startsWith(`groups/${group.id}/`)) {
+			return c.json({ error: "Unauthorized access to resource" }, 403);
 		}
 
-		if (body.cloudflareImageId) {
-			// CF Images upload confirm
-			console.log(
-				`💾 POST /api/media/confirm - CF Images: id=${mediaId}, cfImageId=${body.cloudflareImageId}`,
-			);
-			await db.insert(photoUploads).values({
-				id: mediaId,
-				fileName,
-				fileSize: body.fileSize || 0,
-				mimeType: body.mimeType || "image/jpeg",
-				mediaType: "image",
-				cloudflareImageId: body.cloudflareImageId,
-				guestId,
-			});
-
-			console.log(`✅ POST /api/media/confirm - CF Images success: ${mediaId}`);
-			return c.json({
-				success: true,
-				id: mediaId,
-				mediaType: "image",
-				fileName,
-				uploadedAt: new Date().toISOString(),
-			});
-		}
-
-		if (body.streamVideoUid) {
-			// CF Stream upload confirm
-			console.log(
-				`💾 POST /api/media/confirm - CF Stream: id=${mediaId}, streamUid=${body.streamVideoUid}`,
-			);
-			await db.insert(photoUploads).values({
-				id: mediaId,
-				fileName,
-				fileSize: body.fileSize || 0,
-				mimeType: body.mimeType || "video/mp4",
-				mediaType: "video",
-				streamVideoUid: body.streamVideoUid,
-				streamReady: false,
-				guestId,
-			});
-
-			console.log(`✅ POST /api/media/confirm - CF Stream success: ${mediaId}`);
-			return c.json({
-				success: true,
-				id: mediaId,
-				mediaType: "video",
-				fileName,
-				uploadedAt: new Date().toISOString(),
-			});
-		}
-
-		return c.json(
-			{ error: "Missing cloudflareImageId or streamVideoUid" },
-			400,
+		console.log(
+			`📋 POST /api/media/multipart/complete - uploadId: ${uploadId.substring(0, 8)}..., ${parts.length} parts`,
 		);
+
+		const { createR2Client, completeMultipartUpload } = await import(
+			"@/utils/r2-presign"
+		);
+
+		const r2Client = createR2Client({
+			endpoint: c.env.R2_ENDPOINT,
+			accessKeyId: c.env.R2_ACCESS_KEY_ID,
+			secretAccessKey: c.env.R2_SECRET_ACCESS_KEY,
+		});
+
+		await completeMultipartUpload(
+			r2Client,
+			"wedding-photos",
+			r2Key,
+			uploadId,
+			parts,
+		);
+
+		console.log(`✅ POST /api/media/multipart/complete - Success: ${r2Key}`);
+		return c.json({ success: true });
 	} catch (error) {
-		console.error("❌ POST /api/media/confirm - Error:", error);
+		console.error("❌ POST /api/media/multipart/complete - Error:", error);
 		return c.json(
 			{
-				error: "Failed to confirm upload",
+				error: "Failed to complete multipart upload",
 				details: error instanceof Error ? error.message : String(error),
 			},
 			500,
@@ -792,50 +1236,57 @@ app.post("/api/media/confirm", async (c) => {
 	}
 });
 
-// POST /api/webhooks/stream - Cloudflare Stream processing webhook
-app.post("/api/webhooks/stream", async (c) => {
-	console.log("🎬 POST /api/webhooks/stream - Webhook received");
+// POST /api/media/multipart/abort - Abort multipart upload (cleanup)
+app.post("/api/media/multipart/abort", async (c) => {
+	console.log("🗑️ POST /api/media/multipart/abort - Request started");
 	try {
-		const body = await c.req.json<{
-			uid: string;
-			readyToStream: boolean;
-			duration: number;
-			[key: string]: unknown;
+		const qrToken = c.req.header("x-qr-token");
+		if (!qrToken) {
+			return c.json({ error: "Missing QR token" }, 401);
+		}
+
+		const db = createDb(c.env.DB);
+		const group = await db.query.guestGroups.findFirst({
+			where: (t, { eq }) => eq(t.qrToken, qrToken),
+		});
+
+		if (!group) {
+			return c.json({ error: "Invalid QR token" }, 403);
+		}
+
+		const { uploadId, r2Key } = await c.req.json<{
+			uploadId: string;
+			r2Key: string;
 		}>();
 
-		const { uid, readyToStream, duration } = body;
-
-		if (!uid) {
-			console.log("❌ POST /api/webhooks/stream - Missing uid in payload");
-			return c.json({ error: "Missing uid" }, 400);
+		if (!uploadId || !r2Key) {
+			return c.json({ error: "Missing required fields" }, 400);
 		}
 
-		console.log(
-			`🎬 POST /api/webhooks/stream - uid=${uid}, readyToStream=${readyToStream}, duration=${duration}`,
+		// Verify r2Key belongs to this group
+		if (!r2Key.startsWith(`groups/${group.id}/`)) {
+			return c.json({ error: "Unauthorized access to resource" }, 403);
+		}
+
+		const { createR2Client, abortMultipartUpload } = await import(
+			"@/utils/r2-presign"
 		);
 
-		if (readyToStream) {
-			const db = createDb(c.env.DB);
+		const r2Client = createR2Client({
+			endpoint: c.env.R2_ENDPOINT,
+			accessKeyId: c.env.R2_ACCESS_KEY_ID,
+			secretAccessKey: c.env.R2_SECRET_ACCESS_KEY,
+		});
 
-			await db
-				.update(photoUploads)
-				.set({
-					streamReady: true,
-					duration: duration ? Math.round(duration) : null,
-				})
-				.where(eq(photoUploads.streamVideoUid, uid));
+		await abortMultipartUpload(r2Client, "wedding-photos", r2Key, uploadId);
 
-			console.log(
-				`✅ POST /api/webhooks/stream - Updated streamReady=true for uid=${uid}`,
-			);
-		}
-
+		console.log(`✅ POST /api/media/multipart/abort - Success: ${r2Key}`);
 		return c.json({ success: true });
 	} catch (error) {
-		console.error("❌ POST /api/webhooks/stream - Error:", error);
+		console.error("❌ POST /api/media/multipart/abort - Error:", error);
 		return c.json(
 			{
-				error: "Webhook processing failed",
+				error: "Failed to abort multipart upload",
 				details: error instanceof Error ? error.message : String(error),
 			},
 			500,
@@ -1096,252 +1547,6 @@ app.delete("/api/audio/:id", async (c) => {
 			{
 				details: error instanceof Error ? error.message : String(error),
 				error: "Failed to delete audio",
-			},
-			500,
-		);
-	}
-});
-
-// POST /api/admin/migrate-media - Migrate existing R2 media to CF Images/Stream
-app.post("/api/admin/migrate-media", async (c) => {
-	const apiKey = c.req.header("x-api-key");
-	if (!apiKey || apiKey !== c.env.SECRET) {
-		return c.json({ error: "Unauthorized" }, 401);
-	}
-
-	const BATCH_SIZE = 5;
-	const errors: { id: string; error: string }[] = [];
-	let migratedImages = 0;
-	let migratedVideos = 0;
-
-	const db = createDb(c.env.DB);
-	const cfAccountId = c.env.CF_ACCOUNT_ID;
-	const cfToken = c.env.CF_IMAGE_TOKEN;
-
-	try {
-		// Find unmigrated images
-		const unmigratedImages = await db.query.photoUploads.findMany({
-			where: (t, { and, isNull, isNotNull, eq: colEq }) =>
-				and(
-					isNull(t.cloudflareImageId),
-					colEq(t.mediaType, "image"),
-					isNotNull(t.r2Key),
-				),
-			limit: BATCH_SIZE,
-		});
-
-		// Find unmigrated videos
-		const remainingImageSlots = BATCH_SIZE - unmigratedImages.length;
-		const unmigratedVideos =
-			remainingImageSlots > 0
-				? await db.query.photoUploads.findMany({
-						where: (t, { and, isNull, isNotNull, eq: colEq }) =>
-							and(
-								isNull(t.streamVideoUid),
-								colEq(t.mediaType, "video"),
-								isNotNull(t.r2Key),
-							),
-						limit: remainingImageSlots,
-					})
-				: [];
-
-		// Process images
-		for (const image of unmigratedImages) {
-			try {
-				const r2Object = await c.env.BUCKET.get(image.r2Key!);
-				if (!r2Object) {
-					errors.push({
-						id: image.id,
-						error: `R2 object not found: ${image.r2Key}`,
-					});
-					continue;
-				}
-
-				// Upload to CF Images
-				const formData = new FormData();
-				const blob = await r2Object.blob();
-				formData.append("file", blob, image.fileName);
-				formData.append(
-					"metadata",
-					JSON.stringify({
-						guestId: image.guestId,
-						migratedFrom: "r2",
-						originalId: image.id,
-					}),
-				);
-
-				const cfResponse = await fetch(
-					`https://api.cloudflare.com/client/v4/accounts/${cfAccountId}/images/v1`,
-					{
-						method: "POST",
-						headers: {
-							Authorization: `Bearer ${cfToken}`,
-						},
-						body: formData,
-					},
-				);
-
-				if (!cfResponse.ok) {
-					const errorBody = await cfResponse.text();
-					errors.push({
-						id: image.id,
-						error: `CF Images API error: ${cfResponse.status} ${errorBody}`,
-					});
-					continue;
-				}
-
-				const cfData = await cfResponse.json<{
-					result: { id: string };
-					success: boolean;
-				}>();
-
-				// Update D1 with CF Images ID
-				await db
-					.update(photoUploads)
-					.set({ cloudflareImageId: cfData.result.id })
-					.where(eq(photoUploads.id, image.id));
-
-				// Delete R2 object
-				await c.env.BUCKET.delete(image.r2Key!);
-				if (image.thumbnailR2Key) {
-					await c.env.BUCKET.delete(image.thumbnailR2Key);
-				}
-
-				migratedImages++;
-				console.log(
-					`✅ Migrated image ${image.id} → CF Images ${cfData.result.id}`,
-				);
-			} catch (err) {
-				errors.push({
-					id: image.id,
-					error: err instanceof Error ? err.message : String(err),
-				});
-			}
-		}
-
-		// Process videos
-		for (const video of unmigratedVideos) {
-			try {
-				const r2Object = await c.env.BUCKET.get(video.r2Key!);
-				if (!r2Object) {
-					errors.push({
-						id: video.id,
-						error: `R2 object not found: ${video.r2Key}`,
-					});
-					continue;
-				}
-
-				// Check size — CF Stream direct upload limit is 200MB from Worker
-				if (video.fileSize > 200 * 1024 * 1024) {
-					errors.push({
-						id: video.id,
-						error: `Video too large for Worker migration (${(video.fileSize / 1024 / 1024).toFixed(1)}MB > 200MB). Will continue serving from R2 fallback.`,
-					});
-					continue;
-				}
-
-				// Upload to CF Stream
-				const streamFormData = new FormData();
-				const blob = await r2Object.blob();
-				streamFormData.append("file", blob, video.fileName);
-				streamFormData.append(
-					"meta",
-					JSON.stringify({
-						guestId: video.guestId,
-						migratedFrom: "r2",
-						originalId: video.id,
-					}),
-				);
-
-				const cfResponse = await fetch(
-					`https://api.cloudflare.com/client/v4/accounts/${cfAccountId}/stream`,
-					{
-						method: "POST",
-						headers: {
-							Authorization: `Bearer ${cfToken}`,
-						},
-						body: streamFormData,
-					},
-				);
-
-				if (!cfResponse.ok) {
-					const errorBody = await cfResponse.text();
-					errors.push({
-						id: video.id,
-						error: `CF Stream API error: ${cfResponse.status} ${errorBody}`,
-					});
-					continue;
-				}
-
-				const cfData = await cfResponse.json<{
-					result: { uid: string };
-					success: boolean;
-				}>();
-
-				// Update D1 with Stream UID (streamReady will be set by webhook)
-				await db
-					.update(photoUploads)
-					.set({
-						streamVideoUid: cfData.result.uid,
-						streamReady: false,
-					})
-					.where(eq(photoUploads.id, video.id));
-
-				// Delete R2 object
-				await c.env.BUCKET.delete(video.r2Key!);
-				if (video.thumbnailR2Key) {
-					await c.env.BUCKET.delete(video.thumbnailR2Key);
-				}
-
-				migratedVideos++;
-				console.log(
-					`✅ Migrated video ${video.id} → CF Stream ${cfData.result.uid}`,
-				);
-			} catch (err) {
-				errors.push({
-					id: video.id,
-					error: err instanceof Error ? err.message : String(err),
-				});
-			}
-		}
-
-		// Count remaining unmigrated items
-		const allUnmigratedImages = await db.query.photoUploads.findMany({
-			columns: { id: true },
-			where: (t, { and, isNull, isNotNull, eq: colEq }) =>
-				and(
-					isNull(t.cloudflareImageId),
-					colEq(t.mediaType, "image"),
-					isNotNull(t.r2Key),
-				),
-		});
-		const allUnmigratedVideos = await db.query.photoUploads.findMany({
-			columns: { id: true },
-			where: (t, { and, isNull, isNotNull, eq: colEq }) =>
-				and(
-					isNull(t.streamVideoUid),
-					colEq(t.mediaType, "video"),
-					isNotNull(t.r2Key),
-				),
-		});
-
-		return c.json({
-			migrated: migratedImages + migratedVideos,
-			migratedImages,
-			migratedVideos,
-			remaining: allUnmigratedImages.length + allUnmigratedVideos.length,
-			remainingImages: allUnmigratedImages.length,
-			remainingVideos: allUnmigratedVideos.length,
-			errors,
-		});
-	} catch (error) {
-		console.error("❌ Migration error:", error);
-		return c.json(
-			{
-				error: "Migration failed",
-				details: error instanceof Error ? error.message : String(error),
-				migrated: migratedImages + migratedVideos,
-				errors,
 			},
 			500,
 		);
