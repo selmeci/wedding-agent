@@ -13,6 +13,31 @@ interface Media {
 	duration?: number;
 }
 
+// Convert HEIC/HEIF images to WebP using canvas (Safari supports HEIC natively)
+async function convertHeicToWebP(file: File): Promise<File> {
+	const heicTypes = ["image/heic", "image/heif"];
+	if (!heicTypes.includes(file.type)) return file;
+
+	try {
+		const bitmap = await createImageBitmap(file);
+		const canvas = document.createElement("canvas");
+		canvas.width = bitmap.width;
+		canvas.height = bitmap.height;
+		const ctx = canvas.getContext("2d");
+		if (!ctx) return file;
+		ctx.drawImage(bitmap, 0, 0);
+		const blob = await new Promise<Blob | null>((resolve) =>
+			canvas.toBlob(resolve, "image/webp", 0.9),
+		);
+		if (!blob) return file;
+		const newName = file.name.replace(/\.(heic|heif)$/i, ".webp");
+		return new File([blob], newName, { type: "image/webp" });
+	} catch {
+		// Browser can't decode HEIC (Chrome/Firefox) — upload original
+		return file;
+	}
+}
+
 // Wrap a promise with a timeout — resolves with fallback if it takes too long
 function withTimeout<T>(
 	promise: Promise<T>,
@@ -192,8 +217,11 @@ export function PhotoUpload({
 			];
 
 			let uploaded = 0;
-			for (const file of Array.from(files)) {
+			for (let file of Array.from(files)) {
 				try {
+					// Convert HEIC/HEIF to WebP before upload
+					file = await convertHeicToWebP(file);
+
 					const isVideo = videoTypes.includes(file.type);
 
 					// Generate thumbnail and duration for videos
