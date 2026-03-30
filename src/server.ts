@@ -1525,12 +1525,12 @@ app.get("/*", async (c) => {
 	// Try to fetch the requested asset
 	const assetResponse = await c.env.ASSETS.fetch(c.req.raw);
 
-	// If asset exists, return it
-	if (assetResponse.status !== 404) {
+	// If asset exists and is a real file (not a redirect/404), return it
+	if (assetResponse.ok) {
 		return assetResponse;
 	}
 
-	// Otherwise, serve index.html for SPA routing
+	// Otherwise, serve index.html for SPA routing (gallery, etc.)
 	const indexRequest = new Request(
 		new URL("/index.html", url.origin),
 		c.req.raw,
