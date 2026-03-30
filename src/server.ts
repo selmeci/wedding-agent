@@ -313,24 +313,6 @@ app.get("/api/gallery/media", async (c) => {
 	}
 });
 
-// Gallery page - Token-protected media gallery
-app.get("/gallery", async (c) => {
-	const token = c.req.query("token");
-	const expectedToken = c.env.SECRET_REPORT_TOKEN;
-
-	if (!token || !expectedToken || !secureTokenEquals(token, expectedToken)) {
-		return c.text("Unauthorized", 401);
-	}
-
-	const { renderGalleryPage } = await import("@/gallery-template");
-	const html = renderGalleryPage(token);
-
-	return c.html(html, 200, {
-		"Cache-Control": "private, no-store",
-		"Referrer-Policy": "no-referrer",
-	});
-});
-
 // Photo upload API
 // POST /api/photos - Upload photo (direct, max 100MB)
 app.post("/api/photos", async (c) => {
