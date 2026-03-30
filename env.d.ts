@@ -18,6 +18,10 @@ declare namespace Cloudflare {
 		R2_ACCESS_KEY_ID: string;
 		R2_SECRET_ACCESS_KEY: string;
 		R2_ENDPOINT: string;
+		CF_ACCOUNT_ID: string;
+		CF_IMAGES_ACCOUNT_HASH: string;
+		CF_STREAM_CUSTOMER_CODE: string;
+		CF_IMAGE_TOKEN: string;
 		Chat: DurableObjectNamespace /* Chat */;
 		ReportAgent: DurableObjectNamespace /* ReportAgent */;
 		BUCKET: R2Bucket;

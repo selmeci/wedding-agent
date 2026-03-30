@@ -540,7 +540,7 @@ app.get("/api/photos/:id/raw", async (c) => {
 	const media = await db.query.photoUploads.findFirst({
 		where: (t, { eq }) => eq(t.id, photoId),
 	});
-	if (!media) return c.json({ error: "Not found" }, 404);
+	if (!media || !media.r2Key) return c.json({ error: "Not found" }, 404);
 
 	const object = await c.env.BUCKET.get(media.r2Key);
 	if (!object) return c.json({ error: "File not found" }, 404);
@@ -574,7 +574,7 @@ app.get("/api/photos/:id/thumbnail", async (c) => {
 			where: (t, { eq }) => eq(t.id, photoId),
 		});
 
-		if (!media) {
+		if (!media || !media.r2Key) {
 			return c.json({ error: "Media not found" }, 404);
 		}
 
@@ -662,7 +662,7 @@ app.get("/api/photos/:id/full", async (c) => {
 			where: (t, { eq }) => eq(t.id, photoId),
 		});
 
-		if (!photo) {
+		if (!photo || !photo.r2Key) {
 			return c.json({ error: "Photo not found" }, 404);
 		}
 
@@ -763,8 +763,10 @@ app.delete("/api/photos/:id", async (c) => {
 			return c.json({ error: "Cannot delete photo from another group" }, 403);
 		}
 
-		// Delete from R2
-		await c.env.BUCKET.delete(photo.r2Key);
+		// Delete from R2 (if stored there)
+		if (photo.r2Key) {
+			await c.env.BUCKET.delete(photo.r2Key);
+		}
 
 		// Delete thumbnail if exists (for videos)
 		if (photo.thumbnailR2Key) {
