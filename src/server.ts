@@ -666,10 +666,11 @@ app.post("/api/media/upload-url", async (c) => {
 			return c.json({ error: "No guest available in group" }, 400);
 		}
 
-		const { fileName, contentType, mediaType } = await c.req.json<{
+		const { fileName, contentType, mediaType, fileSize } = await c.req.json<{
 			fileName: string;
 			contentType: string;
 			mediaType: "image" | "video";
+			fileSize?: number;
 		}>();
 
 		if (!fileName || !contentType || !mediaType) {
@@ -763,49 +764,59 @@ app.post("/api/media/upload-url", async (c) => {
 			});
 		}
 
-		// CF Stream Direct Creator Upload (video)
+		// CF Stream Direct Creator Upload via TUS (resumable, supports large files)
+		// Encode metadata as base64 key-value pairs per TUS spec
+		const tusMetadata = [
+			`name ${btoa(fileName)}`,
+			`filetype ${btoa(contentType)}`,
+			`guestId ${btoa(guestId)}`,
+			`groupId ${btoa(group.id)}`,
+		].join(",");
+
 		const cfResponse = await fetch(
-			`https://api.cloudflare.com/client/v4/accounts/${cfAccountId}/stream/direct_upload`,
+			`https://api.cloudflare.com/client/v4/accounts/${cfAccountId}/stream?direct_user=true`,
 			{
 				method: "POST",
 				headers: {
 					Authorization: `Bearer ${cfToken}`,
-					"Content-Type": "application/json",
+					"Tus-Resumable": "1.0.0",
+					"Upload-Length": String(fileSize || 0),
+					"Upload-Metadata": tusMetadata,
 				},
-				body: JSON.stringify({
-					maxDurationSeconds: 600,
-					meta: {
-						guestId,
-						groupId: group.id,
-						fileName,
-					},
-				}),
 			},
 		);
 
 		if (!cfResponse.ok) {
 			const errorBody = await cfResponse.text();
 			console.error(
-				`❌ POST /api/media/upload-url - CF Stream API error: ${cfResponse.status} ${errorBody}`,
+				`❌ POST /api/media/upload-url - CF Stream TUS API error: ${cfResponse.status} ${errorBody}`,
 			);
 			return c.json(
-				{ error: "Failed to create upload URL from Cloudflare Stream" },
+				{ error: "Failed to create TUS upload for Cloudflare Stream" },
 				500,
 			);
 		}
 
-		const cfData = await cfResponse.json<{
-			result: { uid: string; uploadURL: string };
-			success: boolean;
-		}>();
+		const tusLocation = cfResponse.headers.get("location");
+		const streamMediaId = cfResponse.headers.get("stream-media-id");
+
+		if (!tusLocation || !streamMediaId) {
+			console.error(
+				"❌ POST /api/media/upload-url - CF Stream TUS response missing Location or stream-media-id header",
+			);
+			return c.json(
+				{ error: "Invalid response from Cloudflare Stream TUS" },
+				500,
+			);
+		}
 
 		console.log(
-			`✅ POST /api/media/upload-url - CF Stream upload URL created: ${cfData.result.uid}`,
+			`✅ POST /api/media/upload-url - CF Stream TUS upload created: ${streamMediaId}`,
 		);
 
 		return c.json({
-			uploadURL: cfData.result.uploadURL,
-			mediaId: cfData.result.uid,
+			tusUploadUrl: tusLocation,
+			mediaId: streamMediaId,
 			mediaType: "video" as const,
 			guestId,
 		});
