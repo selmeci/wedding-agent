@@ -666,10 +666,11 @@ app.post("/api/media/upload-url", async (c) => {
 			return c.json({ error: "No guest available in group" }, 400);
 		}
 
-		const { fileName, contentType, mediaType } = await c.req.json<{
+		const { fileName, contentType, mediaType, fileSize } = await c.req.json<{
 			fileName: string;
 			contentType: string;
 			mediaType: "image" | "video";
+			fileSize?: number;
 		}>();
 
 		if (!fileName || !contentType || !mediaType) {
@@ -692,10 +693,19 @@ app.post("/api/media/upload-url", async (c) => {
 		];
 		const baseContentType = contentType.split(";")[0].trim();
 
-		if (mediaType === "image" && !imageTypes.includes(baseContentType)) {
+		const allowedFallback = baseContentType === "application/octet-stream";
+		if (
+			mediaType === "image" &&
+			!imageTypes.includes(baseContentType) &&
+			!allowedFallback
+		) {
 			return c.json({ error: "Nepovolený typ súboru pre obrázok" }, 400);
 		}
-		if (mediaType === "video" && !videoTypes.includes(baseContentType)) {
+		if (
+			mediaType === "video" &&
+			!videoTypes.includes(baseContentType) &&
+			!allowedFallback
+		) {
 			return c.json({ error: "Nepovolený typ súboru pre video" }, 400);
 		}
 
@@ -754,49 +764,59 @@ app.post("/api/media/upload-url", async (c) => {
 			});
 		}
 
-		// CF Stream Direct Creator Upload (video)
+		// CF Stream Direct Creator Upload via TUS (resumable, supports large files)
+		// Encode metadata as base64 key-value pairs per TUS spec
+		const tusMetadata = [
+			`name ${btoa(fileName)}`,
+			`filetype ${btoa(contentType)}`,
+			`guestId ${btoa(guestId)}`,
+			`groupId ${btoa(group.id)}`,
+		].join(",");
+
 		const cfResponse = await fetch(
-			`https://api.cloudflare.com/client/v4/accounts/${cfAccountId}/stream/direct_upload`,
+			`https://api.cloudflare.com/client/v4/accounts/${cfAccountId}/stream?direct_user=true`,
 			{
 				method: "POST",
 				headers: {
 					Authorization: `Bearer ${cfToken}`,
-					"Content-Type": "application/json",
+					"Tus-Resumable": "1.0.0",
+					"Upload-Length": String(fileSize || 0),
+					"Upload-Metadata": tusMetadata,
 				},
-				body: JSON.stringify({
-					maxDurationSeconds: 600,
-					meta: {
-						guestId,
-						groupId: group.id,
-						fileName,
-					},
-				}),
 			},
 		);
 
 		if (!cfResponse.ok) {
 			const errorBody = await cfResponse.text();
 			console.error(
-				`❌ POST /api/media/upload-url - CF Stream API error: ${cfResponse.status} ${errorBody}`,
+				`❌ POST /api/media/upload-url - CF Stream TUS API error: ${cfResponse.status} ${errorBody}`,
 			);
 			return c.json(
-				{ error: "Failed to create upload URL from Cloudflare Stream" },
+				{ error: "Failed to create TUS upload for Cloudflare Stream" },
 				500,
 			);
 		}
 
-		const cfData = await cfResponse.json<{
-			result: { uid: string; uploadURL: string };
-			success: boolean;
-		}>();
+		const tusLocation = cfResponse.headers.get("location");
+		const streamMediaId = cfResponse.headers.get("stream-media-id");
+
+		if (!tusLocation || !streamMediaId) {
+			console.error(
+				"❌ POST /api/media/upload-url - CF Stream TUS response missing Location or stream-media-id header",
+			);
+			return c.json(
+				{ error: "Invalid response from Cloudflare Stream TUS" },
+				500,
+			);
+		}
 
 		console.log(
-			`✅ POST /api/media/upload-url - CF Stream upload URL created: ${cfData.result.uid}`,
+			`✅ POST /api/media/upload-url - CF Stream TUS upload created: ${streamMediaId}`,
 		);
 
 		return c.json({
-			uploadURL: cfData.result.uploadURL,
-			mediaId: cfData.result.uid,
+			tusUploadUrl: tusLocation,
+			mediaId: streamMediaId,
 			mediaType: "video" as const,
 			guestId,
 		});
@@ -812,7 +832,66 @@ app.post("/api/media/upload-url", async (c) => {
 	}
 });
 
-// POST /api/media/confirm - Confirm CF Images/Stream upload and save metadata
+// PUT /api/media/upload-original/:mediaId - Stream original file to R2 (no buffering)
+app.put("/api/media/upload-original/:mediaId", async (c) => {
+	const mediaId = c.req.param("mediaId");
+	console.log(`📦 PUT /api/media/upload-original/${mediaId} - Stream started`);
+	try {
+		const qrToken = c.req.header("x-qr-token");
+		if (!qrToken) {
+			return c.json({ error: "Missing QR token" }, 401);
+		}
+
+		const db = createDb(c.env.DB);
+		const group = await db.query.guestGroups.findFirst({
+			where: (t, { eq }) => eq(t.qrToken, qrToken),
+			with: { guests: true },
+		});
+		if (!group) {
+			return c.json({ error: "Invalid QR token" }, 403);
+		}
+
+		const fileName = c.req.header("x-file-name") || "unknown";
+		const mimeType = c.req.header("content-type") || "application/octet-stream";
+		const ext = fileName.split(".").pop()?.toLowerCase() || "bin";
+		const r2Key = `groups/${group.id}/originals/${mediaId}.${ext}`;
+
+		const body = c.req.raw.body;
+		if (!body) {
+			return c.json({ error: "Empty body" }, 400);
+		}
+
+		// Stream directly to R2 — no buffering in Worker memory
+		await c.env.BUCKET.put(r2Key, body, {
+			httpMetadata: { contentType: mimeType },
+		});
+
+		// Update the photo_uploads record with the R2 key
+		await db
+			.update(photoUploads)
+			.set({ r2Key })
+			.where(eq(photoUploads.id, mediaId));
+
+		console.log(
+			`✅ PUT /api/media/upload-original/${mediaId} - Stored at ${r2Key}`,
+		);
+		return c.json({ r2Key, success: true });
+	} catch (error) {
+		console.error(
+			`❌ PUT /api/media/upload-original/${mediaId} - Error:`,
+			error,
+		);
+		return c.json(
+			{
+				error: "Failed to store original",
+				details: error instanceof Error ? error.message : String(error),
+			},
+			500,
+		);
+	}
+});
+
+// POST /api/media/confirm - Confirm CF Images/Stream upload and save metadata (JSON only, no file)
 app.post("/api/media/confirm", async (c) => {
 	console.log("✔️ POST /api/media/confirm - Confirm request started");
 	try {
@@ -823,30 +902,34 @@ app.post("/api/media/confirm", async (c) => {
 		}
 
 		const db = createDb(c.env.DB);
-
 		const group = await db.query.guestGroups.findFirst({
 			where: (t, { eq }) => eq(t.qrToken, qrToken),
 			with: { guests: true },
 		});
-
 		if (!group) {
 			console.log("❌ POST /api/media/confirm - Invalid QR token");
 			return c.json({ error: "Invalid QR token" }, 403);
 		}
 
-		const formData = await c.req.formData();
-		const mediaId = formData.get("mediaId") as string;
-		const fileName = formData.get("fileName") as string;
-		const guestId = formData.get("guestId") as string;
-		const mediaType = formData.get("mediaType") as "image" | "video";
-		const fileSize = Number(formData.get("fileSize") || 0);
-		const mimeType =
-			(formData.get("mimeType") as string) || "application/octet-stream";
-		const cloudflareImageId = formData.get("cloudflareImageId") as
-			| string
-			| null;
-		const streamVideoUid = formData.get("streamVideoUid") as string | null;
-		const originalFile = formData.get("originalFile") as File | null;
+		const {
+			mediaId,
+			fileName,
+			guestId,
+			mediaType,
+			fileSize,
+			mimeType,
+			cloudflareImageId,
+			streamVideoUid,
+		} = await c.req.json<{
+			mediaId: string;
+			fileName: string;
+			guestId: string;
+			mediaType: "image" | "video";
+			fileSize: number;
+			mimeType: string;
+			cloudflareImageId?: string | null;
+			streamVideoUid?: string | null;
+		}>();
 
 		if (!mediaId || !fileName || !guestId || !mediaType) {
 			console.log("❌ POST /api/media/confirm - Missing required fields");
@@ -862,19 +945,6 @@ app.post("/api/media/confirm", async (c) => {
 			return c.json({ error: "Invalid guest ID" }, 403);
 		}
 
-		// Store original file in R2 for download/backup
-		let r2Key: string | null = null;
-		if (originalFile && originalFile.size > 0) {
-			const ext = fileName.split(".").pop()?.toLowerCase() || "bin";
-			r2Key = `groups/${group.id}/originals/${mediaId}.${ext}`;
-			await c.env.BUCKET.put(r2Key, await originalFile.arrayBuffer(), {
-				httpMetadata: { contentType: mimeType },
-			});
-			console.log(
-				`📦 Original stored in R2: ${r2Key} (${(originalFile.size / 1024 / 1024).toFixed(2)} MB)`,
-			);
-		}
-
 		if (cloudflareImageId) {
 			console.log(
 				`💾 POST /api/media/confirm - CF Images: id=${mediaId}, cfImageId=${cloudflareImageId}`,
@@ -883,10 +953,9 @@ app.post("/api/media/confirm", async (c) => {
 				id: mediaId,
 				fileName,
 				fileSize,
-				mimeType,
+				mimeType: mimeType || "application/octet-stream",
 				mediaType: "image",
 				cloudflareImageId,
-				r2Key,
 				guestId,
 			});
 
@@ -907,11 +976,10 @@ app.post("/api/media/confirm", async (c) => {
 				id: mediaId,
 				fileName,
 				fileSize,
-				mimeType,
+				mimeType: mimeType || "application/octet-stream",
 				mediaType: "video",
 				streamVideoUid,
 				streamReady: false,
-				r2Key,
 				guestId,
 			});
 

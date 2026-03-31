@@ -125,6 +125,15 @@ export function PhotoUpload({
 
 			let uploaded = 0;
 			for (const file of Array.from(files)) {
+				// Guard: reject files > 1500MB
+				const maxFileSize = 1500 * 1024 * 1024; // 1500MB
+				if (file.size > maxFileSize) {
+					alert(
+						`Súbor ${file.name} je príliš veľký (${(file.size / 1024 / 1024).toFixed(0)} MB). Maximum je 1500 MB.`,
+					);
+					continue;
+				}
+
 				try {
 					// Upload file via CF Images (images) or CF Stream (videos)
 					// No client-side HEIC conversion needed — CF Images handles HEIC natively
@@ -146,23 +155,20 @@ export function PhotoUpload({
 						uploadedAt: new Date(),
 					};
 
-					if (
-						result.mediaType === "image" ||
-						(!result.mediaType && !file.type.startsWith("video/"))
-					) {
-						// CF Images upload — the mediaId IS the cloudflareImageId
-						if (cfImagesHash) {
-							newMedia.cloudflareImageId = result.id;
-							newMedia.thumbnailUrl = `https://imagedelivery.net/${cfImagesHash}/${result.id}/thumbnail`;
-							newMedia.fullUrl = `https://imagedelivery.net/${cfImagesHash}/${result.id}/public`;
-						}
-					} else if (result.mediaType === "video") {
-						// CF Stream upload — the mediaId IS the streamVideoUid
+					if (result.mediaType === "video") {
+						// Video — mark as processing, use placeholder
+						newMedia.streamVideoUid = result.id;
+						newMedia.streamReady = false;
 						if (cfStreamCode) {
-							newMedia.streamVideoUid = result.id;
-							newMedia.streamReady = false;
 							newMedia.thumbnailUrl = `https://customer-${cfStreamCode}.cloudflarestream.com/${result.id}/thumbnails/thumbnail.jpg`;
 							newMedia.fullUrl = `https://customer-${cfStreamCode}.cloudflarestream.com/${result.id}/iframe?autoplay=true&muted=true`;
+						}
+					} else {
+						// Image — CF Images ready immediately
+						newMedia.cloudflareImageId = result.id;
+						if (cfImagesHash) {
+							newMedia.thumbnailUrl = `https://imagedelivery.net/${cfImagesHash}/${result.id}/thumbnail`;
+							newMedia.fullUrl = `https://imagedelivery.net/${cfImagesHash}/${result.id}/public`;
 						}
 					}
 
@@ -358,6 +364,9 @@ export function PhotoUpload({
 									alt={media.fileName}
 									className="w-full h-full object-cover"
 									loading="lazy"
+									onError={(e) => {
+										(e.target as HTMLImageElement).style.opacity = "0.3";
+									}}
 								/>
 								{/* Video Overlay */}
 								{media.mediaType === "video" && (

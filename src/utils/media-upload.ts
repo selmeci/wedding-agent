@@ -1,4 +1,37 @@
+import * as tus from "tus-js-client";
 import { retryWithBackoff } from "@/utils/upload-retry";
+
+/** Infer MIME type from file extension when file.type is empty (common on iOS/Android) */
+function inferMimeType(file: File): string {
+	if (file.type) return file.type;
+	const ext = file.name.split(".").pop()?.toLowerCase();
+	const mimeMap: Record<string, string> = {
+		jpg: "image/jpeg",
+		jpeg: "image/jpeg",
+		png: "image/png",
+		heic: "image/heic",
+		heif: "image/heif",
+		webp: "image/webp",
+		mp4: "video/mp4",
+		mov: "video/quicktime",
+		webm: "video/webm",
+		m4v: "video/x-m4v",
+		"3gp": "video/3gpp",
+	};
+	return (ext && mimeMap[ext]) || "application/octet-stream";
+}
+
+/** Check if a MIME type is a video type */
+function isVideoMimeType(mimeType: string): boolean {
+	const videoTypes = [
+		"video/mp4",
+		"video/quicktime",
+		"video/webm",
+		"video/x-m4v",
+		"video/3gpp",
+	];
+	return videoTypes.includes(mimeType.split(";")[0].trim());
+}
 
 // --- Types ---
 
@@ -49,10 +82,50 @@ async function jsonPost<T>(
 // --- CF Images / CF Stream Upload ---
 
 interface CFUploadUrlResponse {
-	uploadURL: string;
+	uploadURL?: string;
+	tusUploadUrl?: string;
 	mediaId: string;
 	mediaType: "image" | "video";
 	guestId: string;
+}
+
+/**
+ * Upload a video file via tus-js-client to Cloudflare Stream.
+ * Uses chunked, resumable upload protocol — survives connection drops.
+ */
+function uploadVideoViaTus(
+	file: File,
+	tusUploadUrl: string,
+	onProgress?: (progress: UploadProgress) => void,
+): Promise<void> {
+	return new Promise((resolve, reject) => {
+		const upload = new tus.Upload(file, {
+			uploadUrl: tusUploadUrl,
+			// 10 MB chunks — good balance for mobile (min 5 MB per CF docs)
+			chunkSize: 10 * 1024 * 1024,
+			retryDelays: [0, 1000, 3000, 5000, 10000],
+			metadata: {
+				filename: file.name,
+				filetype: file.type || "video/mp4",
+			},
+			onProgress(bytesUploaded, bytesTotal) {
+				const percent = Math.round((bytesUploaded / bytesTotal) * 100);
+				onProgress?.({ phase: "uploading", percent });
+			},
+			onSuccess() {
+				console.log(`[TUS] Upload finished: ${file.name}`);
+				resolve();
+			},
+			onError(error) {
+				console.error(`[TUS] Upload error: ${file.name}`, error);
+				reject(
+					new Error(`TUS upload failed: ${error.message || "Unknown error"}`),
+				);
+			},
+		});
+
+		upload.start();
+	});
 }
 
 /**
@@ -65,18 +138,12 @@ export async function uploadMediaViaCF(
 	guestId: string | null,
 	onProgress?: (progress: UploadProgress) => void,
 ): Promise<UploadResult> {
-	const videoTypes = [
-		"video/mp4",
-		"video/quicktime",
-		"video/webm",
-		"video/x-m4v",
-	];
-	const baseType = file.type.split(";")[0].trim();
-	const isVideo = videoTypes.includes(baseType);
+	const mimeType = inferMimeType(file);
+	const isVideo = isVideoMimeType(mimeType);
 	const mediaType: "image" | "video" = isVideo ? "video" : "image";
 
 	console.log(
-		`[CF Upload] Starting: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB, ${mediaType})`,
+		`[CF Upload] Starting: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB, ${mediaType}, mime=${mimeType})`,
 	);
 
 	// Step 1: Get one-time upload URL from our Worker
@@ -88,8 +155,9 @@ export async function uploadMediaViaCF(
 				"/api/media/upload-url",
 				{
 					fileName: file.name,
-					contentType: file.type,
+					contentType: mimeType,
 					mediaType,
+					fileSize: file.size,
 				},
 				authHeaders(qrToken, guestId),
 			),
@@ -102,77 +170,85 @@ export async function uploadMediaViaCF(
 
 	const resolvedGuestId = uploadUrlData.guestId;
 
-	// Step 2: Upload file directly to CF via XHR (for progress tracking)
+	// Step 2: Upload file to CF
 	onProgress?.({ phase: "uploading", percent: 0 });
 
-	await retryWithBackoff(
-		() =>
-			new Promise<void>((resolve, reject) => {
-				const xhr = new XMLHttpRequest();
+	if (uploadUrlData.tusUploadUrl) {
+		// Video: TUS resumable upload — chunked, survives connection drops
+		await uploadVideoViaTus(file, uploadUrlData.tusUploadUrl, onProgress);
+	} else if (uploadUrlData.uploadURL) {
+		// Image: basic XHR FormData upload
+		await retryWithBackoff(
+			() =>
+				new Promise<void>((resolve, reject) => {
+					const xhr = new XMLHttpRequest();
 
-				xhr.upload.addEventListener("progress", (e) => {
-					if (e.lengthComputable) {
-						onProgress?.({
-							phase: "uploading",
-							percent: Math.round((e.loaded / e.total) * 100),
-						});
-					}
-				});
+					xhr.upload.addEventListener("progress", (e) => {
+						if (e.lengthComputable) {
+							onProgress?.({
+								phase: "uploading",
+								percent: Math.round((e.loaded / e.total) * 100),
+							});
+						}
+					});
 
-				xhr.addEventListener("load", () => {
-					if (xhr.status >= 200 && xhr.status < 300) {
-						resolve();
-					} else {
+					xhr.addEventListener("load", () => {
+						if (xhr.status >= 200 && xhr.status < 300) {
+							resolve();
+						} else {
+							reject(
+								new Error(
+									`CF upload failed: status ${xhr.status} ${xhr.responseText?.substring(0, 200)}`,
+								),
+							);
+						}
+					});
+
+					xhr.addEventListener("error", () => {
 						reject(
 							new Error(
-								`CF upload failed: status ${xhr.status} ${xhr.responseText?.substring(0, 200)}`,
+								`CF upload network error (readyState=${xhr.readyState}, status=${xhr.status})`,
 							),
 						);
-					}
-				});
+					});
 
-				xhr.addEventListener("error", () => {
-					reject(
-						new Error(
-							`CF upload network error (readyState=${xhr.readyState}, status=${xhr.status})`,
-						),
-					);
-				});
+					xhr.addEventListener("timeout", () => {
+						reject(new Error("CF upload timeout"));
+					});
 
-				xhr.addEventListener("timeout", () => {
-					reject(new Error("CF upload timeout"));
-				});
+					xhr.timeout = 10 * 60 * 1000;
+					xhr.open("POST", uploadUrlData.uploadURL!);
 
-				xhr.timeout = 10 * 60 * 1000; // 10 min for large videos
-				xhr.open("POST", uploadUrlData.uploadURL);
+					const formData = new FormData();
+					formData.append("file", file);
+					xhr.send(formData);
+				}),
+			{
+				maxRetries: 2,
+				onRetry: (attempt) =>
+					console.log(`[CF Upload] File upload retry #${attempt}`),
+			},
+		);
+	} else {
+		throw new Error("No upload URL returned from server");
+	}
 
-				// CF Direct Creator Upload expects FormData with a "file" field
-				const formData = new FormData();
-				formData.append("file", file);
-				xhr.send(formData);
-			}),
-		{
-			maxRetries: 2,
-			onRetry: (attempt) =>
-				console.log(`[CF Upload] File upload retry #${attempt}`),
-		},
-	);
-
-	// Step 3: Confirm upload with our Worker (saves metadata to D1 + original to R2)
+	// Step 3: Confirm upload with JSON metadata (no file — fast, small payload)
 	onProgress?.({ phase: "confirming", percent: 100 });
 
-	const confirmForm = new FormData();
-	confirmForm.append("originalFile", file, file.name);
-	confirmForm.append("mediaId", uploadUrlData.mediaId);
-	confirmForm.append("fileName", file.name);
-	confirmForm.append("guestId", resolvedGuestId || "");
-	confirmForm.append("mediaType", mediaType);
-	confirmForm.append("fileSize", String(file.size));
-	confirmForm.append("mimeType", file.type);
+	const confirmBody: Record<string, unknown> = {
+		mediaId: uploadUrlData.mediaId,
+		fileName: file.name,
+		guestId: resolvedGuestId,
+		mediaType,
+		fileSize: file.size,
+		mimeType,
+	};
+
 	if (mediaType === "image") {
-		confirmForm.append("cloudflareImageId", uploadUrlData.mediaId);
+		confirmBody.cloudflareImageId = uploadUrlData.mediaId;
 	} else {
-		confirmForm.append("streamVideoUid", uploadUrlData.mediaId);
+		confirmBody.streamVideoUid = uploadUrlData.mediaId;
 	}
 
 	const result = await retryWithBackoff(
@@ -180,9 +256,10 @@ export async function uploadMediaViaCF(
 			const response = await fetch("/api/media/confirm", {
 				method: "POST",
 				headers: {
+					"Content-Type": "application/json",
 					"x-qr-token": qrToken,
 				},
-				body: confirmForm,
+				body: JSON.stringify(confirmBody),
 			});
 
 			if (!response.ok) {
@@ -200,6 +277,23 @@ export async function uploadMediaViaCF(
 				console.log(`[CF Upload] Confirm retry #${attempt}`),
 		},
 	);
+
+	// Step 4: Stream original file to R2 (background — non-blocking for UX)
+	try {
+		await fetch(`/api/media/upload-original/${uploadUrlData.mediaId}`, {
+			method: "PUT",
+			headers: {
+				"x-qr-token": qrToken,
+				"x-file-name": file.name,
+				"Content-Type": mimeType,
+			},
+			body: file,
+		});
+		console.log(`[CF Upload] Original stored in R2 for ${file.name}`);
+	} catch (err) {
+		// Non-fatal — CF still has the file for serving
+		console.warn(`[CF Upload] Failed to store original in R2:`, err);
+	}
 
 	onProgress?.({ phase: "done", percent: 100 });
 
