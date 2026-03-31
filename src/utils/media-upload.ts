@@ -119,9 +119,7 @@ function uploadVideoViaTus(
 			onError(error) {
 				console.error(`[TUS] Upload error: ${file.name}`, error);
 				reject(
-					new Error(
-						`TUS upload failed: ${error.message || "Unknown error"}`,
-					),
+					new Error(`TUS upload failed: ${error.message || "Unknown error"}`),
 				);
 			},
 		});
