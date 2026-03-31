@@ -1,3 +1,4 @@
+import * as tus from "tus-js-client";
 import { retryWithBackoff } from "@/utils/upload-retry";
 
 /** Infer MIME type from file extension when file.type is empty (common on iOS/Android) */
@@ -81,10 +82,52 @@ async function jsonPost<T>(
 // --- CF Images / CF Stream Upload ---
 
 interface CFUploadUrlResponse {
-	uploadURL: string;
+	uploadURL?: string;
+	tusUploadUrl?: string;
 	mediaId: string;
 	mediaType: "image" | "video";
 	guestId: string;
+}
+
+/**
+ * Upload a video file via tus-js-client to Cloudflare Stream.
+ * Uses chunked, resumable upload protocol — survives connection drops.
+ */
+function uploadVideoViaTus(
+	file: File,
+	tusUploadUrl: string,
+	onProgress?: (progress: UploadProgress) => void,
+): Promise<void> {
+	return new Promise((resolve, reject) => {
+		const upload = new tus.Upload(file, {
+			uploadUrl: tusUploadUrl,
+			// 10 MB chunks — good balance for mobile (min 5 MB per CF docs)
+			chunkSize: 10 * 1024 * 1024,
+			retryDelays: [0, 1000, 3000, 5000, 10000],
+			metadata: {
+				filename: file.name,
+				filetype: file.type || "video/mp4",
+			},
+			onProgress(bytesUploaded, bytesTotal) {
+				const percent = Math.round((bytesUploaded / bytesTotal) * 100);
+				onProgress?.({ phase: "uploading", percent });
+			},
+			onSuccess() {
+				console.log(`[TUS] Upload finished: ${file.name}`);
+				resolve();
+			},
+			onError(error) {
+				console.error(`[TUS] Upload error: ${file.name}`, error);
+				reject(
+					new Error(
+						`TUS upload failed: ${error.message || "Unknown error"}`,
+					),
+				);
+			},
+		});
+
+		upload.start();
+	});
 }
 
 /**
@@ -116,6 +159,7 @@ export async function uploadMediaViaCF(
 					fileName: file.name,
 					contentType: mimeType,
 					mediaType,
+					fileSize: file.size,
 				},
 				authHeaders(qrToken, guestId),
 			),
@@ -128,61 +172,68 @@ export async function uploadMediaViaCF(
 
 	const resolvedGuestId = uploadUrlData.guestId;
 
-	// Step 2: Upload file directly to CF via XHR (for progress tracking)
+	// Step 2: Upload file to CF
 	onProgress?.({ phase: "uploading", percent: 0 });
 
-	await retryWithBackoff(
-		() =>
-			new Promise<void>((resolve, reject) => {
-				const xhr = new XMLHttpRequest();
+	if (uploadUrlData.tusUploadUrl) {
+		// Video: TUS resumable upload — chunked, survives connection drops
+		await uploadVideoViaTus(file, uploadUrlData.tusUploadUrl, onProgress);
+	} else if (uploadUrlData.uploadURL) {
+		// Image: basic XHR FormData upload
+		await retryWithBackoff(
+			() =>
+				new Promise<void>((resolve, reject) => {
+					const xhr = new XMLHttpRequest();
 
-				xhr.upload.addEventListener("progress", (e) => {
-					if (e.lengthComputable) {
-						onProgress?.({
-							phase: "uploading",
-							percent: Math.round((e.loaded / e.total) * 100),
-						});
-					}
-				});
+					xhr.upload.addEventListener("progress", (e) => {
+						if (e.lengthComputable) {
+							onProgress?.({
+								phase: "uploading",
+								percent: Math.round((e.loaded / e.total) * 100),
+							});
+						}
+					});
 
-				xhr.addEventListener("load", () => {
-					if (xhr.status >= 200 && xhr.status < 300) {
-						resolve();
-					} else {
+					xhr.addEventListener("load", () => {
+						if (xhr.status >= 200 && xhr.status < 300) {
+							resolve();
+						} else {
+							reject(
+								new Error(
+									`CF upload failed: status ${xhr.status} ${xhr.responseText?.substring(0, 200)}`,
+								),
+							);
+						}
+					});
+
+					xhr.addEventListener("error", () => {
 						reject(
 							new Error(
-								`CF upload failed: status ${xhr.status} ${xhr.responseText?.substring(0, 200)}`,
+								`CF upload network error (readyState=${xhr.readyState}, status=${xhr.status})`,
 							),
 						);
-					}
-				});
+					});
 
-				xhr.addEventListener("error", () => {
-					reject(
-						new Error(
-							`CF upload network error (readyState=${xhr.readyState}, status=${xhr.status})`,
-						),
-					);
-				});
+					xhr.addEventListener("timeout", () => {
+						reject(new Error("CF upload timeout"));
+					});
 
-				xhr.addEventListener("timeout", () => {
-					reject(new Error("CF upload timeout"));
-				});
+					xhr.timeout = 10 * 60 * 1000;
+					xhr.open("POST", uploadUrlData.uploadURL!);
 
-				xhr.timeout = 10 * 60 * 1000; // 10 min for large videos
-				xhr.open("POST", uploadUrlData.uploadURL);
-
-				// CF Direct Creator Upload expects FormData with a "file" field
-				const formData = new FormData();
-				formData.append("file", file);
-				xhr.send(formData);
-			}),
-		{
-			maxRetries: 2,
-			onRetry: (attempt) =>
-				console.log(`[CF Upload] File upload retry #${attempt}`),
-		},
-	);
+					const formData = new FormData();
+					formData.append("file", file);
+					xhr.send(formData);
+				}),
+			{
+				maxRetries: 2,
+				onRetry: (attempt) =>
+					console.log(`[CF Upload] File upload retry #${attempt}`),
+			},
+		);
+	} else {
+		throw new Error("No upload URL returned from server");
+	}
 
 	// Step 3: Confirm upload with JSON metadata (no file — fast, small payload)
 	onProgress?.({ phase: "confirming", percent: 100 });
