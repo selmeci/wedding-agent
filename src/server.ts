@@ -692,10 +692,19 @@ app.post("/api/media/upload-url", async (c) => {
 		];
 		const baseContentType = contentType.split(";")[0].trim();
 
-		if (mediaType === "image" && !imageTypes.includes(baseContentType)) {
+		const allowedFallback = baseContentType === "application/octet-stream";
+		if (
+			mediaType === "image" &&
+			!imageTypes.includes(baseContentType) &&
+			!allowedFallback
+		) {
 			return c.json({ error: "Nepovolený typ súboru pre obrázok" }, 400);
 		}
-		if (mediaType === "video" && !videoTypes.includes(baseContentType)) {
+		if (
+			mediaType === "video" &&
+			!videoTypes.includes(baseContentType) &&
+			!allowedFallback
+		) {
 			return c.json({ error: "Nepovolený typ súboru pre video" }, 400);
 		}
 
