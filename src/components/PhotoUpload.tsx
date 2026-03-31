@@ -125,11 +125,11 @@ export function PhotoUpload({
 
 			let uploaded = 0;
 			for (const file of Array.from(files)) {
-				// Guard: reject files > 500MB
-				const maxFileSize = 500 * 1024 * 1024; // 500MB
+				// Guard: reject files > 1500MB
+				const maxFileSize = 1500 * 1024 * 1024; // 1500MB
 				if (file.size > maxFileSize) {
 					alert(
-						`Súbor ${file.name} je príliš veľký (${(file.size / 1024 / 1024).toFixed(0)} MB). Maximum je 500 MB.`,
+						`Súbor ${file.name} je príliš veľký (${(file.size / 1024 / 1024).toFixed(0)} MB). Maximum je 1500 MB.`,
 					);
 					continue;
 				}
