@@ -717,22 +717,25 @@ app.post("/api/media/upload-url", async (c) => {
 		const cfToken = c.env.CF_IMAGE_TOKEN;
 
 		if (mediaType === "image") {
-			// CF Images Direct Creator Upload
+			// CF Images Direct Creator Upload (requires multipart/form-data)
+			const formData = new FormData();
+			formData.append(
+				"metadata",
+				JSON.stringify({
+					guestId,
+					groupId: group.id,
+					fileName,
+				}),
+			);
+
 			const cfResponse = await fetch(
 				`https://api.cloudflare.com/client/v4/accounts/${cfAccountId}/images/v2/direct_upload`,
 				{
 					method: "POST",
 					headers: {
 						Authorization: `Bearer ${cfToken}`,
-						"Content-Type": "application/json",
 					},
-					body: JSON.stringify({
-						metadata: {
-							guestId,
-							groupId: group.id,
-							fileName,
-						},
-					}),
+					body: formData,
 				},
 			);
 
