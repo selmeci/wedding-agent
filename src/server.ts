@@ -829,26 +829,6 @@ app.post("/api/media/upload-url", async (c) => {
 			`✅ POST /api/media/upload-url - CF Stream TUS upload created: ${streamMediaId}`,
 		);
 
-		// Enable downloads for this video (fire-and-forget — non-blocking)
-		c.executionCtx.waitUntil(
-			fetch(
-				`https://api.cloudflare.com/client/v4/accounts/${cfAccountId}/stream/${streamMediaId}/downloads`,
-				{
-					method: "POST",
-					headers: { Authorization: `Bearer ${cfToken}` },
-				},
-			)
-				.then((res) => {
-					if (!res.ok)
-						console.warn(
-							`Failed to enable downloads for stream ${streamMediaId}: ${res.status}`,
-						);
-				})
-				.catch((err) =>
-					console.warn(`Download-enable failed for ${streamMediaId}:`, err),
-				),
-		);
-
 		return c.json({
 			tusUploadUrl: tusLocation,
 			mediaId: streamMediaId,
@@ -958,6 +938,30 @@ app.post("/api/media/confirm", async (c) => {
 				streamReady: false,
 				guestId,
 			});
+
+			// Enable downloads for this video (video is uploaded at this point)
+			const cfAccountId = c.env.CF_ACCOUNT_ID;
+			const cfToken = c.env.CF_IMAGE_TOKEN;
+			c.executionCtx.waitUntil(
+				fetch(
+					`https://api.cloudflare.com/client/v4/accounts/${cfAccountId}/stream/${streamVideoUid}/downloads`,
+					{
+						method: "POST",
+						headers: { Authorization: `Bearer ${cfToken}` },
+					},
+				)
+					.then((res) => {
+						if (!res.ok)
+							console.warn(
+								`Failed to enable downloads for stream ${streamVideoUid}: ${res.status}`,
+							);
+						else
+							console.log(`✅ Downloads enabled for stream ${streamVideoUid}`);
+					})
+					.catch((err) =>
+						console.warn(`Download-enable failed for ${streamVideoUid}:`, err),
+					),
+			);
 
 			return c.json({
 				id: mediaId,
