@@ -514,22 +514,62 @@ app.post("/api/gallery/reupload/:id", async (c) => {
 	}
 });
 
-// GET /api/photos/:id/file - R2 fallback for unmigrated/skipped files
+// GET /api/photos/:id/file - Download original file (R2 → CF Images → CF Stream fallback)
 app.get("/api/photos/:id/file", async (c) => {
 	const photoId = c.req.param("id");
 	const db = createDb(c.env.DB);
 	const photo = await db.query.photoUploads.findFirst({
 		where: (t, { eq: colEq }) => colEq(t.id, photoId),
 	});
-	if (!photo?.r2Key) return c.json({ error: "Not found" }, 404);
-	const obj = await c.env.BUCKET.get(photo.r2Key);
-	if (!obj) return c.json({ error: "File not found in R2" }, 404);
-	return new Response(obj.body, {
-		headers: {
-			"Cache-Control": "public, max-age=31536000",
-			"Content-Type": photo.mimeType,
-		},
-	});
+	if (!photo) return c.json({ error: "Not found" }, 404);
+
+	// 1. Try R2 (preferred — has the original file)
+	if (photo.r2Key) {
+		const obj = await c.env.BUCKET.get(photo.r2Key);
+		if (obj) {
+			return new Response(obj.body, {
+				headers: {
+					"Cache-Control": "public, max-age=31536000",
+					"Content-Type": photo.mimeType,
+					"Content-Disposition": `attachment; filename="${photo.fileName}"`,
+				},
+			});
+		}
+	}
+
+	// 2. Fallback: CF Images blob API (returns original uploaded image at full size)
+	if (
+		photo.cloudflareImageId &&
+		!photo.cloudflareImageId.startsWith("migration_skipped")
+	) {
+		const cfAccountId = c.env.CF_ACCOUNT_ID;
+		const cfToken = c.env.CF_IMAGE_TOKEN;
+		const blobRes = await fetch(
+			`https://api.cloudflare.com/client/v4/accounts/${cfAccountId}/images/v1/${photo.cloudflareImageId}/blob`,
+			{ headers: { Authorization: `Bearer ${cfToken}` } },
+		);
+		if (blobRes.ok) {
+			return new Response(blobRes.body, {
+				headers: {
+					"Cache-Control": "public, max-age=31536000",
+					"Content-Type": blobRes.headers.get("Content-Type") || photo.mimeType,
+					"Content-Disposition": `attachment; filename="${photo.fileName}"`,
+				},
+			});
+		}
+		console.error(
+			`CF Images blob fetch failed for ${photo.cloudflareImageId}: ${blobRes.status}`,
+		);
+	}
+
+	// 3. Fallback: CF Stream download (302 redirect — videos are large, avoid Worker proxy)
+	if (photo.streamVideoUid) {
+		const cfStreamCode = c.env.CF_STREAM_CUSTOMER_CODE;
+		const downloadUrl = `https://customer-${cfStreamCode}.cloudflarestream.com/${photo.streamVideoUid}/downloads/default.mp4`;
+		return c.redirect(downloadUrl, 302);
+	}
+
+	return c.json({ error: "File not available for download" }, 404);
 });
 
 // DELETE /api/photos/:id - Delete photo/video
@@ -815,6 +855,26 @@ app.post("/api/media/upload-url", async (c) => {
 
 		console.log(
 			`✅ POST /api/media/upload-url - CF Stream TUS upload created: ${streamMediaId}`,
+		);
+
+		// Enable downloads for this video (fire-and-forget — non-blocking)
+		c.executionCtx.waitUntil(
+			fetch(
+				`https://api.cloudflare.com/client/v4/accounts/${cfAccountId}/stream/${streamMediaId}/downloads`,
+				{
+					method: "POST",
+					headers: { Authorization: `Bearer ${cfToken}` },
+				},
+			)
+				.then((res) => {
+					if (!res.ok)
+						console.warn(
+							`Failed to enable downloads for stream ${streamMediaId}: ${res.status}`,
+						);
+				})
+				.catch((err) =>
+					console.warn(`Download-enable failed for ${streamMediaId}:`, err),
+				),
 		);
 
 		return c.json({
@@ -1587,6 +1647,53 @@ app.post("/api/admin/migrate-media", async (c) => {
 			500,
 		);
 	}
+});
+
+// POST /api/admin/enable-stream-downloads - Enable downloads for all existing CF Stream videos
+app.post("/api/admin/enable-stream-downloads", async (c) => {
+	const apiKey = c.req.header("x-api-key");
+	if (!apiKey || apiKey !== c.env.SECRET) {
+		return c.json({ error: "Unauthorized" }, 401);
+	}
+
+	const db = createDb(c.env.DB);
+	const cfAccountId = c.env.CF_ACCOUNT_ID;
+	const cfToken = c.env.CF_IMAGE_TOKEN;
+
+	const videos = await db.query.photoUploads.findMany({
+		where: (t, { and, eq, isNotNull }) =>
+			and(eq(t.mediaType, "video"), isNotNull(t.streamVideoUid)),
+	});
+
+	const results: { id: string; streamVideoUid: string; status: string }[] = [];
+
+	for (const video of videos) {
+		try {
+			const res = await fetch(
+				`https://api.cloudflare.com/client/v4/accounts/${cfAccountId}/stream/${video.streamVideoUid}/downloads`,
+				{
+					method: "POST",
+					headers: { Authorization: `Bearer ${cfToken}` },
+				},
+			);
+			results.push({
+				id: video.id,
+				streamVideoUid: video.streamVideoUid!,
+				status: res.ok ? "enabled" : `failed: ${res.status}`,
+			});
+		} catch (err) {
+			results.push({
+				id: video.id,
+				streamVideoUid: video.streamVideoUid!,
+				status: `error: ${err instanceof Error ? err.message : String(err)}`,
+			});
+		}
+	}
+
+	return c.json({
+		total: videos.length,
+		results,
+	});
 });
 
 // Admin mode validation endpoint
