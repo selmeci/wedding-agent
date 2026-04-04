@@ -895,65 +895,6 @@ app.post("/api/media/upload-url", async (c) => {
 	}
 });
 
-// PUT /api/media/upload-original/:mediaId - Stream original file to R2 (no buffering)
-app.put("/api/media/upload-original/:mediaId", async (c) => {
-	const mediaId = c.req.param("mediaId");
-	console.log(`📦 PUT /api/media/upload-original/${mediaId} - Stream started`);
-	try {
-		const qrToken = c.req.header("x-qr-token");
-		if (!qrToken) {
-			return c.json({ error: "Missing QR token" }, 401);
-		}
-
-		const db = createDb(c.env.DB);
-		const group = await db.query.guestGroups.findFirst({
-			where: (t, { eq }) => eq(t.qrToken, qrToken),
-			with: { guests: true },
-		});
-		if (!group) {
-			return c.json({ error: "Invalid QR token" }, 403);
-		}
-
-		const fileName = c.req.header("x-file-name") || "unknown";
-		const mimeType = c.req.header("content-type") || "application/octet-stream";
-		const ext = fileName.split(".").pop()?.toLowerCase() || "bin";
-		const r2Key = `groups/${group.id}/originals/${mediaId}.${ext}`;
-
-		const body = c.req.raw.body;
-		if (!body) {
-			return c.json({ error: "Empty body" }, 400);
-		}
-
-		// Stream directly to R2 — no buffering in Worker memory
-		await c.env.BUCKET.put(r2Key, body, {
-			httpMetadata: { contentType: mimeType },
-		});
-
-		// Update the photo_uploads record with the R2 key
-		await db
-			.update(photoUploads)
-			.set({ r2Key })
-			.where(eq(photoUploads.id, mediaId));
-
-		console.log(
-			`✅ PUT /api/media/upload-original/${mediaId} - Stored at ${r2Key}`,
-		);
-		return c.json({ r2Key, success: true });
-	} catch (error) {
-		console.error(
-			`❌ PUT /api/media/upload-original/${mediaId} - Error:`,
-			error,
-		);
-		return c.json(
-			{
-				error: "Failed to store original",
-				details: error instanceof Error ? error.message : String(error),
-			},
-			500,
-		);
-	}
-});
-
 // POST /api/media/confirm - Confirm CF Images/Stream upload and save metadata (JSON only, no file)
 app.post("/api/media/confirm", async (c) => {
 	console.log("✔️ POST /api/media/confirm - Confirm request started");
