@@ -939,29 +939,6 @@ app.post("/api/media/confirm", async (c) => {
 				guestId,
 			});
 
-			// Enable downloads for this video (awaited to ensure it completes)
-			const cfAccountId = c.env.CF_ACCOUNT_ID;
-			const cfToken = c.env.CF_IMAGE_TOKEN;
-			try {
-				const dlRes = await fetch(
-					`https://api.cloudflare.com/client/v4/accounts/${cfAccountId}/stream/${streamVideoUid}/downloads`,
-					{
-						method: "POST",
-						headers: { Authorization: `Bearer ${cfToken}` },
-					},
-				);
-				if (!dlRes.ok) {
-					const body = await dlRes.text();
-					console.warn(
-						`Failed to enable downloads for stream ${streamVideoUid}: ${dlRes.status} ${body}`,
-					);
-				} else {
-					console.log(`✅ Downloads enabled for stream ${streamVideoUid}`);
-				}
-			} catch (err) {
-				console.warn(`Download-enable failed for ${streamVideoUid}:`, err);
-			}
-
 			return c.json({
 				id: mediaId,
 				mediaType: "video",
@@ -1023,6 +1000,29 @@ app.post("/api/webhooks/stream", async (c) => {
 			console.log(
 				`✅ POST /api/webhooks/stream - Updated streamReady=true for uid=${uid}`,
 			);
+
+			// Enable downloads now that video is processed
+			const cfAccountId = c.env.CF_ACCOUNT_ID;
+			const cfToken = c.env.CF_IMAGE_TOKEN;
+			try {
+				const dlRes = await fetch(
+					`https://api.cloudflare.com/client/v4/accounts/${cfAccountId}/stream/${uid}/downloads`,
+					{
+						method: "POST",
+						headers: { Authorization: `Bearer ${cfToken}` },
+					},
+				);
+				if (!dlRes.ok) {
+					const dlBody = await dlRes.text();
+					console.warn(
+						`Failed to enable downloads for stream ${uid}: ${dlRes.status} ${dlBody}`,
+					);
+				} else {
+					console.log(`✅ Downloads enabled for stream ${uid}`);
+				}
+			} catch (err) {
+				console.warn(`Download-enable failed for ${uid}:`, err);
+			}
 		}
 
 		return c.json({ success: true });
