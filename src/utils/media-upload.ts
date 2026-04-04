@@ -98,6 +98,14 @@ function uploadVideoViaTus(
 	tusUploadUrl: string,
 	onProgress?: (progress: UploadProgress) => void,
 ): Promise<void> {
+	const tusStart = performance.now();
+	let chunkCount = 0;
+	let lastChunkTime = tusStart;
+
+	console.log(
+		`[TUS] Starting: ${file.name} (${(file.size / 1024 / 1024).toFixed(1)}MB), URL: ${tusUploadUrl.substring(0, 80)}...`,
+	);
+
 	return new Promise((resolve, reject) => {
 		const upload = new tus.Upload(file, {
 			uploadUrl: tusUploadUrl,
@@ -108,19 +116,49 @@ function uploadVideoViaTus(
 				filename: file.name,
 				filetype: file.type || "video/mp4",
 			},
+			onChunkComplete(chunkSize, bytesUploaded, bytesTotal) {
+				chunkCount++;
+				const now = performance.now();
+				const chunkMs = now - lastChunkTime;
+				const speedMbps = (
+					(chunkSize * 8) /
+					(chunkMs / 1000) /
+					1_000_000
+				).toFixed(1);
+				console.log(
+					`[TUS] Chunk ${chunkCount}: ${(bytesUploaded / 1024 / 1024).toFixed(1)}/${(bytesTotal / 1024 / 1024).toFixed(1)}MB (${chunkMs.toFixed(0)}ms, ${speedMbps} Mbps)`,
+				);
+				lastChunkTime = now;
+			},
 			onProgress(bytesUploaded, bytesTotal) {
 				const percent = Math.round((bytesUploaded / bytesTotal) * 100);
 				onProgress?.({ phase: "uploading", percent });
 			},
 			onSuccess() {
-				console.log(`[TUS] Upload finished: ${file.name}`);
+				const totalSec = ((performance.now() - tusStart) / 1000).toFixed(1);
+				const avgMbps = (
+					(file.size * 8) /
+					Number(totalSec) /
+					1_000_000
+				).toFixed(1);
+				console.log(
+					`[TUS] ✅ Finished: ${file.name} in ${totalSec}s (${avgMbps} Mbps avg, ${chunkCount} chunks)`,
+				);
 				resolve();
 			},
 			onError(error) {
-				console.error(`[TUS] Upload error: ${file.name}`, error);
+				const elapsed = ((performance.now() - tusStart) / 1000).toFixed(1);
+				console.error(
+					`[TUS] ❌ Error after ${elapsed}s, chunk ${chunkCount}: ${file.name}`,
+					error,
+				);
 				reject(
 					new Error(`TUS upload failed: ${error.message || "Unknown error"}`),
 				);
+			},
+			onShouldRetry(err, retryAttempt, _options) {
+				console.warn(`[TUS] ⚠️ Retry #${retryAttempt} for ${file.name}:`, err);
+				return true;
 			},
 		});
 
@@ -142,12 +180,15 @@ export async function uploadMediaViaCF(
 	const isVideo = isVideoMimeType(mimeType);
 	const mediaType: "image" | "video" = isVideo ? "video" : "image";
 
+	const t0 = performance.now();
+	const mb = (file.size / 1024 / 1024).toFixed(2);
 	console.log(
-		`[CF Upload] Starting: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB, ${mediaType}, mime=${mimeType})`,
+		`[CF Upload] Starting: ${file.name} (${mb}MB, ${mediaType}, mime=${mimeType})`,
 	);
 
 	// Step 1: Get one-time upload URL from our Worker
 	onProgress?.({ phase: "preparing", percent: 0 });
+	const t1 = performance.now();
 
 	const uploadUrlData = await retryWithBackoff(
 		() =>
@@ -169,9 +210,13 @@ export async function uploadMediaViaCF(
 	);
 
 	const resolvedGuestId = uploadUrlData.guestId;
+	console.log(
+		`[CF Upload] Step 1 (get URL): ${((performance.now() - t1) / 1000).toFixed(2)}s`,
+	);
 
 	// Step 2: Upload file to CF
 	onProgress?.({ phase: "uploading", percent: 0 });
+	const t2 = performance.now();
 
 	if (uploadUrlData.tusUploadUrl) {
 		// Video: TUS resumable upload — chunked, survives connection drops
@@ -233,8 +278,13 @@ export async function uploadMediaViaCF(
 		throw new Error("No upload URL returned from server");
 	}
 
+	console.log(
+		`[CF Upload] Step 2 (upload to CF): ${((performance.now() - t2) / 1000).toFixed(2)}s`,
+	);
+
 	// Step 3: Confirm upload with JSON metadata (no file — fast, small payload)
 	onProgress?.({ phase: "confirming", percent: 100 });
+	const t3 = performance.now();
 
 	const confirmBody: Record<string, unknown> = {
 		mediaId: uploadUrlData.mediaId,
@@ -278,10 +328,15 @@ export async function uploadMediaViaCF(
 		},
 	);
 
+	console.log(
+		`[CF Upload] Step 3 (confirm): ${((performance.now() - t3) / 1000).toFixed(2)}s`,
+	);
+
 	onProgress?.({ phase: "done", percent: 100 });
 
+	const totalSec = ((performance.now() - t0) / 1000).toFixed(2);
 	console.log(
-		`[CF Upload] Complete: ${file.name} → ${result.id} (${result.mediaType})`,
+		`[CF Upload] ✅ Complete: ${file.name} → ${result.id} (${result.mediaType}) in ${totalSec}s total`,
 	);
 
 	return result;
