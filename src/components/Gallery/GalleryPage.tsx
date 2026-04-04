@@ -173,26 +173,17 @@ export function GalleryPage({ token }: GalleryPageProps) {
 		setCurrentIndex((i) => Math.min(allMedia.length - 1, i + 1));
 	}, [allMedia.length]);
 
-	// Download current media file (original from R2)
-	const handleDownload = useCallback(async () => {
+	// Download current media file via /api/photos/:id/file
+	// Uses <a> tag navigation (not fetch) so that 302 redirects to CF Stream
+	// work without CORS issues and the user gesture chain is preserved.
+	const handleDownload = useCallback(() => {
 		if (!currentMedia) return;
-		// All uploads (new + migrated) have originals stored in R2 via /api/photos/:id/file
-		const url = `/api/photos/${currentMedia.id}/file`;
-		try {
-			const res = await fetch(url);
-			if (!res.ok) throw new Error("Download failed");
-			const blob = await res.blob();
-			const blobUrl = URL.createObjectURL(blob);
-			const a = document.createElement("a");
-			a.href = blobUrl;
-			a.download = currentMedia.fileName;
-			document.body.appendChild(a);
-			a.click();
-			document.body.removeChild(a);
-			URL.revokeObjectURL(blobUrl);
-		} catch {
-			window.open(url, "_blank");
-		}
+		const a = document.createElement("a");
+		a.href = `/api/photos/${currentMedia.id}/file`;
+		a.download = currentMedia.fileName;
+		document.body.appendChild(a);
+		a.click();
+		document.body.removeChild(a);
 	}, [currentMedia]);
 
 	// Re-upload file for current media (replaces R2 version with CF)
