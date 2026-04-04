@@ -632,14 +632,6 @@ app.delete("/api/photos/:id", async (c) => {
 			}
 		}
 
-		// Delete from R2 (backward compat for partially migrated items)
-		if (photo.r2Key) {
-			await c.env.BUCKET.delete(photo.r2Key);
-		}
-		if (photo.thumbnailR2Key) {
-			await c.env.BUCKET.delete(photo.thumbnailR2Key);
-		}
-
 		// Delete from D1
 		await db.delete(photoUploads).where(eq(photoUploads.id, photoId));
 
