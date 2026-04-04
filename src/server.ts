@@ -396,7 +396,7 @@ app.get("/api/photos", async (c) => {
 	}
 });
 
-// POST /api/gallery/reupload/:id - Re-upload a media file via CF Images/Stream (replaces R2 version)
+// POST /api/gallery/reupload/:id - Re-upload a media file via CF Images/Stream
 app.post("/api/gallery/reupload/:id", async (c) => {
 	const token = c.req.query("token");
 	const expectedToken = c.env.SECRET_REPORT_TOKEN;
@@ -420,15 +420,7 @@ app.post("/api/gallery/reupload/:id", async (c) => {
 
 	const isVideo = file.type.startsWith("video/");
 
-	// Store new original in R2 for downloads
-	const ext = file.name.split(".").pop()?.toLowerCase() || "bin";
-	const newR2Key = `groups/${photo.guestId}/originals/${photoId}.${ext}`;
-
 	try {
-		// Save new original to R2
-		await c.env.BUCKET.put(newR2Key, await file.arrayBuffer(), {
-			httpMetadata: { contentType: file.type },
-		});
 		if (isVideo) {
 			// Upload to CF Stream
 			const streamForm = new FormData();
@@ -453,17 +445,11 @@ app.post("/api/gallery/reupload/:id", async (c) => {
 					streamVideoUid: cfData.result.uid,
 					streamReady: false,
 					cloudflareImageId: null,
-					r2Key: newR2Key,
 					mimeType: file.type,
 					fileName: file.name,
 					fileSize: file.size,
 				})
 				.where(eq(photoUploads.id, photoId));
-
-			// Delete old R2 objects (old key, not the new original)
-			if (photo.r2Key && photo.r2Key !== newR2Key)
-				await c.env.BUCKET.delete(photo.r2Key);
-			if (photo.thumbnailR2Key) await c.env.BUCKET.delete(photo.thumbnailR2Key);
 
 			return c.json({ success: true, streamVideoUid: cfData.result.uid });
 		}
@@ -495,17 +481,11 @@ app.post("/api/gallery/reupload/:id", async (c) => {
 			.set({
 				cloudflareImageId: cfData.result.id,
 				streamVideoUid: null,
-				r2Key: newR2Key,
 				mimeType: file.type,
 				fileName: file.name,
 				fileSize: file.size,
 			})
 			.where(eq(photoUploads.id, photoId));
-
-		// Delete old R2 objects (old key, not the new original)
-		if (photo.r2Key && photo.r2Key !== newR2Key)
-			await c.env.BUCKET.delete(photo.r2Key);
-		if (photo.thumbnailR2Key) await c.env.BUCKET.delete(photo.thumbnailR2Key);
 
 		return c.json({ success: true, cloudflareImageId: cfData.result.id });
 	} catch (error) {
@@ -650,14 +630,6 @@ app.delete("/api/photos/:id", async (c) => {
 					err,
 				);
 			}
-		}
-
-		// Delete from R2 (backward compat for partially migrated items)
-		if (photo.r2Key) {
-			await c.env.BUCKET.delete(photo.r2Key);
-		}
-		if (photo.thumbnailR2Key) {
-			await c.env.BUCKET.delete(photo.thumbnailR2Key);
 		}
 
 		// Delete from D1
@@ -888,65 +860,6 @@ app.post("/api/media/upload-url", async (c) => {
 		return c.json(
 			{
 				error: "Failed to create upload URL",
-				details: error instanceof Error ? error.message : String(error),
-			},
-			500,
-		);
-	}
-});
-
-// PUT /api/media/upload-original/:mediaId - Stream original file to R2 (no buffering)
-app.put("/api/media/upload-original/:mediaId", async (c) => {
-	const mediaId = c.req.param("mediaId");
-	console.log(`📦 PUT /api/media/upload-original/${mediaId} - Stream started`);
-	try {
-		const qrToken = c.req.header("x-qr-token");
-		if (!qrToken) {
-			return c.json({ error: "Missing QR token" }, 401);
-		}
-
-		const db = createDb(c.env.DB);
-		const group = await db.query.guestGroups.findFirst({
-			where: (t, { eq }) => eq(t.qrToken, qrToken),
-			with: { guests: true },
-		});
-		if (!group) {
-			return c.json({ error: "Invalid QR token" }, 403);
-		}
-
-		const fileName = c.req.header("x-file-name") || "unknown";
-		const mimeType = c.req.header("content-type") || "application/octet-stream";
-		const ext = fileName.split(".").pop()?.toLowerCase() || "bin";
-		const r2Key = `groups/${group.id}/originals/${mediaId}.${ext}`;
-
-		const body = c.req.raw.body;
-		if (!body) {
-			return c.json({ error: "Empty body" }, 400);
-		}
-
-		// Stream directly to R2 — no buffering in Worker memory
-		await c.env.BUCKET.put(r2Key, body, {
-			httpMetadata: { contentType: mimeType },
-		});
-
-		// Update the photo_uploads record with the R2 key
-		await db
-			.update(photoUploads)
-			.set({ r2Key })
-			.where(eq(photoUploads.id, mediaId));
-
-		console.log(
-			`✅ PUT /api/media/upload-original/${mediaId} - Stored at ${r2Key}`,
-		);
-		return c.json({ r2Key, success: true });
-	} catch (error) {
-		console.error(
-			`❌ PUT /api/media/upload-original/${mediaId} - Error:`,
-			error,
-		);
-		return c.json(
-			{
-				error: "Failed to store original",
 				details: error instanceof Error ? error.message : String(error),
 			},
 			500,
@@ -1375,274 +1288,6 @@ app.delete("/api/audio/:id", async (c) => {
 			{
 				details: error instanceof Error ? error.message : String(error),
 				error: "Failed to delete audio",
-			},
-			500,
-		);
-	}
-});
-
-// Internal: serve R2 object raw (used by migration for CF Image Resizing conversion)
-app.get("/api/admin/migrate-raw/:id", async (c) => {
-	const photoId = c.req.param("id");
-	const db = createDb(c.env.DB);
-	const photo = await db.query.photoUploads.findFirst({
-		where: (t, { eq: colEq }) => colEq(t.id, photoId),
-	});
-	if (!photo?.r2Key) return c.json({ error: "Not found" }, 404);
-	const obj = await c.env.BUCKET.get(photo.r2Key);
-	if (!obj) return c.json({ error: "Not found" }, 404);
-	return new Response(obj.body, {
-		headers: { "Content-Type": photo.mimeType, "Cache-Control": "no-store" },
-	});
-});
-
-// POST /api/admin/migrate-media - Migrate existing R2 media to CF Images/Stream
-app.post("/api/admin/migrate-media", async (c) => {
-	const apiKey = c.req.header("x-api-key");
-	if (!apiKey || apiKey !== c.env.SECRET) {
-		return c.json({ error: "Unauthorized" }, 401);
-	}
-
-	const BATCH_SIZE = 5;
-	const errors: { id: string; error: string }[] = [];
-	let migratedImages = 0;
-	let migratedVideos = 0;
-
-	const db = createDb(c.env.DB);
-	const cfAccountId = c.env.CF_ACCOUNT_ID;
-	const cfToken = c.env.CF_IMAGE_TOKEN;
-
-	try {
-		// Find unmigrated images
-		const unmigratedImages = await db.query.photoUploads.findMany({
-			where: (t, { and, isNull, isNotNull, eq: colEq }) =>
-				and(
-					isNull(t.cloudflareImageId),
-					colEq(t.mediaType, "image"),
-					isNotNull(t.r2Key),
-				),
-			limit: BATCH_SIZE,
-		});
-
-		// Find unmigrated videos
-		const remainingImageSlots = BATCH_SIZE - unmigratedImages.length;
-		const unmigratedVideos =
-			remainingImageSlots > 0
-				? await db.query.photoUploads.findMany({
-						where: (t, { and, isNull, isNotNull, eq: colEq }) =>
-							and(
-								isNull(t.streamVideoUid),
-								colEq(t.mediaType, "video"),
-								isNotNull(t.r2Key),
-							),
-						limit: remainingImageSlots,
-					})
-				: [];
-
-		// Process images
-		for (const image of unmigratedImages) {
-			try {
-				const r2Object = await c.env.BUCKET.get(image.r2Key!);
-				if (!r2Object) {
-					errors.push({
-						id: image.id,
-						error: `R2 object not found: ${image.r2Key}`,
-					});
-					continue;
-				}
-
-				// Upload to CF Images
-				let uploadBlob = await r2Object.blob();
-				let uploadFileName = image.fileName;
-
-				// HEIC/HEIF: skip — CF Images can't decode these variants.
-				// Mark in DB so migration doesn't retry them. User can re-upload via web.
-				const heicTypes = ["image/heic", "image/heif"];
-				if (heicTypes.includes(image.mimeType)) {
-					await db
-						.update(photoUploads)
-						.set({ cloudflareImageId: "migration_skipped_heic" })
-						.where(eq(photoUploads.id, image.id));
-					errors.push({
-						id: image.id,
-						error: `HEIC skipped — needs manual re-upload: ${image.fileName}`,
-					});
-					continue;
-				}
-
-				const formData = new FormData();
-				formData.append("file", uploadBlob, uploadFileName);
-				formData.append(
-					"metadata",
-					JSON.stringify({
-						guestId: image.guestId,
-						migratedFrom: "r2",
-						originalId: image.id,
-					}),
-				);
-
-				const cfResponse = await fetch(
-					`https://api.cloudflare.com/client/v4/accounts/${cfAccountId}/images/v1`,
-					{
-						method: "POST",
-						headers: {
-							Authorization: `Bearer ${cfToken}`,
-						},
-						body: formData,
-					},
-				);
-
-				if (!cfResponse.ok) {
-					const errorBody = await cfResponse.text();
-					errors.push({
-						id: image.id,
-						error: `CF Images API error: ${cfResponse.status} ${errorBody}`,
-					});
-					continue;
-				}
-
-				const cfData = await cfResponse.json<{
-					result: { id: string };
-					success: boolean;
-				}>();
-
-				// Update D1 with CF Images ID
-				await db
-					.update(photoUploads)
-					.set({ cloudflareImageId: cfData.result.id })
-					.where(eq(photoUploads.id, image.id));
-
-				// Keep R2 original for downloads — do NOT delete
-				migratedImages++;
-				console.log(
-					`✅ Migrated image ${image.id} → CF Images ${cfData.result.id} (R2 original preserved)`,
-				);
-			} catch (err) {
-				errors.push({
-					id: image.id,
-					error: err instanceof Error ? err.message : String(err),
-				});
-			}
-		}
-
-		// Process videos
-		for (const video of unmigratedVideos) {
-			try {
-				const r2Object = await c.env.BUCKET.get(video.r2Key!);
-				if (!r2Object) {
-					errors.push({
-						id: video.id,
-						error: `R2 object not found: ${video.r2Key}`,
-					});
-					continue;
-				}
-
-				// Check size — CF Stream direct upload limit is 200MB from Worker
-				if (video.fileSize > 200 * 1024 * 1024) {
-					errors.push({
-						id: video.id,
-						error: `Video too large for Worker migration (${(video.fileSize / 1024 / 1024).toFixed(1)}MB > 200MB). Will continue serving from R2 fallback.`,
-					});
-					continue;
-				}
-
-				// Upload to CF Stream
-				const streamFormData = new FormData();
-				const blob = await r2Object.blob();
-				streamFormData.append("file", blob, video.fileName);
-				streamFormData.append(
-					"meta",
-					JSON.stringify({
-						guestId: video.guestId,
-						migratedFrom: "r2",
-						originalId: video.id,
-					}),
-				);
-
-				const cfResponse = await fetch(
-					`https://api.cloudflare.com/client/v4/accounts/${cfAccountId}/stream`,
-					{
-						method: "POST",
-						headers: {
-							Authorization: `Bearer ${cfToken}`,
-						},
-						body: streamFormData,
-					},
-				);
-
-				if (!cfResponse.ok) {
-					const errorBody = await cfResponse.text();
-					errors.push({
-						id: video.id,
-						error: `CF Stream API error: ${cfResponse.status} ${errorBody}`,
-					});
-					continue;
-				}
-
-				const cfData = await cfResponse.json<{
-					result: { uid: string };
-					success: boolean;
-				}>();
-
-				// Update D1 with Stream UID (streamReady will be set by webhook)
-				await db
-					.update(photoUploads)
-					.set({
-						streamVideoUid: cfData.result.uid,
-						streamReady: false,
-					})
-					.where(eq(photoUploads.id, video.id));
-
-				// Keep R2 original for downloads — do NOT delete
-				migratedVideos++;
-				console.log(
-					`✅ Migrated video ${video.id} → CF Stream ${cfData.result.uid} (R2 original preserved)`,
-				);
-			} catch (err) {
-				errors.push({
-					id: video.id,
-					error: err instanceof Error ? err.message : String(err),
-				});
-			}
-		}
-
-		// Count remaining unmigrated items
-		const allUnmigratedImages = await db.query.photoUploads.findMany({
-			columns: { id: true },
-			where: (t, { and, isNull, isNotNull, eq: colEq }) =>
-				and(
-					isNull(t.cloudflareImageId),
-					colEq(t.mediaType, "image"),
-					isNotNull(t.r2Key),
-				),
-		});
-		const allUnmigratedVideos = await db.query.photoUploads.findMany({
-			columns: { id: true },
-			where: (t, { and, isNull, isNotNull, eq: colEq }) =>
-				and(
-					isNull(t.streamVideoUid),
-					colEq(t.mediaType, "video"),
-					isNotNull(t.r2Key),
-				),
-		});
-
-		return c.json({
-			migrated: migratedImages + migratedVideos,
-			migratedImages,
-			migratedVideos,
-			remaining: allUnmigratedImages.length + allUnmigratedVideos.length,
-			remainingImages: allUnmigratedImages.length,
-			remainingVideos: allUnmigratedVideos.length,
-			errors,
-		});
-	} catch (error) {
-		console.error("❌ Migration error:", error);
-		return c.json(
-			{
-				error: "Migration failed",
-				details: error instanceof Error ? error.message : String(error),
-				migrated: migratedImages + migratedVideos,
-				errors,
 			},
 			500,
 		);

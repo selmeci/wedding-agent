@@ -278,23 +278,6 @@ export async function uploadMediaViaCF(
 		},
 	);
 
-	// Step 4: Stream original file to R2 (background — non-blocking for UX)
-	try {
-		await fetch(`/api/media/upload-original/${uploadUrlData.mediaId}`, {
-			method: "PUT",
-			headers: {
-				"x-qr-token": qrToken,
-				"x-file-name": file.name,
-				"Content-Type": mimeType,
-			},
-			body: file,
-		});
-		console.log(`[CF Upload] Original stored in R2 for ${file.name}`);
-	} catch (err) {
-		// Non-fatal — CF still has the file for serving
-		console.warn(`[CF Upload] Failed to store original in R2:`, err);
-	}
-
 	onProgress?.({ phase: "done", percent: 100 });
 
 	console.log(
