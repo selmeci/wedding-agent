@@ -396,7 +396,7 @@ app.get("/api/photos", async (c) => {
 	}
 });
 
-// POST /api/gallery/reupload/:id - Re-upload a media file via CF Images/Stream (replaces R2 version)
+// POST /api/gallery/reupload/:id - Re-upload a media file via CF Images/Stream
 app.post("/api/gallery/reupload/:id", async (c) => {
 	const token = c.req.query("token");
 	const expectedToken = c.env.SECRET_REPORT_TOKEN;
@@ -420,15 +420,7 @@ app.post("/api/gallery/reupload/:id", async (c) => {
 
 	const isVideo = file.type.startsWith("video/");
 
-	// Store new original in R2 for downloads
-	const ext = file.name.split(".").pop()?.toLowerCase() || "bin";
-	const newR2Key = `groups/${photo.guestId}/originals/${photoId}.${ext}`;
-
 	try {
-		// Save new original to R2
-		await c.env.BUCKET.put(newR2Key, await file.arrayBuffer(), {
-			httpMetadata: { contentType: file.type },
-		});
 		if (isVideo) {
 			// Upload to CF Stream
 			const streamForm = new FormData();
@@ -453,17 +445,11 @@ app.post("/api/gallery/reupload/:id", async (c) => {
 					streamVideoUid: cfData.result.uid,
 					streamReady: false,
 					cloudflareImageId: null,
-					r2Key: newR2Key,
 					mimeType: file.type,
 					fileName: file.name,
 					fileSize: file.size,
 				})
 				.where(eq(photoUploads.id, photoId));
-
-			// Delete old R2 objects (old key, not the new original)
-			if (photo.r2Key && photo.r2Key !== newR2Key)
-				await c.env.BUCKET.delete(photo.r2Key);
-			if (photo.thumbnailR2Key) await c.env.BUCKET.delete(photo.thumbnailR2Key);
 
 			return c.json({ success: true, streamVideoUid: cfData.result.uid });
 		}
@@ -495,17 +481,11 @@ app.post("/api/gallery/reupload/:id", async (c) => {
 			.set({
 				cloudflareImageId: cfData.result.id,
 				streamVideoUid: null,
-				r2Key: newR2Key,
 				mimeType: file.type,
 				fileName: file.name,
 				fileSize: file.size,
 			})
 			.where(eq(photoUploads.id, photoId));
-
-		// Delete old R2 objects (old key, not the new original)
-		if (photo.r2Key && photo.r2Key !== newR2Key)
-			await c.env.BUCKET.delete(photo.r2Key);
-		if (photo.thumbnailR2Key) await c.env.BUCKET.delete(photo.thumbnailR2Key);
 
 		return c.json({ success: true, cloudflareImageId: cfData.result.id });
 	} catch (error) {
