@@ -38,6 +38,7 @@ function isVideoMimeType(mimeType: string): boolean {
 export interface UploadProgress {
 	phase: "preparing" | "uploading" | "confirming" | "done";
 	percent: number;
+	speedMbps?: number;
 }
 
 export interface UploadResult {
@@ -101,6 +102,7 @@ function uploadVideoViaTus(
 	const tusStart = performance.now();
 	let chunkCount = 0;
 	let lastChunkTime = tusStart;
+	let lastSpeedMbps = 0;
 
 	console.log(
 		`[TUS] Starting: ${file.name} (${(file.size / 1024 / 1024).toFixed(1)}MB), URL: ${tusUploadUrl.substring(0, 80)}...`,
@@ -120,19 +122,19 @@ function uploadVideoViaTus(
 				chunkCount++;
 				const now = performance.now();
 				const chunkMs = now - lastChunkTime;
-				const speedMbps = (
-					(chunkSize * 8) /
-					(chunkMs / 1000) /
-					1_000_000
-				).toFixed(1);
+				lastSpeedMbps = (chunkSize * 8) / (chunkMs / 1000) / 1_000_000;
 				console.log(
-					`[TUS] Chunk ${chunkCount}: ${(bytesUploaded / 1024 / 1024).toFixed(1)}/${(bytesTotal / 1024 / 1024).toFixed(1)}MB (${chunkMs.toFixed(0)}ms, ${speedMbps} Mbps)`,
+					`[TUS] Chunk ${chunkCount}: ${(bytesUploaded / 1024 / 1024).toFixed(1)}/${(bytesTotal / 1024 / 1024).toFixed(1)}MB (${chunkMs.toFixed(0)}ms, ${lastSpeedMbps.toFixed(1)} Mbps)`,
 				);
 				lastChunkTime = now;
 			},
 			onProgress(bytesUploaded, bytesTotal) {
 				const percent = Math.round((bytesUploaded / bytesTotal) * 100);
-				onProgress?.({ phase: "uploading", percent });
+				onProgress?.({
+					phase: "uploading",
+					percent,
+					speedMbps: lastSpeedMbps || undefined,
+				});
 			},
 			onSuccess() {
 				const totalSec = ((performance.now() - tusStart) / 1000).toFixed(1);
@@ -223,6 +225,8 @@ export async function uploadMediaViaCF(
 		await uploadVideoViaTus(file, uploadUrlData.tusUploadUrl, onProgress);
 	} else if (uploadUrlData.uploadURL) {
 		// Image: basic XHR FormData upload
+		let xhrLastLoaded = 0;
+		let xhrLastTime = performance.now();
 		await retryWithBackoff(
 			() =>
 				new Promise<void>((resolve, reject) => {
@@ -230,9 +234,19 @@ export async function uploadMediaViaCF(
 
 					xhr.upload.addEventListener("progress", (e) => {
 						if (e.lengthComputable) {
+							const now = performance.now();
+							const deltaBytes = e.loaded - xhrLastLoaded;
+							const deltaMs = now - xhrLastTime;
+							let speedMbps: number | undefined;
+							if (deltaMs > 200 && deltaBytes > 0) {
+								speedMbps = (deltaBytes * 8) / (deltaMs / 1000) / 1_000_000;
+								xhrLastLoaded = e.loaded;
+								xhrLastTime = now;
+							}
 							onProgress?.({
 								phase: "uploading",
 								percent: Math.round((e.loaded / e.total) * 100),
+								speedMbps,
 							});
 						}
 					});

@@ -304,8 +304,17 @@ export function PhotoUpload({
 									<span>
 										{uploadProgress.phase === "preparing" &&
 											"Pripravujem upload..."}
-										{uploadProgress.phase === "uploading" &&
-											"Nahrávam súbor..."}
+										{uploadProgress.phase === "uploading" && (
+											<>
+												Nahrávam súbor
+												{uploadProgress.speedMbps != null &&
+													uploadProgress.speedMbps > 0 && (
+														<span className="ml-1 text-xs text-gray-400">
+															({uploadProgress.speedMbps.toFixed(1)} Mbps)
+														</span>
+													)}
+											</>
+										)}
 										{uploadProgress.phase === "confirming" && "Dokončujem..."}
 										{uploadProgress.phase === "done" && "Hotovo!"}
 									</span>
